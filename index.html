@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-/* Layout: one search column with a study-list rail on the right; word shown as tiles on a board-green strip */
+/* Layout: board-green header with search + tabs; one content column; words shown as tiles and hook rows */
 :root {
   --bg: #eef1ee;
   --panel: #ffffff;
@@ -19,8 +19,8 @@
   --tile: #f3dfb0;
   --tile-edge: #c9ae72;
   --tile-ink: #2b2213;
-  --tws: #c63b4a;      /* triple-word red: the accent */
-  --dls: #7fb6d9;      /* double-letter blue */
+  --tws: #c63b4a;
+  --dls: #2f7fb5;
   --good: #23824f;
   --bad: #c63b4a;
   --new: #8a5bd1;
@@ -39,37 +39,48 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--body); }
-button, input, textarea { font: inherit; color: inherit; }
-a { color: var(--board); }
-@media (prefers-color-scheme: dark) { a { color: var(--dls); } }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: var(--dls); }
 :focus-visible { outline: 2px solid var(--tws); outline-offset: 2px; }
 
-header { background: var(--board); color: var(--board-ink); padding: 18px 16px 22px; }
-.wrap { max-width: 1180px; margin: 0 auto; }
-.brand { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.brand h1 { font: 800 1.6rem/1 var(--display); margin: 0; letter-spacing: -0.01em; }
-.brand span { font: 400 .8rem var(--mono); opacity: .75; }
-form.search { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+header { background: var(--board); color: var(--board-ink); padding: 16px 16px 0; position: sticky; top: 0; z-index: 5; }
+.wrap { max-width: 1100px; margin: 0 auto; }
+.top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.top h1 { font: 800 1.35rem/1 var(--display); margin: 0; letter-spacing: -0.01em; white-space: nowrap; }
+form.search { display: flex; gap: 8px; flex: 1 1 320px; min-width: 0; }
 form.search input {
-  flex: 1 1 260px; min-width: 0; padding: 12px 14px; border-radius: 6px; border: 0;
-  background: var(--board-ink); color: #15211c; font: 600 1.25rem var(--mono); letter-spacing: .08em; text-transform: uppercase;
+  flex: 1; min-width: 0; padding: 9px 12px; border-radius: 6px; border: 0;
+  background: var(--board-ink); color: #15211c; font: 600 1.1rem var(--mono); letter-spacing: .08em; text-transform: uppercase;
 }
+nav.tabs { display: flex; gap: 2px; margin-top: 12px; overflow-x: auto; }
+nav.tabs a {
+  color: var(--board-ink); text-decoration: none; font: 600 .9rem var(--display); padding: 8px 14px; border-radius: 6px 6px 0 0; opacity: .75; white-space: nowrap;
+}
+nav.tabs a:hover { opacity: 1; }
+nav.tabs a.on { background: var(--bg); color: var(--ink); opacity: 1; }
+
 .btn {
-  border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 10px 14px;
-  cursor: pointer; font: 600 .9rem var(--display);
+  border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 8px 13px;
+  cursor: pointer; font: 600 .88rem var(--display); white-space: nowrap;
 }
 .btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--tws); border-color: var(--tws); color: #fff; }
+.btn.sm { padding: 4px 9px; font-size: .8rem; }
+.btn.on { background: var(--board); color: var(--board-ink); border-color: var(--board); }
 header .btn { background: transparent; color: var(--board-ink); border-color: rgba(255,255,255,.35); }
 header .btn.primary { background: var(--tws); border-color: var(--tws); color: #fff; }
-.hint { font: .78rem var(--mono); opacity: .75; margin-top: 8px; }
 
-main.wrap { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 24px; padding: 24px 16px 60px; }
-@media (max-width: 860px) { main.wrap { grid-template-columns: minmax(0,1fr); } }
+main.wrap { padding: 22px 16px 70px; display: flex; flex-direction: column; gap: 18px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; min-width: 0; }
+h2.lbl, .card > h2 { font: 700 .76rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+h3.title { font: 700 1.5rem/1.15 var(--display); margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 4px 0 0; }
+.small { font: .78rem/1.5 var(--mono); color: var(--muted); }
+.empty { color: var(--muted); font-style: italic; margin: 0; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
 
-.status { font: .9rem var(--mono); color: var(--muted); }
-.result { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
-
-.hero { display: flex; flex-direction: column; gap: 14px; }
+/* word page */
 .tilerow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .tiles { display: flex; gap: 4px; flex-wrap: wrap; }
 .tile {
@@ -78,132 +89,149 @@ main.wrap { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 24px
   font: 700 1.6rem/1 var(--display);
 }
 .tile sub { position: absolute; right: 4px; bottom: 5px; font: 600 .6rem var(--mono); }
-.hook {
-  font: 600 1rem var(--mono); color: var(--muted); display: flex; gap: 3px; flex-wrap: wrap; max-width: 140px;
-}
-.hook button { border: 1px dashed var(--muted); background: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; text-transform: uppercase; font: 600 .95rem var(--mono); }
+.tiles.mini .tile { width: 30px; height: 30px; font-size: 1.05rem; border-radius: 4px; box-shadow: inset 0 -2px 0 var(--tile-edge); }
+.tiles.mini .tile sub { font-size: .45rem; right: 2px; bottom: 2px; }
+.hook { display: flex; gap: 3px; flex-wrap: wrap; max-width: 150px; }
+.hook button { border: 1px dashed var(--muted); background: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font: 600 .95rem var(--mono); }
 .hook button:hover { border-style: solid; border-color: var(--tws); color: var(--tws); }
-.hook.none { font-size: .8rem; opacity: .6; }
-.badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.badge { font: 700 .75rem var(--display); letter-spacing: .06em; text-transform: uppercase; padding: 4px 9px; border-radius: 99px; border: 1.5px solid currentColor; }
-.badge.good { color: var(--good); } .badge.bad { color: var(--bad); } .badge.new { color: var(--new); }
-.badge.plain { color: var(--muted); }
-.star { margin-left: auto; }
-.star.on { background: var(--tws); color: #fff; border-color: var(--tws); }
-
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; min-width: 0; }
-.card h2 { font: 700 .78rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.hook.none { font: .78rem var(--mono); color: var(--muted); }
+.badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+.badge { font: 700 .72rem var(--display); letter-spacing: .06em; text-transform: uppercase; padding: 4px 9px; border-radius: 99px; border: 1.5px solid currentColor; }
+.badge.good { color: var(--good); } .badge.bad { color: var(--bad); } .badge.new { color: var(--new); } .badge.plain { color: var(--muted); }
 .def { font-size: 1.2rem; margin: 0; }
-.def .pos { font: .8rem var(--mono); color: var(--muted); }
-.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
-
+.pos { font: .8rem var(--mono); color: var(--muted); }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+.stat b { display: block; font: 700 1.25rem var(--display); font-variant-numeric: tabular-nums; }
+.stat span { font: .75rem var(--mono); color: var(--muted); }
 .words { display: flex; flex-wrap: wrap; gap: 6px; }
 .w { font: 600 .9rem var(--mono); padding: 3px 8px; border-radius: 4px; background: var(--bg); border: 1px solid var(--line); cursor: pointer; }
 .w:hover { border-color: var(--tws); color: var(--tws); }
-.w.self { background: var(--board); color: var(--board-ink); border-color: var(--board); }
 .w mark { background: none; color: var(--tws); }
-.grp { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; border-top: 1px dashed var(--line); }
+.w sup, .wl sup { color: var(--new); font-size: .65em; }
+.grp { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; border-top: 1px dashed var(--line); }
 .grp:first-child { border-top: 0; }
-.grp b { font: 700 .95rem var(--mono); color: var(--tws); width: 18px; flex: none; }
-.empty { color: var(--muted); font-style: italic; margin: 0; }
-
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
-.stat b { display: block; font: 700 1.3rem var(--display); font-variant-numeric: tabular-nums; }
-.stat span { font: .75rem var(--mono); color: var(--muted); }
-
+.grp > b { font: 700 .95rem var(--mono); color: var(--tws); width: 18px; flex: none; }
 .online ol { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 8px; }
-.online .ex { display: block; font-style: italic; color: var(--muted); }
-.online .ex::before { content: "“"; } .online .ex::after { content: "”"; }
-.online .meta { font: .85rem var(--mono); color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-.links { display: flex; gap: 12px; flex-wrap: wrap; font: .85rem var(--mono); margin-top: 12px; }
+.ex { display: block; font-style: italic; color: var(--muted); }
+.ex::before { content: "“"; } .ex::after { content: "”"; }
+.links { display: flex; gap: 14px; flex-wrap: wrap; font: .85rem var(--mono); margin-top: 12px; }
+textarea { width: 100%; min-height: 70px; border: 1px solid var(--line); border-radius: 6px; padding: 10px; background: var(--bg); resize: vertical; }
 
-textarea#note { width: 100%; min-height: 70px; border: 1px solid var(--line); border-radius: 6px; padding: 10px; background: var(--bg); resize: vertical; }
-.small { font: .78rem var(--mono); color: var(--muted); }
+/* result rows: front hooks | word | back hooks | definition */
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.toolbar .count { font: 700 1rem var(--display); margin-right: auto; }
+.chips { display: flex; gap: 4px; flex-wrap: wrap; }
+select, .field input { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 7px 9px; }
+.rows { display: flex; flex-direction: column; }
+.r { display: grid; grid-template-columns: 4.5em max-content 4.5em minmax(0,1fr) auto; gap: 10px; align-items: baseline; padding: 6px 4px; border-top: 1px solid var(--line); cursor: pointer; }
+.r:first-child { border-top: 0; }
+.r:hover { background: var(--bg); }
+.r .fh { text-align: right; font: .85rem var(--mono); color: var(--dls); overflow-wrap: anywhere; }
+.r .bh { font: .85rem var(--mono); color: var(--dls); overflow-wrap: anywhere; }
+.r .wl { font: 700 1rem var(--mono); letter-spacing: .04em; }
+.r .wl mark { background: none; color: var(--tws); }
+.r .d { color: var(--muted); font-size: .93rem; min-width: 0; }
+.r .meta { font: .72rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.rows.nodefs .d { display: none; }
+@media (max-width: 620px) {
+  .r { grid-template-columns: 3.2em max-content minmax(0,1fr); }
+  .r .d { grid-column: 2 / -1; } .r .meta { display: none; }
+}
+.more { margin-top: 12px; }
 
-aside { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
-aside .list { display: flex; flex-direction: column; gap: 2px; max-height: 340px; overflow: auto; }
-aside .li { display: flex; justify-content: space-between; gap: 8px; padding: 5px 6px; border-radius: 4px; cursor: pointer; font: 600 .9rem var(--mono); }
-aside .li:hover { background: var(--bg); }
-aside .li small { font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+/* search form */
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px 16px; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field label { font: 600 .74rem var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.field input { font: 600 .95rem var(--mono); text-transform: uppercase; width: 100%; }
+.field.wide { grid-column: 1 / -1; }
+.field input.lc { text-transform: none; font-family: var(--body); }
+.check { display: flex; gap: 6px; align-items: center; font-size: .92rem; }
+.help { font: .76rem/1.6 var(--mono); color: var(--muted); }
+.help code { background: var(--bg); padding: 1px 4px; border-radius: 3px; color: var(--ink); }
+
+/* lists */
+.listgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.lcard { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+.lcard:hover { border-color: var(--tws); }
+.lcard b { font: 700 1.05rem var(--display); }
+.lcard span { color: var(--muted); font-size: .9rem; }
+.lcard i { font: normal .75rem var(--mono); color: var(--dls); margin-top: auto; }
+.sect { font: 700 .76rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 8px 0 -4px; }
+.stem { display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-top: 1px solid var(--line); }
+.stem:first-child { border-top: 0; padding-top: 0; }
+.stem .letters { font: 700 1.05rem var(--mono); color: var(--tws); letter-spacing: .12em; }
 
 /* quiz */
-.quiz .q { font: 700 1.6rem var(--mono); letter-spacing: .15em; }
-.quiz input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); font: 600 1rem var(--mono); text-transform: uppercase; }
+.qprompt { font: 800 2.4rem/1.1 var(--mono); letter-spacing: .14em; overflow-wrap: anywhere; }
+.qdef { font-size: 1.3rem; }
+.qinput { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); font: 600 1.15rem var(--mono); text-transform: uppercase; }
+.progress { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.progress div { height: 100%; background: var(--good); }
+.fb.ok { color: var(--good); font-weight: 600; } .fb.no { color: var(--bad); font-weight: 600; }
+.seg { display: flex; flex-wrap: wrap; gap: 4px; }
+
 @media (prefers-reduced-motion: no-preference) {
   .tile { animation: drop .25s ease-out both; }
   @keyframes drop { from { transform: translateY(-6px); opacity: .3; } }
 }
-@media (max-width: 480px) { .tile { width: 38px; height: 38px; font-size: 1.3rem; } }
+@media (max-width: 480px) { .tile { width: 38px; height: 38px; font-size: 1.3rem; } .qprompt { font-size: 1.8rem; } }
 </style>
 </head>
 <body>
 <header>
   <div class="wrap">
-    <div class="brand"><h1>CSW24 Word Study</h1><span id="lexinfo">loading lexicon…</span></div>
-    <form class="search" id="form" autocomplete="off">
-      <input id="q" placeholder="Type a word, e.g. QI or RETAINS?" spellcheck="false" aria-label="Word or rack">
-      <button class="btn primary" type="submit">Look up</button>
-      <button class="btn" type="button" id="randBtn">Random word</button>
-    </form>
-    <div class="hint">Word → full study card · letters with ? → anagram with blanks (e.g. AEINST?) · use . for one letter and * for any run (e.g. Q.*, *ZZ*)</div>
+    <div class="top">
+      <h1>CSW24 Word Study</h1>
+      <form class="search" id="form" autocomplete="off">
+        <input id="q" placeholder="Word, rack with ? or pattern" spellcheck="false" aria-label="Word, rack or pattern">
+        <button class="btn primary" type="submit">Go</button>
+        <button class="btn" type="button" id="randBtn" title="Random word">Random</button>
+      </form>
+    </div>
+    <nav class="tabs" id="tabs">
+      <a href="#w" data-tab="w">Word</a>
+      <a href="#search" data-tab="search">Search</a>
+      <a href="#lists" data-tab="lists">Word lists</a>
+      <a href="#quiz" data-tab="quiz">Quiz</a>
+      <a href="#mine" data-tab="mine">My words</a>
+    </nav>
   </div>
 </header>
 
-<main class="wrap">
-  <section class="result" id="result"><p class="status">Loading 280,887 words…</p></section>
-  <aside>
-    <div class="card">
-      <h2>Study list</h2>
-      <div class="list" id="starList"></div>
-      <div class="row" style="margin-top:10px">
-        <button class="btn" id="quizBtn" type="button">Quiz me</button>
-        <button class="btn" id="exportBtn" type="button">Copy list</button>
-      </div>
-    </div>
-    <div class="card quiz" id="quizCard" hidden></div>
-    <div class="card">
-      <h2>Recent</h2>
-      <div class="list" id="histList"></div>
-    </div>
-    <div class="card">
-      <h2>Random word length</h2>
-      <div class="row" id="lenRow"></div>
-    </div>
-  </aside>
-</main>
+<main class="wrap" id="view"><p class="small">Loading 280,887 words…</p></main>
 
 <script src="words.js"></script>
 <script>
 const VALUES = {A:1,B:3,C:3,D:2,E:1,F:4,G:2,H:4,I:1,J:8,K:5,L:1,M:3,N:1,O:1,P:3,Q:10,R:1,S:1,T:1,U:1,V:4,W:4,X:8,Y:4,Z:10};
 const AZ = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const $ = s => document.querySelector(s);
-const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const alpha = w => w.split("").sort().join("");
+const vowels = w => (w.match(/[AEIOU]/g) || []).length;
+const score = w => [...w].reduce((s, c) => s + (VALUES[c] || 0), 0);
+const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const store = {
   get(k, d) { try { return JSON.parse(localStorage.getItem("csw24:" + k)) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem("csw24:" + k, JSON.stringify(v)); } catch {} }
 };
 
-// ---- lexicon ----
-const DICT = new Map();   // word -> {d, fh, bh, n, p, pl, pts}
-const ANA = new Map();    // alphagram -> [words]
-const BYLEN = {};         // length -> [words]
-const COUNT = {};
-(function load() {
-  for (const line of window.CSW_TSV.split("\n")) {
-    const [w, d, fh, bh, sym, p, pl, pts] = line.split("\t");
-    DICT.set(w, { d, fh, bh, n: sym === "+", p: +p, pl: +pl, pts: +pts });
-    const a = alpha(w);
-    (ANA.get(a) || ANA.set(a, []).get(a)).push(w);
-    (BYLEN[w.length] ||= []).push(w);
-  }
-  window.CSW_TSV = null;
-  for (const k in BYLEN) COUNT[k] = BYLEN[k].length;
-  $("#lexinfo").textContent = `Collins Scrabble Words 2024 · ${DICT.size.toLocaleString()} words · ${[...DICT.values()].filter(x => x.n).length.toLocaleString()} new`;
-})();
+// ---------- lexicon ----------
+const DICT = new Map(), ANA = new Map(), BYLEN = {};
+if (!window.CSW_TSV) {
+  $("#view").innerHTML = `<div class="card"><h3 class="title">Word data missing</h3><p>Run <code>python3 build.py</code> in this folder to create <code>words.js</code> from your Zyzzyva CSW24 lexicon, then reload.</p></div>`;
+  throw new Error("words.js not found");
+}
+for (const line of window.CSW_TSV.split("\n")) {
+  const [w, d, fh, bh, sym, p, pl] = line.split("\t");
+  DICT.set(w, { d, fh, bh, n: sym === "+", p: +p, pl: +pl });
+  const a = alpha(w);
+  (ANA.get(a) || ANA.set(a, []).get(a)).push(w);
+  (BYLEN[w.length] ||= []).push(w);
+}
+window.CSW_TSV = null;
+const ALL = [...DICT.keys()];
 
-// ---- word helpers ----
 const anagrams = w => ANA.get(alpha(w)) || [];
 function plusOne(w) {
   const out = [];
@@ -219,132 +247,149 @@ function minusOne(w) {
   }
   return out;
 }
-function blankAnagrams(letters, blanks) {
-  const found = new Map(); // word -> blank letters
-  const rec = (base, n, start, used) => {
-    if (n === 0) { for (const w of ANA.get(alpha(base)) || []) if (!found.has(w)) found.set(w, used); return; }
-    for (let i = start; i < 26; i++) rec(base + AZ[i], n - 1, i, used + AZ[i]);
-  };
-  rec(letters, blanks, 0, "");
-  return found;
+// letter counts for rack maths
+function counts(s) { const c = {}; for (const ch of s) c[ch] = (c[ch] || 0) + 1; return c; }
+// how many blanks w needs from rack counts rc (Infinity if impossible)
+function blanksNeeded(w, rc) {
+  const need = {}; let b = 0;
+  for (const ch of w) { need[ch] = (need[ch] || 0) + 1; if (need[ch] > (rc[ch] || 0)) b++; }
+  return b;
 }
-function score(w) { return [...w].reduce((s, c) => s + (VALUES[c] || 0), 0); }
+// which letters of w came from blanks (for highlighting)
+function blankMask(w, rc) {
+  const left = { ...rc };
+  return [...w].map(ch => { if (left[ch] > 0) { left[ch]--; return false; } return true; });
+}
 
-// definition: link any capitalised word that is itself valid (e.g. "< RETAIN, keep ...")
+// ---------- shared rendering ----------
 function defHTML(d) {
   return d.split(" / ").map(part => {
     const m = part.match(/^(.*?)(\s*\[[^\]]+\])?$/);
-    const body = esc(m[1]).replace(/\b[A-Z]{2,15}\b/g, x => DICT.has(x) ? `<a href="#" data-w="${x}">${x}</a>` : x);
+    const body = esc(m[1]).replace(/\b[A-Z]{2,15}\b/g, x => DICT.has(x) ? `<a href="#w/${x}">${x}</a>` : x);
     return `<span>${body}${m[2] ? ` <span class="pos">${esc(m[2].trim())}</span>` : ""}</span>`;
   }).join("<br>");
 }
-function chip(w, opts = {}) {
-  const e = DICT.get(w), cls = "w" + (opts.self ? " self" : "");
-  let label = esc(w);
-  if (opts.blanks) { let b = [...opts.blanks]; label = [...w].map(c => { const i = b.indexOf(c); if (i >= 0 && !opts.used?.[c]) { b.splice(i,1); return `<mark>${c.toLowerCase()}</mark>`; } return c; }).join(""); }
-  return `<span class="${cls}" data-w="${w}" title="${esc(e?.d || "")}">${label}${e?.n ? "<sup>+</sup>" : ""}</span>`;
-}
-
-// ---- rendering ----
-let current = null;
-function lookup(raw, push = true) {
-  const q = raw.toUpperCase().replace(/[^A-Z?.*]/g, "");
-  if (!q) return;
-  $("#q").value = q;
-  if (/[.*]/.test(q)) return renderPattern(q);
-  if (q.includes("?")) return renderBlank(q);
-  renderWord(q);
-  if (push) addHistory(q);
-}
-
-function renderWord(w) {
-  current = w;
+function chip(w) {
   const e = DICT.get(w);
-  const valid = !!e;
+  return `<a class="w" href="#w/${w}" title="${esc(e?.d)}" style="text-decoration:none;color:inherit">${w}${e?.n ? "<sup>+</sup>" : ""}</a>`;
+}
+function tilesHTML(w, mini, mask) {
+  return `<div class="tiles${mini ? " mini" : ""}">${[...w].map((c, i) => `<div class="tile" style="animation-delay:${i * 25}ms${mask?.[i] ? ";opacity:.55" : ""}">${c}<sub>${mask?.[i] ? 0 : VALUES[c]}</sub></div>`).join("")}</div>`;
+}
+
+// Results component: toolbar (count, length chips, sort, defs toggle, actions) + rows + paging
+const SORTS = { prob: "Probability", alpha: "A–Z", len: "Length", score: "Points", play: "Playability" };
+function results(el, words, opts = {}) {
+  const st = { len: opts.len || 0, sort: opts.sort || store.get("sort", "prob"), defs: store.get("defs", true), shown: 300 };
+  const lens = [...new Set(words.map(w => w.length))].sort((a, b) => a - b);
+  if (st.len && !lens.includes(st.len)) st.len = 0;
+  const sorters = {
+    prob: (a, b) => a.length - b.length || DICT.get(a).p - DICT.get(b).p,
+    alpha: (a, b) => a < b ? -1 : 1,
+    len: (a, b) => a.length - b.length || (a < b ? -1 : 1),
+    score: (a, b) => score(b) - score(a) || (a < b ? -1 : 1),
+    play: (a, b) => DICT.get(a).pl - DICT.get(b).pl,
+  };
+  function current() {
+    const list = st.len ? words.filter(w => w.length === st.len) : [...words];
+    return opts.keepOrder && st.sort === "prob" ? list : list.sort(sorters[st.sort]);
+  }
+  function draw() {
+    const list = current();
+    lastResults = list;
+    el.innerHTML = `
+      <div class="toolbar">
+        <span class="count">${list.length.toLocaleString()} word${list.length === 1 ? "" : "s"}</span>
+        ${lens.length > 1 ? `<div class="chips"><button class="btn sm ${st.len ? "" : "on"}" data-len="0">All</button>${lens.map(n => `<button class="btn sm ${st.len === n ? "on" : ""}" data-len="${n}">${n}</button>`).join("")}</div>` : ""}
+        <select id="sortSel" aria-label="Sort">${Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${k === st.sort ? "selected" : ""}>${v}</option>`).join("")}</select>
+        <label class="check"><input type="checkbox" id="defChk" ${st.defs ? "checked" : ""}> Definitions</label>
+        <button class="btn sm" id="quizThese">Quiz these</button>
+        <button class="btn sm" id="starAll">Star all</button>
+      </div>
+      ${list.length ? `<div class="rows ${st.defs ? "" : "nodefs"}">${list.slice(0, st.shown).map(w => rowHTML(w, opts.masks?.get(w))).join("")}</div>` : `<p class="empty">No words match.</p>`}
+      ${list.length > st.shown ? `<button class="btn more" id="moreBtn">Show ${Math.min(300, list.length - st.shown)} more</button>` : ""}`;
+    el.querySelectorAll("[data-len]").forEach(b => b.onclick = () => { st.len = +b.dataset.len; st.shown = 300; draw(); });
+    el.querySelector("#sortSel").onchange = e => { st.sort = e.target.value; store.set("sort", st.sort); draw(); };
+    el.querySelector("#defChk").onchange = e => { st.defs = e.target.checked; store.set("defs", st.defs); el.querySelector(".rows")?.classList.toggle("nodefs", !st.defs); };
+    el.querySelector("#moreBtn")?.addEventListener("click", () => { st.shown += 300; draw(); });
+    el.querySelector("#quizThese").onclick = () => { quizSetup = { ...quizSetup, source: "last" }; location.hash = "quiz"; };
+    el.querySelector("#starAll").onclick = e => { const s = getStars(); const add = list.filter(w => !s.includes(w)); store.set("stars", [...add, ...s]); e.target.textContent = `Starred ${add.length}`; };
+  }
+  draw();
+}
+function rowHTML(w, mask) {
+  const e = DICT.get(w);
+  const label = mask ? [...w].map((c, i) => mask[i] ? `<mark>${c.toLowerCase()}</mark>` : c).join("") : w;
+  return `<div class="r" data-go="${w}"><span class="fh">${e.fh}</span><span class="wl">${label}${e.n ? "<sup>+</sup>" : ""}</span><span class="bh">${e.bh}</span><span class="d">${esc(e.d)}</span><span class="meta">#${e.p.toLocaleString()}</span></div>`;
+}
+let lastResults = [];
+
+// ---------- views ----------
+const VIEWS = {};
+
+VIEWS.w = (arg) => {
+  const w = (arg || store.get("hist", [])[0] || "QI").toUpperCase().replace(/[^A-Z]/g, "");
+  if (!w) return;
+  $("#q").value = w;
+  const e = DICT.get(w), valid = !!e;
+  if (valid) addHistory(w);
   const ana = anagrams(w).filter(x => x !== w);
   const plus = plusOne(w), minus = minusOne(w);
+  const plusN = plus.reduce((s, g) => s + g[1].length, 0), minusN = minus.reduce((s, g) => s + g[1].length, 0);
   const starred = getStars().includes(w);
-  const tiles = [...w].map((c, i) => `<div class="tile" style="animation-delay:${i*25}ms">${c}<sub>${VALUES[c]}</sub></div>`).join("");
-  const hooks = (s, side) => s ? `<div class="hook">${[...s].map(h => `<button type="button" data-w="${side === "f" ? h.toUpperCase() + w : w + h.toUpperCase()}">${h}</button>`).join("")}</div>` : `<div class="hook none">no ${side === "f" ? "front" : "back"} hooks</div>`;
-  const len = w.length;
-
-  let html = `<div class="hero">
-    <div class="tilerow">${valid ? hooks(e.fh, "f") : ""}<div class="tiles">${tiles}</div>${valid ? hooks(e.bh, "b") : ""}</div>
+  const hooks = (s, side) => s
+    ? `<div class="hook">${[...s].map(h => `<button type="button" data-go="${side === "f" ? h.toUpperCase() + w : w + h.toUpperCase()}">${h}</button>`).join("")}</div>`
+    : `<div class="hook none">no ${side === "f" ? "front" : "back"}<br>hooks</div>`;
+  const s = store.get("stats", {})[w];
+  let html = `<div class="card">
+    <div class="tilerow">${valid ? hooks(e.fh, "f") : ""}${tilesHTML(w)}${valid ? hooks(e.bh, "b") : ""}</div>
     <div class="badges">
-      ${valid ? `<span class="badge good">Valid in CSW24</span>` : `<span class="badge bad">Not valid — phony</span>`}
+      ${valid ? `<span class="badge good">Valid in CSW24</span>` : `<span class="badge bad">Not valid · phony</span>`}
       ${e?.n ? `<span class="badge new">New in CSW24</span>` : ""}
-      <span class="badge plain">${score(w)} pts face value</span>
-      ${valid ? `<button class="btn star ${starred ? "on" : ""}" id="starBtn" type="button">${starred ? "★ In study list" : "☆ Add to study list"}</button>` : ""}
+      <span class="badge plain">${score(w)} pts</span>
+      ${s ? `<span class="badge plain">Quiz ${s[0]}✓ ${s[1]}✗</span>` : ""}
+      ${valid ? `<button class="btn sm ${starred ? "on" : ""}" id="starBtn" style="margin-left:auto">${starred ? "★ Starred" : "☆ Star"}</button>` : ""}
     </div>
   </div>`;
-
-  if (valid) {
-    html += `<div class="card"><h2>CSW24 definition</h2><p class="def">${defHTML(e.d)}</p></div>`;
-  } else {
-    const fix = ana.length ? ana : [];
-    html += `<div class="card"><h2>Not in the lexicon</h2><p class="empty">${esc(w)} is not a valid CSW24 word.${fix.length ? " These anagrams are valid:" : ""}</p>${fix.length ? `<div class="words" style="margin-top:8px">${fix.map(x => chip(x)).join("")}</div>` : ""}</div>`;
-  }
-
+  html += valid
+    ? `<div class="card"><h2>CSW24 definition</h2><p class="def">${defHTML(e.d)}</p></div>`
+    : `<div class="card"><h2>Not in the lexicon</h2><p class="empty">${esc(w)} is not a valid CSW24 word.${ana.length ? " Valid anagrams of these letters:" : ""}</p>${ana.length ? `<div class="words" style="margin-top:8px">${ana.map(chip).join("")}</div>` : ""}</div>`;
   html += `<div class="grid2">
-    <div class="card"><h2>Anagrams (${ana.length})</h2>${ana.length ? `<div class="words">${ana.map(x => chip(x)).join("")}</div>` : `<p class="empty">No other anagrams — this one's unique.</p>`}</div>
+    <div class="card"><h2>Anagrams (${ana.length})</h2>${ana.length ? `<div class="words">${ana.map(chip).join("")}</div>` : `<p class="empty">No other anagrams.</p>`}</div>
     <div class="card"><h2>Memory facts</h2><div class="stats">
       <div class="stat"><b>${alpha(w)}</b><span>alphagram</span></div>
-      ${valid ? `<div class="stat"><b>#${e.p.toLocaleString()}</b><span>probability of ${COUNT[len].toLocaleString()} ${len}s</span></div>
-      <div class="stat"><b>#${e.pl.toLocaleString()}</b><span>playability rank</span></div>` : ""}
-      <div class="stat"><b>${(e?.fh.length || 0) + (e?.bh.length || 0)}</b><span>hooks (front+back)</span></div>
+      ${valid ? `<div class="stat"><b>#${e.p.toLocaleString()}</b><span>probability of ${BYLEN[w.length].length.toLocaleString()} ${w.length}s</span></div>
+      <div class="stat"><b>#${e.pl.toLocaleString()}</b><span>playability</span></div>` : ""}
+      <div class="stat"><b>${vowels(w)}/${w.length}</b><span>vowels</span></div>
     </div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h2>Add one letter (${plusN})${w.length >= 6 ? ` · ${w.length + 1}-letter ${w.length === 6 ? "bingos" : "words"}` : ""}</h2>
+      ${plus.length ? `<p class="small" style="margin:0 0 6px">Letters: <b style="color:var(--tws)">${plus.map(g => g[0]).join("")}</b></p>${plus.map(([L, g]) => `<div class="grp"><b>${L}</b><div class="words">${g.map(chip).join("")}</div></div>`).join("")}` : `<p class="empty">Nothing.</p>`}</div>
+    <div class="card"><h2>Drop one letter (${minusN})</h2>${minus.length ? minus.map(([L, g]) => `<div class="grp"><b>${L}</b><div class="words">${g.map(chip).join("")}</div></div>`).join("") : `<p class="empty">Nothing.</p>`}</div>
   </div>`;
-
-  html += `<div class="grid2">
-    <div class="card"><h2>Add one letter (${plus.reduce((s, g) => s + g[1].length, 0)})</h2>${plus.length ? plus.map(([L, g]) => `<div class="grp"><b>${L}</b><div class="words">${g.map(x => chip(x)).join("")}</div></div>`).join("") : `<p class="empty">No ${len + 1}-letter words.</p>`}</div>
-    <div class="card"><h2>Drop one letter (${minus.reduce((s, g) => s + g[1].length, 0)})</h2>${minus.length ? minus.map(([L, g]) => `<div class="grp"><b>${L}</b><div class="words">${g.map(x => chip(x)).join("")}</div></div>`).join("") : `<p class="empty">No ${len - 1}-letter words.</p>`}</div>
-  </div>`;
-
-  if (valid) {
-    html += `<div class="card online" id="online"><h2>Pronunciation, examples &amp; origin</h2><p class="small">Looking up ${esc(w.toLowerCase())} online…</p></div>
+  if (valid) html += `<div class="card online" id="online"><h2>Pronunciation, examples &amp; origin</h2><p class="small">Looking up ${esc(w.toLowerCase())} online…</p></div>
     <div class="card"><h2>Your memory hook</h2>
-      <textarea id="note" placeholder="A sentence, picture or link that helps you remember ${esc(w)}…">${esc(getNotes()[w] || "")}</textarea>
-      <p class="small">Saved in this browser as you type.</p></div>`;
-  }
-  $("#result").innerHTML = html;
-  if (valid) { fetchOnline(w); $("#note").addEventListener("input", ev => { const n = getNotes(); if (ev.target.value.trim()) n[w] = ev.target.value; else delete n[w]; store.set("notes", n); }); }
-  $("#starBtn")?.addEventListener("click", () => { toggleStar(w); renderWord(w); });
-  window.scrollTo({ top: 0 });
-}
+      <textarea id="note" placeholder="A sentence, picture or trick that helps you remember ${esc(w)}…">${esc(getNotes()[w] || "")}</textarea>
+      <p class="small" style="margin:6px 0 0">Saved in this browser as you type.</p></div>`;
+  $("#view").innerHTML = html;
+  if (!valid) return;
+  fetchOnline(w);
+  $("#note").addEventListener("input", ev => { const n = getNotes(); if (ev.target.value.trim()) n[w] = ev.target.value; else delete n[w]; store.set("notes", n); });
+  $("#starBtn").addEventListener("click", ev => { const on = toggleStar(w); ev.target.classList.toggle("on", on); ev.target.textContent = on ? "★ Starred" : "☆ Star"; });
+};
 
-function renderList(title, words, extra = "") {
-  current = null;
-  $("#result").innerHTML = `<div class="card"><h2>${title}</h2>${extra}${words.length ? `<div class="words">${words.join("")}</div>` : `<p class="empty">Nothing found.</p>`}</div>`;
-}
-function renderBlank(q) {
-  const letters = q.replace(/\?/g, ""), blanks = q.length - letters.length;
-  if (blanks > 2) return renderList("Too many blanks", [], `<p class="empty">Use at most two ?.</p>`);
-  const found = blankAnagrams(letters, blanks);
-  const words = [...found.keys()].sort((a, b) => DICT.get(a).p - DICT.get(b).p);
-  renderList(`${letters} + ${blanks} blank${blanks > 1 ? "s" : ""} → ${words.length} words`, words.map(w => chip(w, { blanks: found.get(w) })), `<p class="small" style="margin:0 0 10px">Red lowercase letters are the blank. Sorted by probability.</p>`);
-}
-function renderPattern(q) {
-  const re = new RegExp("^" + q.replace(/\?/g, ".").replace(/\*/g, ".*") + "$");
-  const out = [];
-  for (const w of DICT.keys()) if (re.test(w)) { out.push(w); if (out.length >= 600) break; }
-  renderList(`Pattern ${q} → ${out.length}${out.length >= 600 ? "+ (first 600)" : ""} words`, out.map(w => chip(w)));
-}
-
-// ---- online extras: Free Dictionary API, then Wiktionary for examples ----
 async function fetchOnline(w) {
-  const lw = w.toLowerCase(), box = () => current === w ? $("#online") : null;
+  const lw = w.toLowerCase();
   const parts = []; let phon = "", audio = "", origin = "";
   try {
     const r = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(lw)}`);
-    if (r.ok) {
-      const data = await r.json();
-      for (const ent of data) {
-        phon ||= ent.phonetic || ent.phonetics?.find(p => p.text)?.text || "";
-        audio ||= ent.phonetics?.find(p => p.audio)?.audio || "";
-        origin ||= ent.origin || "";
-        for (const m of ent.meanings || []) for (const d of m.definitions || [])
-          parts.push({ pos: m.partOfSpeech, def: d.definition, ex: d.example, syn: [...(d.synonyms || []), ...(m.synonyms || [])].slice(0, 6) });
-      }
+    if (r.ok) for (const ent of await r.json()) {
+      phon ||= ent.phonetic || ent.phonetics?.find(p => p.text)?.text || "";
+      audio ||= ent.phonetics?.find(p => p.audio)?.audio || "";
+      origin ||= ent.origin || "";
+      for (const m of ent.meanings || []) for (const d of m.definitions || [])
+        parts.push({ pos: m.partOfSpeech, def: d.definition, ex: d.example, syn: [...(d.synonyms || []), ...(m.synonyms || [])] });
     }
   } catch {}
   try {
@@ -355,19 +400,20 @@ async function fetchOnline(w) {
       for (const ent of data.en || []) for (const d of ent.definitions || []) {
         const def = strip(d.definition || ""); if (!def) continue;
         const ex = (d.parsedExamples || []).map(x => strip(x.example)).concat((d.examples || []).map(strip)).filter(Boolean)[0];
-        if (ex || parts.length < 3) parts.push({ pos: ent.partOfSpeech, def, ex, src: "Wiktionary" });
+        if (ex || parts.length < 3) parts.push({ pos: ent.partOfSpeech, def, ex });
       }
     }
   } catch {}
-  const b = box(); if (!b) return;
+  const b = $("#online");
+  if (!b || $("#q").value !== w) return;
   parts.sort((a, b) => (b.ex ? 1 : 0) - (a.ex ? 1 : 0));
   const shown = parts.slice(0, 6);
-  const syns = [...new Set(shown.flatMap(p => p.syn || []))].filter(s => DICT.has(s.toUpperCase()));
+  const syns = [...new Set(parts.flatMap(p => p.syn || []))].map(s => s.toUpperCase()).filter(s => DICT.has(s)).slice(0, 12);
   b.innerHTML = `<h2>Pronunciation, examples &amp; origin</h2>
-    ${phon || audio ? `<div class="meta">${phon ? `<span>${esc(phon)}</span>` : ""}${audio ? `<button class="btn" type="button" id="say">▶ Hear it</button>` : ""}</div>` : ""}
-    ${shown.length ? `<ol style="margin-top:10px">${shown.map(p => `<li><span class="pos small">${esc(p.pos || "")}</span> ${esc(p.def)}${p.ex ? `<span class="ex">${esc(p.ex)}</span>` : ""}</li>`).join("")}</ol>`
+    ${phon || audio ? `<div class="row small">${phon ? `<span style="font-size:1rem">${esc(phon)}</span>` : ""}${audio ? `<button class="btn sm" type="button" id="say">▶ Hear it</button>` : ""}</div>` : ""}
+    ${shown.length ? `<ol style="margin-top:10px">${shown.map(p => `<li><span class="pos">${esc(p.pos)}</span> ${esc(p.def)}${p.ex ? `<span class="ex">${esc(p.ex)}</span>` : ""}</li>`).join("")}</ol>`
       : `<p class="empty">No online dictionary entry. Many Scrabble words are rare, so lean on the CSW definition and your own memory hook.</p>`}
-    ${syns.length ? `<p class="small" style="margin-top:10px">Synonyms that are also valid: ${syns.map(s => chip(s.toUpperCase())).join(" ")}</p>` : ""}
+    ${syns.length ? `<p class="small" style="margin-top:10px">Valid synonyms: </p><div class="words">${syns.map(chip).join("")}</div>` : ""}
     ${origin ? `<p class="small" style="margin-top:10px">Origin: ${esc(origin)}</p>` : ""}
     <div class="links">
       <a href="https://en.wiktionary.org/wiki/${encodeURIComponent(lw)}" target="_blank" rel="noopener">Wiktionary</a>
@@ -377,64 +423,364 @@ async function fetchOnline(w) {
   if (audio) $("#say").addEventListener("click", () => new Audio(audio).play().catch(() => {}));
 }
 
-// ---- study list, notes, history ----
+// ---------- search ----------
+const SEARCH_DEFAULT = { pattern: "", rack: "", mode: "exact", min: "", max: "", starts: "", ends: "", contains: "", incl: "", excl: "", def: "", newOnly: false, power: false };
+let searchState = { ...SEARCH_DEFAULT, ...store.get("search", {}) };
+
+function patternRegex(p) {
+  // letters, . or ? = any letter, * = any run, [ABC] / [^ABC] = letter sets
+  if (!/^[A-Z.?*\[\]^]+$/.test(p)) return null;
+  try { return new RegExp("^" + p.replace(/[.?]/g, "[A-Z]").replace(/\*/g, "[A-Z]*") + "$"); } catch { return null; }
+}
+function runSearch(s) {
+  const up = v => (v || "").toUpperCase().replace(/[^A-Z?.*\[\]^]/g, "");
+  const pat = up(s.pattern), rack = up(s.rack).replace(/[^A-Z?]/g, "");
+  const re = pat ? patternRegex(pat) : null;
+  if (pat && !re) return { error: "That pattern isn't valid. Use letters, . or ?, *, and [ABC] sets." };
+  const min = +s.min || 0, max = +s.max || 99;
+  const starts = up(s.starts).replace(/[^A-Z]/g, ""), ends = up(s.ends).replace(/[^A-Z]/g, ""), contains = up(s.contains).replace(/[^A-Z]/g, "");
+  const incl = counts(up(s.incl).replace(/[^A-Z]/g, "")), excl = new Set(up(s.excl).replace(/[^A-Z]/g, ""));
+  const def = (s.def || "").trim().toLowerCase();
+  const rl = rack.replace(/\?/g, ""), rb = rack.length - rl.length, rc = counts(rl);
+  const masks = rack && rb ? new Map() : null;
+  let pool = ALL;
+  if (rack && s.mode === "exact") pool = BYLEN[rack.length] || [];
+  const out = [];
+  for (const w of pool) {
+    const L = w.length;
+    if (L < min || L > max) continue;
+    if (starts && !w.startsWith(starts)) continue;
+    if (ends && !w.endsWith(ends)) continue;
+    if (contains && !w.includes(contains)) continue;
+    if (re && !re.test(w)) continue;
+    if (excl.size && [...w].some(c => excl.has(c))) continue;
+    if (s.power && !/[JQXZ]/.test(w)) continue;
+    const e = DICT.get(w);
+    if (s.newOnly && !e.n) continue;
+    if (Object.keys(incl).length) { const wc = counts(w); if (Object.entries(incl).some(([c, n]) => (wc[c] || 0) < n)) continue; }
+    if (rack) {
+      if (s.mode === "exact" || s.mode === "build") { if (blanksNeeded(w, rc) > rb) continue; }
+      else if (s.mode === "super") { const wc = counts(w); if (Object.entries(rc).some(([c, n]) => (wc[c] || 0) < n) || L < rack.length) continue; }
+      if (masks && s.mode !== "super") masks.set(w, blankMask(w, rc));
+    }
+    if (def && !e.d.toLowerCase().includes(def)) continue;
+    out.push(w);
+  }
+  return { words: out, masks };
+}
+
+VIEWS.search = () => {
+  const s = searchState;
+  const f = (id, label, ph, cls = "") => `<div class="field ${cls}"><label for="s_${id}">${label}</label><input id="s_${id}" value="${esc(s[id])}" placeholder="${ph}" spellcheck="false"></div>`;
+  $("#view").innerHTML = `<div class="card">
+    <form id="sform" autocomplete="off">
+      <div class="form">
+        ${f("pattern", "Pattern", "e.g. Q*, .A.E, *[JX]*")}
+        <div class="field"><label for="s_rack">Rack / letters</label><input id="s_rack" value="${esc(s.rack)}" placeholder="e.g. AEINRT?"></div>
+        <div class="field"><label for="s_mode">Rack mode</label><select id="s_mode">
+          <option value="exact" ${s.mode === "exact" ? "selected" : ""}>Anagram: use every tile</option>
+          <option value="build" ${s.mode === "build" ? "selected" : ""}>Build: any words from these tiles</option>
+          <option value="super" ${s.mode === "super" ? "selected" : ""}>Contains all these letters</option></select></div>
+        <div class="field"><label>Length</label><div class="row" style="flex-wrap:nowrap"><input id="s_min" value="${esc(s.min)}" placeholder="min" inputmode="numeric" style="width:50%"><input id="s_max" value="${esc(s.max)}" placeholder="max" inputmode="numeric" style="width:50%"></div></div>
+        ${f("starts", "Starts with", "e.g. UN")}
+        ${f("ends", "Ends with", "e.g. ZA")}
+        ${f("contains", "Contains (in a row)", "e.g. QI")}
+        ${f("incl", "Must use letters", "e.g. VV")}
+        ${f("excl", "Without letters", "e.g. AEIOU")}
+        ${f("def", "Definition mentions", "e.g. fish, plant, Hindu", "lc")}
+        <div class="field" style="justify-content:flex-end;gap:8px">
+          <label class="check" style="text-transform:none;letter-spacing:0;font:inherit;color:inherit"><input type="checkbox" id="s_newOnly" ${s.newOnly ? "checked" : ""}> New in CSW24 only</label>
+          <label class="check" style="text-transform:none;letter-spacing:0;font:inherit;color:inherit"><input type="checkbox" id="s_power" ${s.power ? "checked" : ""}> Has J, Q, X or Z</label>
+        </div>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn primary" type="submit">Search</button>
+        <button class="btn" type="button" id="sClear">Clear</button>
+        <span class="help">Pattern: <code>.</code> or <code>?</code> one letter · <code>*</code> any run · <code>[AEIOU]</code> one of · <code>[^S]</code> not. Rack: <code>?</code> is a blank.</span>
+      </div>
+    </form>
+  </div>
+  <div class="card" id="sres"><p class="empty">Set any combination of options and press Search. Hooks show either side of each word; red lowercase letters are blanks.</p></div>`;
+  const read = () => { for (const k of Object.keys(SEARCH_DEFAULT)) { const el = $("#s_" + k); if (el) searchState[k] = el.type === "checkbox" ? el.checked : el.value; } store.set("search", searchState); };
+  $("#sform").addEventListener("submit", ev => { ev.preventDefault(); read(); doSearch(); });
+  $("#sClear").onclick = () => { searchState = { ...SEARCH_DEFAULT }; store.set("search", searchState); VIEWS.search(); };
+  if (Object.entries(searchState).some(([k, v]) => v && v !== SEARCH_DEFAULT[k])) doSearch();
+};
+function doSearch() {
+  const box = $("#sres");
+  const s = searchState;
+  if (!Object.entries(s).some(([k, v]) => k !== "mode" && v)) { box.innerHTML = `<p class="empty">Set at least one option.</p>`; return; }
+  box.innerHTML = `<p class="small">Searching…</p>`;
+  setTimeout(() => {
+    const r = runSearch(s);
+    if (r.error) { box.innerHTML = `<p class="empty">${esc(r.error)}</p>`; return; }
+    results(box, r.words, { masks: r.masks });
+  }, 10);
+}
+
+// ---------- word lists ----------
+const isPower = w => /[JQXZ]/.test(w);
+const LISTS = [
+  { sect: "Start here" },
+  { id: "twos", name: "Two-letter words", blurb: "The 127 twos. Learn these before anything else.", words: () => BYLEN[2] },
+  { id: "threes", name: "Three-letter words", blurb: "Every three, with hooks. Filter by sort or star the ones you miss.", words: () => BYLEN[3] },
+  { id: "jqxz", name: "JQXZ words", len: 4, blurb: "2 to 5-letter words with J, Q, X or Z. Opens on the 4s.", words: () => ALL.filter(w => w.length <= 5 && isPower(w)) },
+  { id: "qnou", name: "Q without U", blurb: "Every word with a Q and no U.", words: () => ALL.filter(w => w.includes("Q") && !w.includes("U")) },
+  { id: "hvy", name: "Short heavy hitters", blurb: "2 to 4-letter words worth 10+ points on face value.", words: () => ALL.filter(w => w.length <= 4 && score(w) >= 10) },
+  { sect: "Rack balance" },
+  { id: "vowel", name: "Vowel dumps", len: 4, blurb: "3 to 8 letters, at least 60% vowels. For clearing AEIOU-heavy racks.", words: () => ALL.filter(w => w.length >= 3 && w.length <= 8 && vowels(w) / w.length >= 0.6) },
+  { id: "v4", name: "Three-vowel 4s and 5s", blurb: "4s with three vowels and 5s with four vowels, like AEON, AUDIO.", words: () => ALL.filter(w => (w.length === 4 && vowels(w) >= 3) || (w.length === 5 && vowels(w) >= 4)) },
+  { id: "novowel", name: "No-vowel words", blurb: "No A, E, I, O or U. For consonant-clogged racks.", words: () => ALL.filter(w => !/[AEIOU]/.test(w)) },
+  { id: "allvowel", name: "All five vowels", blurb: "Words with A, E, I, O and U, 9 letters or fewer.", words: () => ALL.filter(w => w.length <= 9 && /A/.test(w) && /E/.test(w) && /I/.test(w) && /O/.test(w) && /U/.test(w)) },
+  { id: "dupv", name: "Triple-vowel words", blurb: "5 to 8-letter words with three of the same vowel or Y, like ABACA or BIKINI. For racks with duplicate vowels.", words: () => ALL.filter(w => w.length >= 5 && w.length <= 8 && Object.values(counts(w)).some(n => n >= 3) && /([AEIOUY]).*\1.*\1/.test(w)) },
+  { sect: "Bingos" },
+  { id: "stems6", name: "Best 6-letter stems", special: "stems", n: 6, blurb: "The 6-tile leaves that make the most 7-letter bingos, with the letters that complete them." },
+  { id: "stems7", name: "Best 7-letter stems", special: "stems", n: 7, blurb: "7 tiles + 1 from the board = 8-letter bingo. The most productive ones." },
+  { id: "p7", name: "Most likely 7s", blurb: "The 1,000 most probable 7-letter words. The ones you'll actually draw.", keepOrder: true, words: () => BYLEN[7].filter(w => DICT.get(w).p <= 1000).sort((a, b) => DICT.get(a).p - DICT.get(b).p) },
+  { id: "p8", name: "Most likely 8s", blurb: "The 1,000 most probable 8-letter words.", keepOrder: true, words: () => BYLEN[8].filter(w => DICT.get(w).p <= 1000).sort((a, b) => DICT.get(a).p - DICT.get(b).p) },
+  { id: "rich", name: "Anagram-rich racks", len: 7, blurb: "7s and 8s whose letters make 5 or more words. Learn them as a group.", words: () => ALL.filter(w => (w.length === 7 || w.length === 8) && anagrams(w).length >= 5) },
+  { id: "ing", name: "-ING and -IER bingos", len: 7, blurb: "Most likely 7s and 8s ending in ING or IER.", words: () => ALL.filter(w => (w.length === 7 || w.length === 8) && /(ING|IER)$/.test(w) && DICT.get(w).p <= 6000) },
+  { sect: "Other" },
+  { id: "new", name: "New in CSW24", blurb: "The 1,816 words added in this edition.", words: () => ALL.filter(w => DICT.get(w).n) },
+  { id: "nohook3", name: "Unhookable 3s", blurb: "Threes that take no front or back hook. Safe to play, hard to block.", words: () => BYLEN[3].filter(w => !DICT.get(w).fh && !DICT.get(w).bh) },
+  { id: "hook2", name: "Hook-heavy 2s and 3s", blurb: "Short words that take 8 or more hooks. Dangerous to open.", words: () => ALL.filter(w => w.length <= 3 && (DICT.get(w).fh.length + DICT.get(w).bh.length) >= 8) },
+];
+const listCache = {};
+const listWords = l => listCache[l.id] ||= (l.special === "stems" ? stems(l.n).map(s => s.stem) : l.words());
+
+function stems(n) {
+  if (listCache["stemdata" + n]) return listCache["stemdata" + n];
+  const m = new Map();
+  for (const w of BYLEN[n + 1]) {
+    const a = alpha(w), seen = new Set();
+    for (let i = 0; i < a.length; i++) {
+      if (seen.has(a[i])) continue; seen.add(a[i]);
+      const s = a.slice(0, i) + a.slice(i + 1);
+      (m.get(s) || m.set(s, new Set()).get(s)).add(w);
+    }
+  }
+  return listCache["stemdata" + n] = [...m].map(([stem, set]) => ({ stem, n: set.size, words: [...set] })).sort((a, b) => b.n - a.n).slice(0, 150);
+}
+
+VIEWS.lists = (id) => {
+  const l = LISTS.find(x => x.id === id);
+  if (!l) {
+    let html = `<div><h3 class="title">Word lists</h3><p class="sub">Ready-made study groups. Each opens with hooks and definitions, and you can quiz yourself on any of them.</p></div>`;
+    for (const x of LISTS) {
+      if (x.sect) html += `${html.includes("listgrid") ? "</div>" : ""}<div class="sect">${x.sect}</div><div class="listgrid">`;
+      else html += `<button class="lcard" data-list="${x.id}"><b>${x.name}</b><span>${x.blurb}</span><i>open →</i></button>`;
+    }
+    $("#view").innerHTML = html + "</div>";
+    $("#view").querySelectorAll("[data-list]").forEach(b => b.onclick = () => location.hash = "lists/" + b.dataset.list);
+    return;
+  }
+  $("#view").innerHTML = `<div class="row"><a class="btn sm" href="#lists">← All lists</a></div>
+    <div><h3 class="title">${l.name}</h3><p class="sub">${l.blurb}</p></div><div class="card" id="lres"><p class="small">Building list…</p></div>`;
+  setTimeout(() => {
+    const box = $("#lres");
+    if (l.special === "stems") return drawStems(box, l);
+    results(box, listWords(l), { len: l.len, keepOrder: l.keepOrder, sort: l.keepOrder ? "prob" : undefined });
+  }, 10);
+};
+function drawStems(box, l) {
+  const data = stems(l.n);
+  lastResults = data.map(s => s.stem);
+  let shown = 25;
+  const draw = () => {
+    box.innerHTML = `<div class="toolbar"><span class="count">Top ${data.length} stems</span><button class="btn sm" id="quizThese">Quiz the bingos</button></div>
+      <p class="small" style="margin:0 0 10px">Learn the red letter string for each stem. Any of those letters + the stem makes a bingo.</p>` +
+      data.slice(0, shown).map(s => {
+        const groups = plusOne(s.stem);
+        return `<div class="stem"><div class="row">${tilesHTML(s.stem, true)}<b style="font-family:var(--display)">${s.n} bingos</b></div>
+          <div class="letters">+ ${groups.map(g => g[0]).join(" ")}</div>
+          ${groups.map(([L, g]) => `<div class="grp"><b>${L}</b><div class="words">${g.map(chip).join("")}</div></div>`).join("")}</div>`;
+      }).join("") + (shown < data.length ? `<button class="btn more" id="moreBtn">Show 25 more</button>` : "");
+    $("#moreBtn")?.addEventListener("click", () => { shown += 25; draw(); });
+    $("#quizThese").onclick = () => { lastResults = data.flatMap(s => s.words); quizSetup = { ...quizSetup, source: "last", mode: "anagram" }; location.hash = "quiz"; };
+  };
+  draw();
+}
+
+// ---------- quiz ----------
+const MODES = {
+  anagram: { name: "Anagram", help: "See the tiles, type every valid word they make." },
+  phony: { name: "Valid or phony", help: "Is the word good? Phonies are one letter off real words." },
+  hooks: { name: "Hooks", help: "Type every front hook and back hook letter." },
+  def: { name: "Definition", help: "Read the definition, type the word." },
+};
+let quizSetup = { source: "stars", mode: "anagram", count: 20, ...store.get("quizSetup", {}) };
+let Q = null;
+
+function quizSources() {
+  return [["stars", `My study list (${getStars().length})`], ["missed", `Missed in quizzes (${store.get("missed", []).length})`], ["last", `Last results (${lastResults.length})`],
+    ...LISTS.filter(l => l.id).map(l => ["list:" + l.id, l.name])];
+}
+function sourceWords(src) {
+  if (src === "stars") return getStars();
+  if (src === "missed") return store.get("missed", []);
+  if (src === "last") return lastResults;
+  const l = LISTS.find(x => "list:" + x.id === src);
+  if (!l) return [];
+  return l.special === "stems" ? stems(l.n).flatMap(s => s.words) : listWords(l);
+}
+function makePhony(w) {
+  const V = "AEIOU", C = "BCDFGHKLMNPRSTVWY";
+  for (let t = 0; t < 60; t++) {
+    const i = Math.floor(Math.random() * w.length), pool = V.includes(w[i]) ? V : C;
+    const p = w.slice(0, i) + pool[Math.floor(Math.random() * pool.length)] + w.slice(i + 1);
+    if (p !== w && !DICT.has(p)) return p;
+  }
+  return null;
+}
+function buildQuestions(words, mode, n) {
+  let src = shuffle(words.filter(w => DICT.has(w)));
+  if (mode === "anagram") { const seen = new Set(); src = src.filter(w => { const a = alpha(w); if (seen.has(a)) return false; seen.add(a); return true; }); }
+  if (mode === "def") src = src.filter(w => !DICT.get(w).d.startsWith("<"));
+  return src.slice(0, n).map(w => {
+    if (mode === "phony" && Math.random() < 0.5) { const p = makePhony(w); if (p) return { w, show: p, phony: true }; }
+    return { w, show: w };
+  });
+}
+
+VIEWS.quiz = () => {
+  if (Q && !Q.done) return drawQuestion();
+  const srcs = quizSources();
+  $("#view").innerHTML = `<div><h3 class="title">Quiz</h3><p class="sub">Words you get wrong go to “Missed in quizzes” so you can drill them again.</p></div>
+  <div class="card"><div class="form">
+    <div class="field"><label for="qsrc">Words from</label><select id="qsrc">${srcs.map(([v, t]) => `<option value="${v}" ${v === quizSetup.source ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></div>
+    <div class="field"><label for="qcount">Questions</label><select id="qcount">${[10, 20, 50, 100].map(n => `<option ${n === +quizSetup.count ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+    <div class="field wide"><label>Type</label><div class="seg">${Object.entries(MODES).map(([k, m]) => `<button type="button" class="btn ${k === quizSetup.mode ? "on" : ""}" data-mode="${k}">${m.name}</button>`).join("")}</div><span class="help" id="modeHelp">${MODES[quizSetup.mode].help}</span></div>
+  </div>
+  <div class="row" style="margin-top:14px"><button class="btn primary" id="qstart">Start quiz</button><span class="small" id="qmsg"></span></div></div>
+  ${Q?.done ? summaryHTML() : ""}`;
+  $("#view").querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { quizSetup.mode = b.dataset.mode; VIEWS.quiz(); });
+  $("#qsrc").onchange = e => quizSetup.source = e.target.value;
+  $("#qcount").onchange = e => quizSetup.count = +e.target.value;
+  $("#qstart").onclick = () => {
+    store.set("quizSetup", quizSetup);
+    const qs = buildQuestions(sourceWords(quizSetup.source), quizSetup.mode, +quizSetup.count);
+    if (!qs.length) { $("#qmsg").textContent = "No words in that source yet. Star some words or pick a list."; return; }
+    Q = { mode: quizSetup.mode, qs, i: 0, right: 0, wrong: [], answered: false, done: false };
+    drawQuestion();
+  };
+  $("#retryMissed")?.addEventListener("click", () => { Q = { mode: Q.mode, qs: buildQuestions(Q.wrong, Q.mode, 999), i: 0, right: 0, wrong: [], answered: false, done: false }; drawQuestion(); });
+};
+function summaryHTML() {
+  return `<div class="card"><h2>Last quiz</h2><p style="margin:0 0 10px"><b style="font:700 1.6rem var(--display)">${Q.right}/${Q.qs.length}</b> correct</p>
+    ${Q.wrong.length ? `<p class="small">Missed:</p><div class="words">${Q.wrong.map(chip).join("")}</div><div class="row" style="margin-top:12px"><button class="btn" id="retryMissed">Retry these ${Q.wrong.length}</button></div>` : `<p class="fb ok">Clean sweep.</p>`}</div>`;
+}
+function record(w, ok) {
+  const st = store.get("stats", {}); const s = st[w] || [0, 0]; s[ok ? 0 : 1]++; st[w] = s; store.set("stats", st);
+  let m = store.get("missed", []).filter(x => x !== w); if (!ok) m.unshift(w); store.set("missed", m.slice(0, 500));
+}
+function drawQuestion() {
+  const q = Q.qs[Q.i], e = DICT.get(q.w), mode = Q.mode;
+  let prompt = "", input = "";
+  if (mode === "anagram") { prompt = tilesHTML(alpha(q.w)); input = `<input class="qinput" id="qa" placeholder="Type the word(s), space between">`; }
+  if (mode === "phony") { prompt = `<div class="qprompt">${q.show}</div>`; input = `<div class="row"><button class="btn primary" data-ans="valid">Valid (V)</button><button class="btn" data-ans="phony">Phony (P)</button></div>`; }
+  if (mode === "hooks") { prompt = `<div class="qprompt">${q.w}</div>`; input = `<div class="row" style="flex-wrap:nowrap"><input class="qinput" id="qf" placeholder="front hooks"><input class="qinput" id="qb" placeholder="back hooks"></div><p class="small" style="margin:6px 0 0">Leave blank if none. Press Enter to check.</p>`; }
+  if (mode === "def") { prompt = `<div class="qdef">${esc(e.d)}</div><p class="small">${q.w.length} letters · <a href="#" id="hint">show tiles</a></p><div id="hintBox"></div>`; input = `<input class="qinput" id="qa" placeholder="The word">`; }
+  $("#view").innerHTML = `<div class="row"><b style="font-family:var(--display)">${MODES[mode].name}</b><span class="small">Question ${Q.i + 1} of ${Q.qs.length} · ${Q.right} right</span><button class="btn sm" id="qquit" style="margin-left:auto">End quiz</button></div>
+    <div class="progress"><div style="width:${(Q.i / Q.qs.length) * 100}%"></div></div>
+    <div class="card" style="display:flex;flex-direction:column;gap:14px">
+      ${mode === "anagram" ? `<p class="small" style="margin:0">${anagrams(q.w).length > 1 ? "More than one word. Find them all." : "One word."}</p>` : ""}
+      ${prompt}<form id="qform" autocomplete="off">${input}</form><div id="qfb"></div>
+    </div>`;
+  $("#qquit").onclick = () => { Q.done = true; VIEWS.quiz(); };
+  $("#hint")?.addEventListener("click", ev => { ev.preventDefault(); $("#hintBox").innerHTML = tilesHTML(alpha(q.w), true); });
+  const first = $("#qa") || $("#qf"); first?.focus();
+  $("#qform").addEventListener("submit", ev => { ev.preventDefault(); Q.answered ? next() : check(); });
+  $("#view").querySelectorAll("[data-ans]").forEach(b => b.onclick = () => Q.answered ? next() : check(b.dataset.ans));
+  document.onkeydown = ev => {
+    if (location.hash !== "#quiz" || Q.mode !== "phony") return;
+    if (!Q.answered && /^[vp]$/i.test(ev.key)) check(ev.key.toLowerCase() === "v" ? "valid" : "phony");
+  };
+}
+function check(ans) {
+  const q = Q.qs[Q.i], e = DICT.get(q.w), mode = Q.mode;
+  let ok = false, reveal = "";
+  const letters = s => [...new Set((s || "").toUpperCase().replace(/[^A-Z]/g, ""))].sort().join("");
+  if (mode === "anagram") {
+    const want = anagrams(q.w), got = new Set($("#qa").value.toUpperCase().split(/[^A-Z]+/).filter(Boolean));
+    ok = want.every(a => got.has(a)) && [...got].every(g => want.includes(g));
+    reveal = want.map(chip).join(" ");
+  } else if (mode === "phony") {
+    ok = (ans === "phony") === !!q.phony;
+    reveal = q.phony ? `${q.show} is phony. It came from ${chip(q.w)}` : `${chip(q.w)} is valid`;
+  } else if (mode === "hooks") {
+    ok = letters($("#qf").value) === letters(e.fh) && letters($("#qb").value) === letters(e.bh);
+    reveal = `<span class="small">front</span> <b>${e.fh || "none"}</b> · <span class="small">back</span> <b>${e.bh || "none"}</b>`;
+  } else {
+    const g = $("#qa").value.toUpperCase().replace(/[^A-Z]/g, "");
+    ok = g === q.w || (DICT.has(g) && DICT.get(g).d === e.d);
+    reveal = chip(q.w);
+  }
+  Q.answered = true;
+  if (ok) Q.right++; else Q.wrong.push(q.w);
+  record(q.w, ok);
+  $("#qfb").innerHTML = `<p class="fb ${ok ? "ok" : "no"}" style="margin:0 0 6px">${ok ? "Correct" : "Not quite"}</p><div class="words" style="align-items:center">${reveal}</div>
+    <p class="small" style="margin:8px 0 0">${esc(e.d)}</p><div class="row" style="margin-top:10px"><button class="btn primary" id="qnext">${Q.i + 1 < Q.qs.length ? "Next (Enter)" : "Finish"}</button></div>`;
+  $("#qnext").onclick = next;
+  $("#qnext").focus();
+}
+function next() {
+  Q.i++; Q.answered = false;
+  if (Q.i >= Q.qs.length) { Q.done = true; document.onkeydown = null; VIEWS.quiz(); } else drawQuestion();
+}
+
+// ---------- my words ----------
 const getStars = () => store.get("stars", []);
 const getNotes = () => store.get("notes", {});
-function toggleStar(w) { const s = getStars(); const i = s.indexOf(w); i >= 0 ? s.splice(i, 1) : s.unshift(w); store.set("stars", s); drawSide(); }
-function addHistory(w) { const h = store.get("hist", []).filter(x => x !== w); h.unshift(w); store.set("hist", h.slice(0, 30)); drawSide(); }
-function sideRow(w) { const e = DICT.get(w); return `<div class="li" data-w="${w}"><span>${w}</span><small>${esc((e?.d || "").slice(0, 40))}</small></div>`; }
-function drawSide() {
-  const s = getStars(), h = store.get("hist", []);
-  $("#starList").innerHTML = s.length ? s.map(sideRow).join("") : `<p class="empty">Star words to collect them here.</p>`;
-  $("#histList").innerHTML = h.length ? h.map(sideRow).join("") : `<p class="empty">Nothing yet.</p>`;
-}
+function toggleStar(w) { const s = getStars(); const i = s.indexOf(w); i >= 0 ? s.splice(i, 1) : s.unshift(w); store.set("stars", s); return i < 0; }
+function addHistory(w) { const h = store.get("hist", []).filter(x => x !== w); h.unshift(w); store.set("hist", h.slice(0, 50)); }
 
-// quiz: show the alphagram of a starred word, type all its anagrams
-let quiz = null;
-function nextQuiz() {
-  const s = getStars();
-  const card = $("#quizCard"); card.hidden = false;
-  if (!s.length) { card.innerHTML = `<h2>Quiz</h2><p class="empty">Add words to your study list first.</p>`; return; }
-  const w = s[Math.floor(Math.random() * s.length)];
-  quiz = { w, answers: anagrams(w) };
-  card.innerHTML = `<h2>Quiz · unscramble</h2><div class="q">${alpha(w)}</div>
-    <p class="small">${quiz.answers.length} valid word${quiz.answers.length > 1 ? "s" : ""}. Hint: ${esc(DICT.get(w).d.slice(0, 60))}</p>
-    <form id="qf"><input id="qa" placeholder="Your answer(s), space separated" aria-label="Quiz answer"></form>
-    <div id="qr" class="small" style="margin-top:8px"></div>
-    <div class="row" style="margin-top:8px"><button class="btn" type="button" id="qn">Next</button><button class="btn" type="button" id="qx">Close</button></div>`;
-  $("#qa").focus();
-  $("#qf").addEventListener("submit", ev => {
-    ev.preventDefault();
-    const got = new Set($("#qa").value.toUpperCase().split(/[^A-Z]+/).filter(Boolean));
-    const ok = quiz.answers.every(a => got.has(a)) && [...got].every(g => quiz.answers.includes(g));
-    $("#qr").innerHTML = (ok ? `<b style="color:var(--good)">Correct!</b> ` : `<b style="color:var(--bad)">Not quite.</b> Answer: `) + quiz.answers.map(a => chip(a)).join(" ");
-  });
-  $("#qn").addEventListener("click", nextQuiz);
-  $("#qx").addEventListener("click", () => { card.hidden = true; });
-}
+VIEWS.mine = (tab) => {
+  tab ||= "stars";
+  const notes = getNotes();
+  const tabs = { stars: ["Study list", getStars()], missed: ["Missed in quizzes", store.get("missed", [])], notes: ["With memory hooks", Object.keys(notes)], hist: ["Recently viewed", store.get("hist", [])] };
+  $("#view").innerHTML = `<div><h3 class="title">My words</h3><p class="sub">Saved in this browser.</p></div>
+    <div class="seg">${Object.entries(tabs).map(([k, [n, l]]) => `<a class="btn ${k === tab ? "on" : ""}" href="#mine/${k}">${n} (${l.length})</a>`).join("")}</div>
+    ${tab === "stars" ? `<div class="row"><button class="btn sm" id="copyList">Copy list</button><button class="btn sm" id="clearStars">Clear study list</button><span class="small" id="msg"></span></div>` : ""}
+    ${tab === "missed" ? `<div class="row"><button class="btn sm" id="clearMissed">Clear missed</button></div>` : ""}
+    <div class="card" id="mres"></div>`;
+  const words = tabs[tab][1].filter(w => DICT.has(w));
+  if (tab === "notes") {
+    $("#mres").innerHTML = words.length ? `<div class="rows">${words.map(w => `<div class="r" data-go="${w}"><span class="fh"></span><span class="wl">${w}</span><span class="bh"></span><span class="d">${esc(notes[w])}</span><span></span></div>`).join("")}</div>` : `<p class="empty">Write a memory hook on any word page and it shows up here.</p>`;
+  } else if (words.length) results($("#mres"), words);
+  else $("#mres").innerHTML = `<p class="empty">${tab === "stars" ? "Press ☆ Star on a word, or Star all on any list." : "Nothing here yet."}</p>`;
+  $("#copyList")?.addEventListener("click", () => navigator.clipboard?.writeText(getStars().join("\n")).then(() => $("#msg").textContent = "Copied").catch(() => $("#msg").textContent = "Copy blocked by the browser"));
+  let armed = false;
+  $("#clearStars")?.addEventListener("click", ev => { if (!armed) { armed = true; ev.target.textContent = "Press again to clear"; return; } store.set("stars", []); VIEWS.mine("stars"); });
+  $("#clearMissed")?.addEventListener("click", () => { store.set("missed", []); VIEWS.mine("missed"); });
+};
 
-// random word
-let randLen = store.get("randLen", 7);
-function drawLens() {
-  $("#lenRow").innerHTML = [2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(n => `<button class="btn" type="button" data-len="${n}" style="padding:4px 8px;${n === randLen ? "background:var(--board);color:var(--board-ink)" : ""}">${n}</button>`).join("");
+// ---------- routing ----------
+function route() {
+  const [tab, arg] = decodeURIComponent(location.hash.slice(1)).split("/");
+  const t = VIEWS[tab] ? tab : "w";
+  document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === t));
+  if (t !== "quiz") document.onkeydown = null;
+  VIEWS[t](arg);
+  window.scrollTo({ top: 0 });
 }
-
-// ---- events ----
-$("#form").addEventListener("submit", ev => { ev.preventDefault(); lookup($("#q").value); });
-$("#randBtn").addEventListener("click", () => { const a = BYLEN[randLen]; lookup(a[Math.floor(Math.random() * a.length)]); });
-$("#quizBtn").addEventListener("click", nextQuiz);
-$("#exportBtn").addEventListener("click", ev => {
-  const txt = getStars().join("\n");
-  navigator.clipboard?.writeText(txt).then(() => { ev.target.textContent = "Copied"; setTimeout(() => ev.target.textContent = "Copy list", 1200); }).catch(() => {});
+window.addEventListener("hashchange", route);
+$("#form").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const q = $("#q").value.toUpperCase().replace(/[^A-Z?.*\[\]^]/g, "");
+  if (!q) return;
+  if (/[.*\[]/.test(q)) { searchState = { ...SEARCH_DEFAULT, pattern: q }; store.set("search", searchState); location.hash === "#search" ? VIEWS.search() : location.hash = "search"; }
+  else if (q.includes("?")) { searchState = { ...SEARCH_DEFAULT, rack: q, mode: "exact" }; store.set("search", searchState); location.hash === "#search" ? VIEWS.search() : location.hash = "search"; }
+  else location.hash = "w/" + q;
 });
-$("#lenRow").addEventListener("click", ev => { const n = ev.target.dataset?.len; if (n) { randLen = +n; store.set("randLen", randLen); drawLens(); } });
+$("#randBtn").addEventListener("click", () => {
+  const pool = BYLEN[2 + Math.floor(Math.random() * 7)];
+  location.hash = "w/" + pool[Math.floor(Math.random() * pool.length)];
+});
 document.addEventListener("click", ev => {
-  const t = ev.target.closest("[data-w]");
-  if (t && !t.closest("#lenRow")) { ev.preventDefault(); lookup(t.dataset.w); }
+  const t = ev.target.closest("[data-go]");
+  if (t) { ev.preventDefault(); location.hash = "w/" + t.dataset.go; }
 });
-
-drawSide(); drawLens();
-lookup(location.hash.slice(1) || store.get("hist", [])[0] || "QI", false);
+route();
 </script>
 </body>
 </html>
