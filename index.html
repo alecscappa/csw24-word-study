@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSW24 Word Study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one search column with a study-list rail on the right; word shown as tiles on a board-green strip */
+:root {
+  --bg: #eef1ee;
+  --panel: #ffffff;
+  --ink: #1d2622;
+  --muted: #5f6d66;
+  --line: #d5ddd8;
+  --board: #1f5c4a;
+  --board-ink: #e9f3ee;
+  --tile: #f3dfb0;
+  --tile-edge: #c9ae72;
+  --tile-ink: #2b2213;
+  --tws: #c63b4a;      /* triple-word red: the accent */
+  --dls: #7fb6d9;      /* double-letter blue */
+  --good: #23824f;
+  --bad: #c63b4a;
+  --new: #8a5bd1;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "Source Serif 4", Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121815; --panel: #1a221e; --ink: #e4ece7; --muted: #94a59c; --line: #2d3a33;
+    --board: #173f33; --board-ink: #dcefe5; --tile: #e8d3a0; --tile-edge: #a88d52; --tile-ink: #2b2213;
+    --tws: #ef6674; --dls: #8cc4e6; --good: #4cc282; --bad: #ef6674; --new: #b48cf0;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--body); }
+button, input, textarea { font: inherit; color: inherit; }
+a { color: var(--board); }
+@media (prefers-color-scheme: dark) { a { color: var(--dls); } }
+:focus-visible { outline: 2px solid var(--tws); outline-offset: 2px; }
+
+header { background: var(--board); color: var(--board-ink); padding: 18px 16px 22px; }
+.wrap { max-width: 1180px; margin: 0 auto; }
+.brand { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.brand h1 { font: 800 1.6rem/1 var(--display); margin: 0; letter-spacing: -0.01em; }
+.brand span { font: 400 .8rem var(--mono); opacity: .75; }
+form.search { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+form.search input {
+  flex: 1 1 260px; min-width: 0; padding: 12px 14px; border-radius: 6px; border: 0;
+  background: var(--board-ink); color: #15211c; font: 600 1.25rem var(--mono); letter-spacing: .08em; text-transform: uppercase;
+}
+.btn {
+  border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 10px 14px;
+  cursor: pointer; font: 600 .9rem var(--display);
+}
+.btn:hover { border-color: var(--muted); }
+header .btn { background: transparent; color: var(--board-ink); border-color: rgba(255,255,255,.35); }
+header .btn.primary { background: var(--tws); border-color: var(--tws); color: #fff; }
+.hint { font: .78rem var(--mono); opacity: .75; margin-top: 8px; }
+
+main.wrap { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 24px; padding: 24px 16px 60px; }
+@media (max-width: 860px) { main.wrap { grid-template-columns: minmax(0,1fr); } }
+
+.status { font: .9rem var(--mono); color: var(--muted); }
+.result { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+.hero { display: flex; flex-direction: column; gap: 14px; }
+.tilerow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tiles { display: flex; gap: 4px; flex-wrap: wrap; }
+.tile {
+  width: 46px; height: 46px; background: var(--tile); color: var(--tile-ink); border-radius: 5px;
+  box-shadow: inset 0 -3px 0 var(--tile-edge); position: relative; display: grid; place-items: center;
+  font: 700 1.6rem/1 var(--display);
+}
+.tile sub { position: absolute; right: 4px; bottom: 5px; font: 600 .6rem var(--mono); }
+.hook {
+  font: 600 1rem var(--mono); color: var(--muted); display: flex; gap: 3px; flex-wrap: wrap; max-width: 140px;
+}
+.hook button { border: 1px dashed var(--muted); background: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; text-transform: uppercase; font: 600 .95rem var(--mono); }
+.hook button:hover { border-style: solid; border-color: var(--tws); color: var(--tws); }
+.hook.none { font-size: .8rem; opacity: .6; }
+.badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.badge { font: 700 .75rem var(--display); letter-spacing: .06em; text-transform: uppercase; padding: 4px 9px; border-radius: 99px; border: 1.5px solid currentColor; }
+.badge.good { color: var(--good); } .badge.bad { color: var(--bad); } .badge.new { color: var(--new); }
+.badge.plain { color: var(--muted); }
+.star { margin-left: auto; }
+.star.on { background: var(--tws); color: #fff; border-color: var(--tws); }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; min-width: 0; }
+.card h2 { font: 700 .78rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.def { font-size: 1.2rem; margin: 0; }
+.def .pos { font: .8rem var(--mono); color: var(--muted); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+
+.words { display: flex; flex-wrap: wrap; gap: 6px; }
+.w { font: 600 .9rem var(--mono); padding: 3px 8px; border-radius: 4px; background: var(--bg); border: 1px solid var(--line); cursor: pointer; }
+.w:hover { border-color: var(--tws); color: var(--tws); }
+.w.self { background: var(--board); color: var(--board-ink); border-color: var(--board); }
+.w mark { background: none; color: var(--tws); }
+.grp { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; border-top: 1px dashed var(--line); }
+.grp:first-child { border-top: 0; }
+.grp b { font: 700 .95rem var(--mono); color: var(--tws); width: 18px; flex: none; }
+.empty { color: var(--muted); font-style: italic; margin: 0; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+.stat b { display: block; font: 700 1.3rem var(--display); font-variant-numeric: tabular-nums; }
+.stat span { font: .75rem var(--mono); color: var(--muted); }
+
+.online ol { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 8px; }
+.online .ex { display: block; font-style: italic; color: var(--muted); }
+.online .ex::before { content: "“"; } .online .ex::after { content: "”"; }
+.online .meta { font: .85rem var(--mono); color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.links { display: flex; gap: 12px; flex-wrap: wrap; font: .85rem var(--mono); margin-top: 12px; }
+
+textarea#note { width: 100%; min-height: 70px; border: 1px solid var(--line); border-radius: 6px; padding: 10px; background: var(--bg); resize: vertical; }
+.small { font: .78rem var(--mono); color: var(--muted); }
+
+aside { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+aside .list { display: flex; flex-direction: column; gap: 2px; max-height: 340px; overflow: auto; }
+aside .li { display: flex; justify-content: space-between; gap: 8px; padding: 5px 6px; border-radius: 4px; cursor: pointer; font: 600 .9rem var(--mono); }
+aside .li:hover { background: var(--bg); }
+aside .li small { font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* quiz */
+.quiz .q { font: 700 1.6rem var(--mono); letter-spacing: .15em; }
+.quiz input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); font: 600 1rem var(--mono); text-transform: uppercase; }
+@media (prefers-reduced-motion: no-preference) {
+  .tile { animation: drop .25s ease-out both; }
+  @keyframes drop { from { transform: translateY(-6px); opacity: .3; } }
+}
+@media (max-width: 480px) { .tile { width: 38px; height: 38px; font-size: 1.3rem; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand"><h1>CSW24 Word Study</h1><span id="lexinfo">loading lexicon…</span></div>
+    <form class="search" id="form" autocomplete="off">
+      <input id="q" placeholder="Type a word, e.g. QI or RETAINS?" spellcheck="false" aria-label="Word or rack">
+      <button class="btn primary" type="submit">Look up</button>
+      <button class="btn" type="button" id="randBtn">Random word</button>
+    </form>
+    <div class="hint">Word → full study card · letters with ? → anagram with blanks (e.g. AEINST?) · use . for one letter and * for any run (e.g. Q.*, *ZZ*)</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="result" id="result"><p class="status">Loading 280,887 words…</p></section>
+  <aside>
+    <div class="card">
+      <h2>Study list</h2>
+      <div class="list" id="starList"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="quizBtn" type="button">Quiz me</button>
+        <button class="btn" id="exportBtn" type="button">Copy list</button>
+      </div>
+    </div>
+    <div class="card quiz" id="quizCard" hidden></div>
+    <div class="card">
+      <h2>Recent</h2>
+      <div class="list" id="histList"></div>
+    </div>
+    <div class="card">
+      <h2>Random word length</h2>
+      <div class="row" id="lenRow"></div>
+    </div>
+  </aside>
+</main>
+
+<script src="words.js"></script>
+<script>
+const VALUES = {A:1,B:3,C:3,D:2,E:1,F:4,G:2,H:4,I:1,J:8,K:5,L:1,M:3,N:1,O:1,P:3,Q:10,R:1,S:1,T:1,U:1,V:4,W:4,X:8,Y:4,Z:10};
+const AZ = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const alpha = w => w.split("").sort().join("");
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem("csw24:" + k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("csw24:" + k, JSON.stringify(v)); } catch {} }
+};
+
+// ---- lexicon ----
+const DICT = new Map();   // word -> {d, fh, bh, n, p, pl, pts}
+const ANA = new Map();    // alphagram -> [words]
+const BYLEN = {};         // length -> [words]
+const COUNT = {};
+(function load() {
+  for (const line of window.CSW_TSV.split("\n")) {
+    const [w, d, fh, bh, sym, p, pl, pts] = line.split("\t");
+    DICT.set(w, { d, fh, bh, n: sym === "+", p: +p, pl: +pl, pts: +pts });
+    const a = alpha(w);
+    (ANA.get(a) || ANA.set(a, []).get(a)).push(w);
+    (BYLEN[w.length] ||= []).push(w);
+  }
+  window.CSW_TSV = null;
+  for (const k in BYLEN) COUNT[k] = BYLEN[k].length;
+  $("#lexinfo").textContent = `Collins Scrabble Words 2024 · ${DICT.size.toLocaleString()} words · ${[...DICT.values()].filter(x => x.n).length.toLocaleString()} new`;
+})();
+
+// ---- word helpers ----
+const anagrams = w => ANA.get(alpha(w)) || [];
+function plusOne(w) {
+  const out = [];
+  for (const L of AZ) { const g = ANA.get(alpha(w + L)); if (g) out.push([L, g]); }
+  return out;
+}
+function minusOne(w) {
+  const seen = new Set(), out = [];
+  for (let i = 0; i < w.length; i++) {
+    if (seen.has(w[i])) continue; seen.add(w[i]);
+    const g = ANA.get(alpha(w.slice(0, i) + w.slice(i + 1)));
+    if (g) out.push([w[i], g]);
+  }
+  return out;
+}
+function blankAnagrams(letters, blanks) {
+  const found = new Map(); // word -> blank letters
+  const rec = (base, n, start, used) => {
+    if (n === 0) { for (const w of ANA.get(alpha(base)) || []) if (!found.has(w)) found.set(w, used); return; }
+    for (let i = start; i < 26; i++) rec(base + AZ[i], n - 1, i, used + AZ[i]);
+  };
+  rec(letters, blanks, 0, "");
+  return found;
+}
+function score(w) { return [...w].reduce((s, c) => s + (VALUES[c] || 0), 0); }
+
+// definition: link any capitalised word that is itself valid (e.g. "< RETAIN, keep ...")
+function defHTML(d) {
+  return d.split(" / ").map(part => {
+    const m = part.match(/^(.*?)(\s*\[[^\]]+\])?$/);
+    const body = esc(m[1]).replace(/\b[A-Z]{2,15}\b/g, x => DICT.has(x) ? `<a href="#" data-w="${x}">${x}</a>` : x);
+    return `<span>${body}${m[2] ? ` <span class="pos">${esc(m[2].trim())}</span>` : ""}</span>`;
+  }).join("<br>");
+}
+function chip(w, opts = {}) {
+  const e = DICT.get(w), cls = "w" + (opts.self ? " self" : "");
+  let label = esc(w);
+  if (opts.blanks) { let b = [...opts.blanks]; label = [...w].map(c => { const i = b.indexOf(c); if (i >= 0 && !opts.used?.[c]) { b.splice(i,1); return `<mark>${c.toLowerCase()}</mark>`; } return c; }).join(""); }
+  return `<span class="${cls}" data-w="${w}" title="${esc(e?.d || "")}">${label}${e?.n ? "<sup>+</sup>" : ""}</span>`;
+}
+
+// ---- rendering ----
+let current = null;
+function lookup(raw, push = true) {
+  const q = raw.toUpperCase().replace(/[^A-Z?.*]/g, "");
+  if (!q) return;
+  $("#q").value = q;
+  if (/[.*]/.test(q)) return renderPattern(q);
+  if (q.includes("?")) return renderBlank(q);
+  renderWord(q);
+  if (push) addHistory(q);
+}
+
+function renderWord(w) {
+  current = w;
+  const e = DICT.get(w);
+  const valid = !!e;
+  const ana = anagrams(w).filter(x => x !== w);
+  const plus = plusOne(w), minus = minusOne(w);
+  const starred = getStars().includes(w);
+  const tiles = [...w].map((c, i) => `<div class="tile" style="animation-delay:${i*25}ms">${c}<sub>${VALUES[c]}</sub></div>`).join("");
+  const hooks = (s, side) => s ? `<div class="hook">${[...s].map(h => `<button type="button" data-w="${side === "f" ? h.toUpperCase() + w : w + h.toUpperCase()}">${h}</button>`).join("")}</div>` : `<div class="hook none">no ${side === "f" ? "front" : "back"} hooks</div>`;
+  const len = w.length;
+
+  let html = `<div class="hero">
+    <div class="tilerow">${valid ? hooks(e.fh, "f") : ""}<div class="tiles">${tiles}</div>${valid ? hooks(e.bh, "b") : ""}</div>
+    <div class="badges">
+      ${valid ? `<span class="badge good">Valid in CSW24</span>` : `<span class="badge bad">Not valid — phony</span>`}
+      ${e?.n ? `<span class="badge new">New in CSW24</span>` : ""}
+      <span class="badge plain">${score(w)} pts face value</span>
+      ${valid ? `<button class="btn star ${starred ? "on" : ""}" id="starBtn" type="button">${starred ? "★ In study list" : "☆ Add to study list"}</button>` : ""}
+    </div>
+  </div>`;
+
+  if (valid) {
+    html += `<div class="card"><h2>CSW24 definition</h2><p class="def">${defHTML(e.d)}</p></div>`;
+  } else {
+    const fix = ana.length ? ana : [];
+    html += `<div class="card"><h2>Not in the lexicon</h2><p class="empty">${esc(w)} is not a valid CSW24 word.${fix.length ? " These anagrams are valid:" : ""}</p>${fix.length ? `<div class="words" style="margin-top:8px">${fix.map(x => chip(x)).join("")}</div>` : ""}</div>`;
+  }
+
+  html += `<div class="grid2">
+    <div class="card"><h2>Anagrams (${ana.length})</h2>${ana.length ? `<div class="words">${ana.map(x => chip(x)).join("")}</div>` : `<p class="empty">No other anagrams — this one's unique.</p>`}</div>
+    <div class="card"><h2>Memory facts</h2><div class="stats">
+      <div class="stat"><b>${alpha(w)}</b><span>alphagram</span></div>
+      ${valid ? `<div class="stat"><b>#${e.p.toLocaleString()}</b><span>probability of ${COUNT[len].toLocaleString()} ${len}s</span></div>
+      <div class="stat"><b>#${e.pl.toLocaleString()}</b><span>playability rank</span></div>` : ""}
+      <div class="stat"><b>${(e?.fh.length || 0) + (e?.bh.length || 0)}</b><span>hooks (front+back)</span></div>
+    </div></div>
+  </div>`;
+
+  html += `<div class="grid2">
+    <div class="card"><h2>Add one letter (${plus.reduce((s, g) => s + g[1].length, 0)})</h2>${plus.length ? plus.map(([L, g]) => `<div class="grp"><b>${L}</b><div class="words">${g.map(x => chip(x)).join("")}</div></div>`).join("") : `<p class="empty">No ${len + 1}-letter words.</p>`}</div>
+    <div class="card"><h2>Drop one letter (${minus.reduce((s, g) => s + g[1].length, 0)})</h2>${minus.length ? minus.map(([L, g]) => `<div class="grp"><b>${L}</b><div class="words">${g.map(x => chip(x)).join("")}</div></div>`).join("") : `<p class="empty">No ${len - 1}-letter words.</p>`}</div>
+  </div>`;
+
+  if (valid) {
+    html += `<div class="card online" id="online"><h2>Pronunciation, examples &amp; origin</h2><p class="small">Looking up ${esc(w.toLowerCase())} online…</p></div>
+    <div class="card"><h2>Your memory hook</h2>
+      <textarea id="note" placeholder="A sentence, picture or link that helps you remember ${esc(w)}…">${esc(getNotes()[w] || "")}</textarea>
+      <p class="small">Saved in this browser as you type.</p></div>`;
+  }
+  $("#result").innerHTML = html;
+  if (valid) { fetchOnline(w); $("#note").addEventListener("input", ev => { const n = getNotes(); if (ev.target.value.trim()) n[w] = ev.target.value; else delete n[w]; store.set("notes", n); }); }
+  $("#starBtn")?.addEventListener("click", () => { toggleStar(w); renderWord(w); });
+  window.scrollTo({ top: 0 });
+}
+
+function renderList(title, words, extra = "") {
+  current = null;
+  $("#result").innerHTML = `<div class="card"><h2>${title}</h2>${extra}${words.length ? `<div class="words">${words.join("")}</div>` : `<p class="empty">Nothing found.</p>`}</div>`;
+}
+function renderBlank(q) {
+  const letters = q.replace(/\?/g, ""), blanks = q.length - letters.length;
+  if (blanks > 2) return renderList("Too many blanks", [], `<p class="empty">Use at most two ?.</p>`);
+  const found = blankAnagrams(letters, blanks);
+  const words = [...found.keys()].sort((a, b) => DICT.get(a).p - DICT.get(b).p);
+  renderList(`${letters} + ${blanks} blank${blanks > 1 ? "s" : ""} → ${words.length} words`, words.map(w => chip(w, { blanks: found.get(w) })), `<p class="small" style="margin:0 0 10px">Red lowercase letters are the blank. Sorted by probability.</p>`);
+}
+function renderPattern(q) {
+  const re = new RegExp("^" + q.replace(/\?/g, ".").replace(/\*/g, ".*") + "$");
+  const out = [];
+  for (const w of DICT.keys()) if (re.test(w)) { out.push(w); if (out.length >= 600) break; }
+  renderList(`Pattern ${q} → ${out.length}${out.length >= 600 ? "+ (first 600)" : ""} words`, out.map(w => chip(w)));
+}
+
+// ---- online extras: Free Dictionary API, then Wiktionary for examples ----
+async function fetchOnline(w) {
+  const lw = w.toLowerCase(), box = () => current === w ? $("#online") : null;
+  const parts = []; let phon = "", audio = "", origin = "";
+  try {
+    const r = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(lw)}`);
+    if (r.ok) {
+      const data = await r.json();
+      for (const ent of data) {
+        phon ||= ent.phonetic || ent.phonetics?.find(p => p.text)?.text || "";
+        audio ||= ent.phonetics?.find(p => p.audio)?.audio || "";
+        origin ||= ent.origin || "";
+        for (const m of ent.meanings || []) for (const d of m.definitions || [])
+          parts.push({ pos: m.partOfSpeech, def: d.definition, ex: d.example, syn: [...(d.synonyms || []), ...(m.synonyms || [])].slice(0, 6) });
+      }
+    }
+  } catch {}
+  try {
+    const r = await fetch(`https://en.wiktionary.org/api/rest_v1/page/definition/${encodeURIComponent(lw)}`);
+    if (r.ok) {
+      const data = await r.json();
+      const strip = h => { const t = document.createElement("div"); t.innerHTML = h; return t.textContent.trim(); };
+      for (const ent of data.en || []) for (const d of ent.definitions || []) {
+        const def = strip(d.definition || ""); if (!def) continue;
+        const ex = (d.parsedExamples || []).map(x => strip(x.example)).concat((d.examples || []).map(strip)).filter(Boolean)[0];
+        if (ex || parts.length < 3) parts.push({ pos: ent.partOfSpeech, def, ex, src: "Wiktionary" });
+      }
+    }
+  } catch {}
+  const b = box(); if (!b) return;
+  parts.sort((a, b) => (b.ex ? 1 : 0) - (a.ex ? 1 : 0));
+  const shown = parts.slice(0, 6);
+  const syns = [...new Set(shown.flatMap(p => p.syn || []))].filter(s => DICT.has(s.toUpperCase()));
+  b.innerHTML = `<h2>Pronunciation, examples &amp; origin</h2>
+    ${phon || audio ? `<div class="meta">${phon ? `<span>${esc(phon)}</span>` : ""}${audio ? `<button class="btn" type="button" id="say">▶ Hear it</button>` : ""}</div>` : ""}
+    ${shown.length ? `<ol style="margin-top:10px">${shown.map(p => `<li><span class="pos small">${esc(p.pos || "")}</span> ${esc(p.def)}${p.ex ? `<span class="ex">${esc(p.ex)}</span>` : ""}</li>`).join("")}</ol>`
+      : `<p class="empty">No online dictionary entry. Many Scrabble words are rare, so lean on the CSW definition and your own memory hook.</p>`}
+    ${syns.length ? `<p class="small" style="margin-top:10px">Synonyms that are also valid: ${syns.map(s => chip(s.toUpperCase())).join(" ")}</p>` : ""}
+    ${origin ? `<p class="small" style="margin-top:10px">Origin: ${esc(origin)}</p>` : ""}
+    <div class="links">
+      <a href="https://en.wiktionary.org/wiki/${encodeURIComponent(lw)}" target="_blank" rel="noopener">Wiktionary</a>
+      <a href="https://www.collinsdictionary.com/dictionary/english/${encodeURIComponent(lw)}" target="_blank" rel="noopener">Collins</a>
+      <a href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(lw + " meaning")}" target="_blank" rel="noopener">Images</a>
+    </div>`;
+  if (audio) $("#say").addEventListener("click", () => new Audio(audio).play().catch(() => {}));
+}
+
+// ---- study list, notes, history ----
+const getStars = () => store.get("stars", []);
+const getNotes = () => store.get("notes", {});
+function toggleStar(w) { const s = getStars(); const i = s.indexOf(w); i >= 0 ? s.splice(i, 1) : s.unshift(w); store.set("stars", s); drawSide(); }
+function addHistory(w) { const h = store.get("hist", []).filter(x => x !== w); h.unshift(w); store.set("hist", h.slice(0, 30)); drawSide(); }
+function sideRow(w) { const e = DICT.get(w); return `<div class="li" data-w="${w}"><span>${w}</span><small>${esc((e?.d || "").slice(0, 40))}</small></div>`; }
+function drawSide() {
+  const s = getStars(), h = store.get("hist", []);
+  $("#starList").innerHTML = s.length ? s.map(sideRow).join("") : `<p class="empty">Star words to collect them here.</p>`;
+  $("#histList").innerHTML = h.length ? h.map(sideRow).join("") : `<p class="empty">Nothing yet.</p>`;
+}
+
+// quiz: show the alphagram of a starred word, type all its anagrams
+let quiz = null;
+function nextQuiz() {
+  const s = getStars();
+  const card = $("#quizCard"); card.hidden = false;
+  if (!s.length) { card.innerHTML = `<h2>Quiz</h2><p class="empty">Add words to your study list first.</p>`; return; }
+  const w = s[Math.floor(Math.random() * s.length)];
+  quiz = { w, answers: anagrams(w) };
+  card.innerHTML = `<h2>Quiz · unscramble</h2><div class="q">${alpha(w)}</div>
+    <p class="small">${quiz.answers.length} valid word${quiz.answers.length > 1 ? "s" : ""}. Hint: ${esc(DICT.get(w).d.slice(0, 60))}</p>
+    <form id="qf"><input id="qa" placeholder="Your answer(s), space separated" aria-label="Quiz answer"></form>
+    <div id="qr" class="small" style="margin-top:8px"></div>
+    <div class="row" style="margin-top:8px"><button class="btn" type="button" id="qn">Next</button><button class="btn" type="button" id="qx">Close</button></div>`;
+  $("#qa").focus();
+  $("#qf").addEventListener("submit", ev => {
+    ev.preventDefault();
+    const got = new Set($("#qa").value.toUpperCase().split(/[^A-Z]+/).filter(Boolean));
+    const ok = quiz.answers.every(a => got.has(a)) && [...got].every(g => quiz.answers.includes(g));
+    $("#qr").innerHTML = (ok ? `<b style="color:var(--good)">Correct!</b> ` : `<b style="color:var(--bad)">Not quite.</b> Answer: `) + quiz.answers.map(a => chip(a)).join(" ");
+  });
+  $("#qn").addEventListener("click", nextQuiz);
+  $("#qx").addEventListener("click", () => { card.hidden = true; });
+}
+
+// random word
+let randLen = store.get("randLen", 7);
+function drawLens() {
+  $("#lenRow").innerHTML = [2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(n => `<button class="btn" type="button" data-len="${n}" style="padding:4px 8px;${n === randLen ? "background:var(--board);color:var(--board-ink)" : ""}">${n}</button>`).join("");
+}
+
+// ---- events ----
+$("#form").addEventListener("submit", ev => { ev.preventDefault(); lookup($("#q").value); });
+$("#randBtn").addEventListener("click", () => { const a = BYLEN[randLen]; lookup(a[Math.floor(Math.random() * a.length)]); });
+$("#quizBtn").addEventListener("click", nextQuiz);
+$("#exportBtn").addEventListener("click", ev => {
+  const txt = getStars().join("\n");
+  navigator.clipboard?.writeText(txt).then(() => { ev.target.textContent = "Copied"; setTimeout(() => ev.target.textContent = "Copy list", 1200); }).catch(() => {});
+});
+$("#lenRow").addEventListener("click", ev => { const n = ev.target.dataset?.len; if (n) { randLen = +n; store.set("randLen", randLen); drawLens(); } });
+document.addEventListener("click", ev => {
+  const t = ev.target.closest("[data-w]");
+  if (t && !t.closest("#lenRow")) { ev.preventDefault(); lookup(t.dataset.w); }
+});
+
+drawSide(); drawLens();
+lookup(location.hash.slice(1) || store.get("hist", [])[0] || "QI", false);
+</script>
+</body>
+</html>
