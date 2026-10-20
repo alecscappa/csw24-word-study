@@ -175,6 +175,8 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .quizv .btn.on { background: var(--link); border-color: var(--link); color: var(--panel); }
 .quizv :focus-visible { outline-color: var(--link); }
 .w.got { border-color: var(--good); color: var(--good); }
+.r.got, .r.miss { cursor: default; }
+.r.got .wl { color: var(--good); } .r.miss .wl { color: var(--warn); }
 .w.miss { border-color: var(--warn); color: var(--warn); }
 .seg { display: flex; flex-wrap: wrap; gap: 4px; }
 
@@ -824,7 +826,7 @@ function drawQuestion() {
   let prompt = "", input = "";
   Q.found = [];
   const nAna = anagrams(q.w).length;
-  if (mode === "anagram") { prompt = tilesHTML(alpha(q.w)); input = `<input class="qinput" id="qa" placeholder="${nAna > 1 ? `Type each word (${nAna} to find)` : "Type the word"}"><div class="words" id="found" style="margin-top:8px"></div><p class="small" style="margin:6px 0 0">Correct words are taken as you type. Press Enter to give up and see the answer.</p>`; }
+  if (mode === "anagram") { prompt = tilesHTML(alpha(q.w)); input = `<input class="qinput" id="qa" placeholder="${nAna > 1 ? `Type each word (${nAna} to find)` : "Type the word"}"><div class="rows" id="found" style="margin-top:8px"></div><p class="small" style="margin:6px 0 0">Correct words are taken as you type. Press Enter to give up and see the answer.</p>`; }
   if (mode === "phony") { prompt = `<div class="qprompt">${q.show}</div>`; input = `<div class="row"><button type="button" class="btn primary" data-ans="valid">Valid (V)</button><button type="button" class="btn" data-ans="phony">Phony (P)</button></div>`; }
   if (mode === "hooks") { prompt = `<div class="qprompt">${q.w}</div>`; input = `<div class="pair"><input class="qinput" id="qf" placeholder="front hooks"><input class="qinput" id="qb" placeholder="back hooks"></div><p class="small" style="margin:6px 0 0">Leave blank if none. Press Enter to check.</p>`; }
   if (mode === "def") { prompt = `<div class="qdef">${esc(e.d)}</div><p class="small" style="margin:0">${q.w.length} letters · <a href="#" id="hint">show tiles</a></p><div id="hintBox"></div>`; input = `<input class="qinput" id="qa" placeholder="The word"><p class="small" style="margin:6px 0 0">The right word is taken as you type. Press Enter to give up.</p>`; }
@@ -845,7 +847,7 @@ function drawQuestion() {
       const want = anagrams(q.w);
       if (want.includes(v) && !Q.found.includes(v)) {
         Q.found.push(v); ev.target.value = "";
-        $("#found").innerHTML = Q.found.map(w => `<span class="w got">✓ ${w}</span>`).join("");
+        $("#found").insertAdjacentHTML("beforeend", quizRow(v, "got"));
         if (Q.found.length === want.length) check();
       }
     } else if (mode === "def" && (v === q.w || (v.length === q.w.length && DICT.get(v)?.d === e.d))) check();
@@ -864,8 +866,9 @@ function check(ans) {
   if (mode === "anagram") {
     const want = anagrams(q.w);
     ok = want.every(a => Q.found.includes(a));
-    reveal = want.map(w => `<a class="w ${Q.found.includes(w) ? "got" : "miss"}" href="#w/${w}">${Q.found.includes(w) ? "✓ " : ""}${w}</a>`).join(" ");
-    if (!ok && Q.found.length) reveal += `<span class="small">You found ${Q.found.length} of ${want.length}.</span>`;
+    // found words are already listed; add only the missed ones
+    $("#found").insertAdjacentHTML("beforeend", want.filter(w => !Q.found.includes(w)).map(w => quizRow(w, "miss")).join(""));
+    reveal = !ok && Q.found.length ? `<span class="small">You found ${Q.found.length} of ${want.length}.</span>` : "";
   } else if (mode === "phony") {
     ok = (ans === "phony") === !!q.phony;
     reveal = q.phony ? `<span>${q.show} is phony. It came from</span> ${chip(q.w)}` : `${chip(q.w)} <span>is valid</span>`;
@@ -881,10 +884,12 @@ function check(ans) {
   if (ok) Q.right++; else Q.wrong.push(q.w);
   record(q.w, ok);
   $("#qfb").innerHTML = `<p class="fb ${ok ? "ok" : "no"}" style="margin:0 0 6px">${ok ? "Correct" : "Not quite"}</p><div class="words" style="align-items:center">${reveal}</div>
-    <p class="small" style="margin:8px 0 0">${esc(e.d)}</p><div class="actions"><button class="btn primary" id="qnext">${Q.i + 1 < Q.qs.length ? "Next (Enter)" : "Finish"}</button></div>`;
+    ${mode === "anagram" ? "" : `<p class="small" style="margin:8px 0 0">${esc(e.d)}</p>`}<div class="actions"><button class="btn primary" id="qnext">${Q.i + 1 < Q.qs.length ? "Next (Enter)" : "Finish"}</button></div>`;
   $("#qnext").onclick = next;
   $("#qnext").focus();
 }
+// a result row for the quiz: not clickable, so the quiz isn't left mid-question
+const quizRow = (w, cls) => rowHTML(w).replace('class="r" data-go=', `class="r ${cls}" data-w=`).replace('<span class="wl">', `<span class="wl">${cls === "got" ? "✓ " : "✗ "}`);
 function next() {
   Q.i++; Q.answered = false;
   if (Q.i >= Q.qs.length) { Q.done = true; document.onkeydown = null; VIEWS.quiz(); } else drawQuestion();
