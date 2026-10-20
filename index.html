@@ -339,11 +339,11 @@ const GROUPS = [
   { sect: "Bingos" },
   { id: "stems6", name: "Best 6-letter stems", special: "stems", n: 6, blurb: "6-tile leaves that make the most 7-letter bingos, with the letters that complete them." },
   { id: "stems7", name: "Best 7-letter stems", special: "stems", n: 7, blurb: "7 tiles plus 1 on the board makes an 8. The most productive racks." },
-  { id: "p7", name: "Most likely 7s", blurb: "The 1,000 most probable 7-letter words.", test: (w, e) => w.length === 7 && e.p <= 1000 },
-  { id: "p8", name: "Most likely 8s", blurb: "The 1,000 most probable 8-letter words.", test: (w, e) => w.length === 8 && e.p <= 1000 },
+  { id: "p7", name: "Most likely 7s", blurb: "The 1,000 most probable 7-letter words (probability rank 1 to 1,000).", test: (w, e) => w.length === 7 && e.p <= 1000 },
+  { id: "p8", name: "Most likely 8s", blurb: "The 1,000 most probable 8-letter words (probability rank 1 to 1,000).", test: (w, e) => w.length === 8 && e.p <= 1000 },
   { id: "rich", name: "Anagram-rich racks", len: 7, blurb: "7s and 8s whose letters make 5 or more words.", test: w => L(w, 7, 8) && anagrams(w).length >= 5 },
-  { id: "suffix", name: "-ING, -IER, -IEST bingos", len: 7, blurb: "Likely 7s and 8s with these endings.", test: (w, e) => L(w, 7, 8) && /(ING|IER|IEST)$/.test(w) && e.p <= 6000 },
-  { id: "prefix", name: "RE-, UN-, OUT-, OVER-, DIS- bingos", len: 7, blurb: "Likely 7s and 8s with these prefixes.", test: (w, e) => L(w, 7, 8) && /^(RE|UN|OUT|OVER|DIS)/.test(w) && e.p <= 6000 },
+  { id: "suffix", name: "-ING, -IER, -IEST bingos", len: 7, blurb: "Every 7 and 8-letter word ending in ING, IER or IEST.", test: w => L(w, 7, 8) && /(ING|IER|IEST)$/.test(w) },
+  { id: "prefix", name: "RE-, UN-, OUT-, OVER-, DIS- bingos", len: 7, blurb: "Every 7 and 8-letter word starting with RE, UN, OUT, OVER or DIS.", test: w => L(w, 7, 8) && /^(RE|UN|OUT|OVER|DIS)/.test(w) },
   { sect: "Other" },
   { id: "new", name: "New in CSW24", blurb: "The 1,816 words added in this edition.", test: (w, e) => e.n },
   { id: "palin", name: "Palindromes", blurb: "Words that read the same backwards, like TAT and REDDER.", test: w => w.length >= 3 && w === [...w].reverse().join("") },
@@ -405,7 +405,7 @@ function results(el, words, opts = {}) {
     lastResults = list;
     el.innerHTML = `
       <div class="toolbar">
-        <span class="count">${list.length.toLocaleString()} word${list.length === 1 ? "" : "s"}</span>
+        <span class="count">${st.len ? `${list.length.toLocaleString()} of ${words.length.toLocaleString()} words <span class="small">(${st.len}-letter only)</span>` : `${list.length.toLocaleString()} word${list.length === 1 ? "" : "s"}`}</span>
         <select id="sortSel" aria-label="Sort by">${Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${k === SET.sort ? "selected" : ""}>Sort: ${v}</option>`).join("")}</select>
         <label class="check small"><input type="checkbox" id="defChk" ${SET.defs ? "checked" : ""}> Definitions</label>
         <button class="btn sm" id="quizThese">Quiz these</button>
@@ -530,7 +530,7 @@ async function fetchOnline(w) {
 }
 
 // ---------- search ----------
-const SEARCH_DEFAULT = { pattern: "", rack: "", mode: "exact", min: "", max: "", starts: "", ends: "", contains: "", incl: "", excl: "", def: "", group: "" };
+const SEARCH_DEFAULT = { pattern: "", rack: "", mode: "exact", min: "", max: "", starts: "", ends: "", contains: "", incl: "", excl: "", def: "", group: "", top: "" };
 let searchState = { ...SEARCH_DEFAULT, ...store.get("search", {}) };
 if (!G(searchState.group) || G(searchState.group).special) searchState.group = "";
 
@@ -549,6 +549,7 @@ function runSearch(s) {
   const incl = counts(letters(s.incl)), excl = new Set(letters(s.excl));
   const def = (s.def || "").trim().toLowerCase();
   const group = s.group ? G(s.group) : null;
+  const top = +s.top || 0;
   const rl = rack.replace(/\?/g, ""), rb = rack.length - rl.length, rc = counts(rl);
   const masks = rack && rb ? new Map() : null;
   const pool = rack && s.mode === "exact" ? BYLEN[rack.length] || [] : group ? groupWords(group) : ALL;
@@ -562,6 +563,7 @@ function runSearch(s) {
     if (re && !re.test(w)) continue;
     if (excl.size && [...w].some(c => excl.has(c))) continue;
     const e = DICT.get(w);
+    if (top && e.p > top) continue;
     if (group && !group.test(w, e)) continue;
     if (Object.keys(incl).length) { const wc = counts(w); if (Object.entries(incl).some(([c, n]) => (wc[c] || 0) < n)) continue; }
     if (rack) {
@@ -600,6 +602,7 @@ VIEWS.search = () => {
         ${f("contains", "Contains in a row", "e.g. QI")}
         ${f("incl", "Must use letters", "e.g. VV")}
         ${f("excl", "Without letters", "e.g. AEIOU")}
+        <div class="field"><label for="s_top">Probability</label><select id="s_top">${[["", "All words"], ["500", "Top 500 of each length"], ["1000", "Top 1,000 of each length"], ["3000", "Top 3,000 of each length"], ["6000", "Top 6,000 of each length"], ["10000", "Top 10,000 of each length"]].map(([v, t]) => `<option value="${v}" ${String(s.top) === v ? "selected" : ""}>${t}</option>`).join("")}</select><span class="hint">Most likely words to draw</span></div>
       </div></div>
       <div class="actions">
         <button class="btn primary" type="submit">Search</button>
