@@ -177,6 +177,10 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .w.got { border-color: var(--good); color: var(--good); }
 .r.got, .r.miss { cursor: default; }
 .practice { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
+.pprog { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font: .82rem var(--mono); color: var(--muted); }
+.pprog b { color: var(--ink); font-size: 1rem; }
+.pbar { flex: 1 1 120px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.pbar div { height: 100%; background: var(--good); }
 .ptiles { display: flex; justify-content: center; padding: 10px 0; }
 .ptiles .tile { width: 52px; height: 52px; font-size: 1.8rem; }
 @media (max-width: 480px) { .ptiles .tile { width: 40px; height: 40px; font-size: 1.35rem; } }
@@ -915,10 +919,17 @@ function practicePool(o) {
   if (mine) { const set = new Set(mine); pool = pool.filter(w => set.has(w)); }
   return (poolCache = { key, pool, error: r.error }).pool;
 }
+const progText = pr => `<span><b>${pr.words.toLocaleString()}</b>/${pr.wordsAll.toLocaleString()} words learnt</span><span><b>${pr.racks.toLocaleString()}</b>/${pr.racksAll.toLocaleString()} racks</span><div class="pbar"><div style="width:${pr.wordsAll ? (pr.words / pr.wordsAll) * 100 : 0}%"></div></div>`;
 const leftText = () => { const n = P.want.length, f = P.found.length; return n === 1 ? (f ? "Found it" : "1 word") : `${n} words · ${f} found · ${n - f} left`; };
 // Review queue, like a cardbox: a missed rack comes back ~4 cards later; each correct
 // answer on a review pushes it further out (10, then 25 cards); a third correct retires it.
 const GAPS = [4, 10, 25];
+const getLearnt = () => new Set(store.get("plearnt", []));
+function setLearnt(a, ok) { const L = getLearnt(); ok ? L.add(a) : L.delete(a); store.set("plearnt", [...L]); }
+function progress(pool) {
+  const L = getLearnt(), racks = new Set(pool.map(alpha));
+  return { words: pool.filter(w => L.has(alpha(w))).length, wordsAll: pool.length, racks: [...racks].filter(a => L.has(a)).length, racksAll: racks.size };
+}
 const getPQ = () => store.get("pq", { n: 0, items: [] });
 function schedule(a, ok) {
   const q = getPQ(); q.n++;
@@ -933,7 +944,11 @@ function pickPractice(pool) {
   const inPool = new Set(pool.map(alpha));
   const due = q.items.filter(x => x.due <= q.n && inPool.has(x.a) && !recent.includes(x.a)).sort((a, b) => a.due - b.due)[0];
   let w = due ? anagrams(due.a)[0] : null;
-  for (let t = 0; !w && t < 30; t++) { const c = pool[Math.floor(Math.random() * pool.length)]; if (!recent.includes(alpha(c)) || t === 29) w = c; }
+  // new racks first; racks waiting in the review queue come back through the queue instead
+  const L = getLearnt(), queued = new Set(q.items.map(x => x.a));
+  const fresh = pool.filter(c => !L.has(alpha(c)) && !queued.has(alpha(c)));
+  const from = fresh.length && Math.random() < 0.85 ? fresh : pool;
+  for (let t = 0; !w && t < 30; t++) { const c = from[Math.floor(Math.random() * from.length)]; if (!recent.includes(alpha(c)) || t === 29) w = c; }
   recent.unshift(alpha(w)); recent.length = Math.min(recent.length, Math.min(20, Math.floor(pool.length / 2)));
   return w;
 }
@@ -954,12 +969,13 @@ VIEWS.practice = () => {
         ${tf("starts", "Starts with", "e.g. UN")}${tf("ends", "Ends with", "e.g. ING")}${tf("contains", "Contains in a row", "e.g. QI")}
         ${tf("incl", "Must use letters", "e.g. Z")}${tf("excl", "Without letters", "e.g. S")}${tf("pattern", "Pattern", "e.g. .A.E*")}
       </div>
-      <div class="actions"><button class="btn sm" id="poApply">Apply</button><button class="btn sm" id="poReset">Reset options</button></div>
+      <div class="actions"><button class="btn sm" id="poApply">Apply</button><button class="btn sm" id="poReset">Reset options</button><button class="btn sm" id="poForget">Reset learnt for these words</button></div>
     </details>`;
   const lenRow = `<div class="row">
       <div class="chips"><button class="btn sm ${o.len ? "" : "on"}" data-plen="0">Any</button>${range(2, 15).map(n => `<button class="btn sm ${n === +o.len ? "on" : ""}" data-plen="${n}">${n}</button>`).join("")}</div>
-      <span class="small" style="margin-left:auto">Streak <b>${P.streak}</b> · solved ${P.solved} of ${P.seen} · ${getPQ().items.length} to review</span>
-    </div>`;
+      <span class="small" style="margin-left:auto">Streak <b>${P.streak}</b> · ${getPQ().items.length} to review</span>
+    </div>
+    <div class="pprog" id="pprog">${progText(progress(pool))}</div>`;
   const wire = () => {
     $("#pOpts").addEventListener("toggle", e => store.set("pOpen", e.target.open));
     $("#view").querySelectorAll("[data-plen]").forEach(b => b.onclick = () => { saveSettings({ practice: { ...o, len: +b.dataset.plen } }); VIEWS.practice(); });
@@ -967,6 +983,7 @@ VIEWS.practice = () => {
     $("#po_src").onchange = () => { const v = $("#po_src").value; o.len = v.startsWith("g:") ? (G(v.slice(2))?.len || 0) : v ? 0 : o.len; read(); }; $("#po_top").onchange = read; $("#poApply").onclick = read;
     $("#pOpts").querySelectorAll("input").forEach(i => i.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); read(); } });
     $("#poReset").onclick = () => { saveSettings({ practice: { ...PO_DEFAULT } }); VIEWS.practice(); };
+    confirmBtn($("#poForget"), () => { const racks = new Set(pool.map(alpha)); store.set("plearnt", [...getLearnt()].filter(a => !racks.has(a))); VIEWS.practice(); });
   };
   if (!pool.length) {
     $("#view").innerHTML = lenRow + opts + `<div class="card"><p class="empty">${esc(poolCache.error || "No words match these options. Try another length or loosen a filter.")}</p></div>`;
@@ -985,7 +1002,8 @@ VIEWS.practice = () => {
     </div>` + opts;
   const finish = ok => {
     P.done = true; P.seen++;
-    schedule(P.letters, ok);
+    schedule(P.letters, ok); setLearnt(P.letters, ok);
+    const pr = progress(practicePool(o)); $("#pprog").innerHTML = progText(pr);
     if (ok) { P.streak++; P.solved++; } else P.streak = 0;
     for (const x of P.want) record(x, ok);
     $("#pfound").insertAdjacentHTML("beforeend", P.want.filter(x => !P.found.includes(x)).map(x => quizRow(x, "miss")).join(""));
@@ -1004,7 +1022,7 @@ VIEWS.practice = () => {
   $("#pa").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); P.done ? VIEWS.practice() : finish(false); } });
   $("#pShuf").onclick = () => { $("#ptiles").innerHTML = tilesHTML(shuffle([...P.letters]).join("")); $("#pa").focus(); };
   $("#pReveal").onclick = () => { if (!P.done) finish(false); };
-  $("#pNext").onclick = () => { if (!P.done) { P.streak = 0; P.seen++; schedule(P.letters, false); } VIEWS.practice(); };
+  $("#pNext").onclick = () => { if (!P.done) { P.streak = 0; P.seen++; schedule(P.letters, false); setLearnt(P.letters, false); } VIEWS.practice(); };
   wire();
 };
 
