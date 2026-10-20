@@ -176,6 +176,10 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .quizv :focus-visible { outline-color: var(--link); }
 .w.got { border-color: var(--good); color: var(--good); }
 .r.got, .r.miss { cursor: default; }
+.practice { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
+.ptiles { display: flex; justify-content: center; padding: 10px 0; }
+.ptiles .tile { width: 52px; height: 52px; font-size: 1.8rem; }
+@media (max-width: 480px) { .ptiles .tile { width: 40px; height: 40px; font-size: 1.35rem; } }
 .r.got .wl { color: var(--good); } .r.miss .wl { color: var(--warn); }
 .w.miss { border-color: var(--warn); color: var(--warn); }
 .seg { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -212,6 +216,7 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
       <a href="#w" data-tab="w">Word</a>
       <a href="#search" data-tab="search">Search</a>
       <a href="#lists" data-tab="lists">Word lists</a>
+      <a href="#practice" data-tab="practice">Practice</a>
       <a href="#quiz" data-tab="quiz">Quiz</a>
       <a href="#mine" data-tab="mine">My words</a>
       <a href="#settings" data-tab="settings" class="end">Settings</a>
@@ -895,6 +900,51 @@ function next() {
   if (Q.i >= Q.qs.length) { Q.done = true; document.onkeydown = null; VIEWS.quiz(); } else drawQuestion();
 }
 
+// ---------- practice: endless anagram cards, no setup ----------
+let P = null;
+VIEWS.practice = () => {
+  const len = +SET.pLen || 7, top = +SET.pTop || 0;
+  const pool = BYLEN[len].filter(w => !top || DICT.get(w).p <= top);
+  if (!P || P.len !== len || P.top !== top) P = { len, top, streak: 0, solved: 0, seen: 0 };
+  const w = pool[Math.floor(Math.random() * pool.length)];
+  P.want = anagrams(w); P.found = []; P.done = false; P.letters = alpha(w); P.seen++;
+  $("#view").innerHTML = `
+    <div class="row">
+      <div class="chips">${range(2, 15).map(n => `<button class="btn sm ${n === len ? "on" : ""}" data-plen="${n}">${n}</button>`).join("")}</div>
+      <select id="pTop" aria-label="Which words">${[[0, "All words"], [500, "Top 500"], [1000, "Top 1,000"], [3000, "Top 3,000"], [10000, "Top 10,000"]].map(([v, t]) => `<option value="${v}" ${v === top ? "selected" : ""}>${t}</option>`).join("")}</select>
+      <span class="small" style="margin-left:auto">Streak <b>${P.streak}</b> · solved ${P.solved} of ${P.seen - 1}</span>
+    </div>
+    <div class="card practice">
+      <div class="ptiles" id="ptiles">${tilesHTML(P.letters)}</div>
+      <p class="small" style="margin:0">${P.want.length > 1 ? `${P.want.length} words` : "1 word"}</p>
+      <input class="qinput" id="pa" placeholder="Type the answer" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <div class="row"><button class="btn" id="pShuf">Shuffle</button><button class="btn" id="pReveal">Show answer</button><button class="btn primary" id="pNext">Next</button></div>
+      <div class="rows" id="pfound"></div>
+    </div>`;
+  const finish = ok => {
+    P.done = true;
+    if (ok) { P.streak++; P.solved++; } else P.streak = 0;
+    for (const x of P.want) record(x, ok);
+    $("#pfound").insertAdjacentHTML("beforeend", P.want.filter(x => !P.found.includes(x)).map(x => quizRow(x, "miss")).join(""));
+    if (ok) setTimeout(() => { if (P.done && location.hash === "#practice") VIEWS.practice(); }, 900);
+    else $("#pNext").focus();
+  };
+  $("#pa").focus();
+  $("#pa").addEventListener("input", ev => {
+    const v = ev.target.value.toUpperCase().replace(/[^A-Z]/g, "");
+    if (P.done || !P.want.includes(v) || P.found.includes(v)) return;
+    P.found.push(v); ev.target.value = "";
+    $("#pfound").insertAdjacentHTML("beforeend", quizRow(v, "got"));
+    if (P.found.length === P.want.length) finish(true);
+  });
+  $("#pa").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); P.done ? VIEWS.practice() : finish(false); } });
+  $("#pShuf").onclick = () => { $("#ptiles").innerHTML = tilesHTML(shuffle([...P.letters]).join("")); $("#pa").focus(); };
+  $("#pReveal").onclick = () => { if (!P.done) finish(false); };
+  $("#pNext").onclick = () => { if (!P.done && P.found.length < P.want.length) P.streak = 0; VIEWS.practice(); };
+  $("#view").querySelectorAll("[data-plen]").forEach(b => b.onclick = () => { saveSettings({ pLen: +b.dataset.plen }); VIEWS.practice(); });
+  $("#pTop").onchange = e => { saveSettings({ pTop: +e.target.value }); VIEWS.practice(); };
+};
+
 // ---------- my words ----------
 const getStars = () => store.get("stars", []);
 const getNotes = () => store.get("notes", {});
@@ -980,7 +1030,7 @@ function route() {
   const t = VIEWS[tab] ? tab : "w";
   document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === t));
   if (t !== "quiz") document.onkeydown = null;
-  $("#view").classList.toggle("quizv", t === "quiz");
+  $("#view").classList.toggle("quizv", t === "quiz" || t === "practice");
   VIEWS[t](arg);
   window.scrollTo({ top: 0 });
 }
