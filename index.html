@@ -93,7 +93,7 @@ a.badge.plain:hover { color: var(--accent); }
 .words { display: flex; flex-wrap: wrap; gap: 6px; }
 .w { font: 600 .9rem var(--mono); padding: 3px 8px; border-radius: 4px; background: var(--chip); border: 1px solid var(--line); cursor: pointer; text-decoration: none; color: var(--ink); }
 .w:hover { border-color: var(--accent); color: var(--accent); }
-.w sup, .wl sup { color: var(--new); font-size: .65em; }
+.w sup, .wl sup, .fh sup, .bh sup, .hook sup { color: var(--new); font-size: .65em; }
 .grp { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; border-top: 1px dashed var(--line); }
 .grp:first-child { border-top: 0; }
 .grp > b { font: 700 .95rem var(--mono); color: var(--accent); width: 18px; flex: none; }
@@ -265,7 +265,9 @@ if (!window.CSW_TSV) {
 }
 for (const line of window.CSW_TSV.split("\n")) {
   const [w, d, fh, bh, sym, p, pl] = line.split("\t");
-  DICT.set(w, { d, fh, bh, n: sym === "+", p: +p, pl: +pl });
+  // Zyzzyva marks a hook that is new in CSW24 with a "+" after the letter, e.g. "d+s"
+  const newOf = h => (h.match(/[a-z](?=\+)/g) || []).join("");
+  DICT.set(w, { d, fh: fh.replace(/\+/g, ""), bh: bh.replace(/\+/g, ""), fhNew: newOf(fh), bhNew: newOf(bh), n: sym === "+", p: +p, pl: +pl });
   const a = alpha(w);
   (ANA.get(a) || ANA.set(a, []).get(a)).push(w);
   (BYLEN[w.length] ||= []).push(w);
@@ -381,6 +383,7 @@ function defHTML(d) {
     return `<span>${body}${m[2] ? ` <span class="pos">${esc(m[2].trim())}</span>` : ""}</span>`;
   }).join("<br>");
 }
+const hookText = (letters, nw) => [...letters].map(h => nw.includes(h) ? `${h}<sup title="new hook in CSW24">+</sup>` : h).join("");
 const chip = w => `<a class="w" href="#w/${w}" title="${esc(DICT.get(w)?.d)}">${w}${DICT.get(w)?.n ? "<sup>+</sup>" : ""}</a>`;
 function tilesHTML(w, mini) {
   return `<div class="tiles${mini ? " mini" : ""}">${[...w].map((c, i) => `<div class="tile" style="animation-delay:${i * 25}ms">${c}<sub>${VALUES[c]}</sub></div>`).join("")}</div>`;
@@ -426,7 +429,7 @@ function results(el, words, opts = {}) {
 function rowHTML(w, mask) {
   const e = DICT.get(w);
   const label = mask ? [...w].map((c, i) => mask[i] ? `<mark>${c.toLowerCase()}</mark>` : c).join("") : w;
-  return `<div class="r" data-go="${w}"><span class="fh">${e.fh}</span><span class="wl">${label}${e.n ? "<sup>+</sup>" : ""}</span><span class="bh">${e.bh}</span><span class="d">${esc(e.d)}</span><span class="meta">#${e.p.toLocaleString()}</span></div>`;
+  return `<div class="r" data-go="${w}"><span class="fh">${hookText(e.fh, e.fhNew)}</span><span class="wl">${label}${e.n ? "<sup>+</sup>" : ""}</span><span class="bh">${hookText(e.bh, e.bhNew)}</span><span class="d">${esc(e.d)}</span><span class="meta">#${e.p.toLocaleString()}</span></div>`;
 }
 
 // ---------- views ----------
@@ -445,7 +448,7 @@ VIEWS.w = (arg) => {
   const qs = store.get("stats", {})[w];
   const inGroups = valid ? GROUPS.filter(g => g.test && !["threes", "twos", "fours", "jqxz", "j", "q", "x", "z"].includes(g.id) && g.test(w, e)) : [];
   const hooks = (s, side) => s
-    ? `<div class="hook">${[...s].map(h => `<button type="button" data-go="${side === "f" ? h.toUpperCase() + w : w + h.toUpperCase()}">${h}</button>`).join("")}</div>`
+    ? `<div class="hook">${[...s].map(h => `<button type="button" data-go="${side === "f" ? h.toUpperCase() + w : w + h.toUpperCase()}" title="${side === "f" ? h.toUpperCase() + w : w + h.toUpperCase()}">${h}${(side === "f" ? e.fhNew : e.bhNew).includes(h) ? "<sup>+</sup>" : ""}</button>`).join("")}</div>`
     : `<div class="hook none">no ${side === "f" ? "front" : "back"}<br>hooks</div>`;
   let html = `<div class="card">
     <div class="tilerow">${valid ? hooks(e.fh, "f") : ""}${tilesHTML(w)}${valid ? hooks(e.bh, "b") : ""}</div>
@@ -531,12 +534,17 @@ async function fetchOnline(w) {
 
 // ---------- search ----------
 const SEARCH_DEFAULT = { pattern: "", rack: "", mode: "exact", min: "", max: "", starts: "", ends: "", contains: "", incl: "", excl: "", def: "", group: "", top: "" };
-let searchState = { ...SEARCH_DEFAULT, ...store.get("search", {}) };
+let searchState = Object.fromEntries(Object.keys(SEARCH_DEFAULT).map(k => [k, store.get("search", {})[k] ?? SEARCH_DEFAULT[k]]));
 if (!G(searchState.group) || G(searchState.group).special) searchState.group = "";
 
 function patternRegex(p) {
   if (!/^[A-Z.?*\[\]^]+$/.test(p)) return null;
-  try { return new RegExp("^" + p.replace(/[.?]/g, "[A-Z]").replace(/\*/g, "[A-Z]*") + "$"); } catch { return null; }
+  let out = "", inSet = false;
+  for (const c of p) {
+    if (c === "[") inSet = true; else if (c === "]") inSet = false;
+    out += inSet ? (c === "." || c === "?" || c === "*" ? "\\" + c : c) : c === "." || c === "?" ? "[A-Z]" : c === "*" ? "[A-Z]*" : c === "^" ? "" : c;
+  }
+  try { return new RegExp("^" + out + "$"); } catch { return null; }
 }
 function runSearch(s) {
   const up = v => (v || "").toUpperCase().replace(/[^A-Z?.*\[\]^]/g, "");
@@ -660,7 +668,7 @@ VIEWS.lists = (id) => {
 };
 function drawStems(box, g) {
   const data = stems(g.n);
-  lastResults = data.map(s => s.stem);
+  lastResults = data.flatMap(s => s.words);
   let shown = 25;
   const draw = () => {
     box.innerHTML = `<div class="toolbar"><span class="count">Top ${data.length} stems</span><button class="btn sm" id="quizThese">Quiz the bingos</button></div>
