@@ -10,3 +10,8 @@ The word data is not in this repo. Build it from your Zyzzyva lexicon:
     python3 build.py path/to/CSW24.db
 
 Then open `index.html` in a browser.
+
+## Tests
+
+    node tests/logic.js      # ~3,300 checks: every search, group, hook and quiz rule vs brute force and the Zyzzyva DB
+    node tests/browser.mjs   # ~325 checks in headless Chrome: every page, theme, phone width and quiz flow

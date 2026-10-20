@@ -14,7 +14,7 @@
   --head: #1f5c4a; --head-ink: #e9f3ee; --field: #e9f3ee; --field-ink: #15211c;
   --tile: #f1dcaa; --tile-edge: #c4a566; --tile-ink: #2b2213;
   --accent: #b8364a; --on-accent: #ffffff; --link: #2b74a8;
-  --good: #22804e; --bad: #b8364a; --new: #7d50c4;
+  --good: #22804e; --bad: #b8364a; --new: #7d50c4; --warn: #a66300;
   --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
   --body: "Source Serif 4", Georgia, serif;
   --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
@@ -25,7 +25,7 @@
     --bg: #141c18; --panel: #1b2621; --ink: #e2ebe5; --muted: #93a69b; --line: #2c3b33; --chip: #22302a;
     --head: #1a4a3c; --head-ink: #e2f1e8; --field: #e2f1e8; --field-ink: #15211c;
     --tile: #e6cf97; --tile-edge: #a88d52; --tile-ink: #2b2213;
-    --accent: #e8707f; --on-accent: #1b0f12; --link: #84bfe3; --good: #56c487; --bad: #e8707f; --new: #b592ef;
+    --accent: #e8707f; --on-accent: #1b0f12; --link: #84bfe3; --good: #56c487; --bad: #e8707f; --new: #b592ef; --warn: #f0b45a;
     color-scheme: dark;
   }
 }
@@ -146,12 +146,12 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
 
 /* lists */
-.listgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.listgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
 .lcard { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; }
 .lcard:hover { border-color: var(--accent); }
 .lcard b { font: 700 1rem var(--display); }
 .lcard span { color: var(--muted); font-size: .88rem; line-height: 1.4; }
-.lcard i { font: normal .72rem var(--mono); color: var(--link); margin-top: 6px; }
+.lcard i { font: normal .74rem var(--mono); color: var(--muted); }
 .sect { font: 700 .74rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 10px 0 -6px; }
 .stem { display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-top: 1px solid var(--line); }
 .stem:first-of-type { border-top: 0; }
@@ -163,7 +163,13 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .qinput { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--chip); font: 600 1.15rem var(--mono); text-transform: uppercase; min-width: 0; }
 .progress { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
 .progress div { height: 100%; background: var(--good); }
-.fb.ok { color: var(--good); font-weight: 600; } .fb.no { color: var(--bad); font-weight: 600; }
+.fb.ok { color: var(--good); font-weight: 600; } .fb.no { color: var(--warn); font-weight: 600; }
+/* quiz uses calm colours instead of the red accent */
+.quizv .btn.primary { background: var(--link); border-color: var(--link); color: var(--panel); }
+.quizv .btn.on { background: var(--link); border-color: var(--link); color: var(--panel); }
+.quizv :focus-visible { outline-color: var(--link); }
+.w.got { border-color: var(--good); color: var(--good); }
+.w.miss { border-color: var(--warn); color: var(--warn); }
 .seg { display: flex; flex-wrap: wrap; gap: 4px; }
 
 /* settings */
@@ -228,9 +234,30 @@ const THEMES = {
   board: { name: "Board green (original)",
     light: { bg:"#edf1ee", panel:"#ffffff", ink:"#1b2420", muted:"#5b6a62", line:"#d3dcd6", chip:"#f2f5f3", head:"#1f5c4a", "head-ink":"#e9f3ee", field:"#e9f3ee", "field-ink":"#15211c", tile:"#f1dcaa", "tile-edge":"#c4a566", "tile-ink":"#2b2213", accent:"#b8364a", "on-accent":"#ffffff", link:"#2b74a8", good:"#22804e", bad:"#b8364a", new:"#7d50c4" },
     dark:  { bg:"#141c18", panel:"#1b2621", ink:"#e2ebe5", muted:"#93a69b", line:"#2c3b33", chip:"#22302a", head:"#1a4a3c", "head-ink":"#e2f1e8", field:"#e2f1e8", "field-ink":"#15211c", tile:"#e6cf97", "tile-edge":"#a88d52", "tile-ink":"#2b2213", accent:"#e8707f", "on-accent":"#1b0f12", link:"#84bfe3", good:"#56c487", bad:"#e8707f", new:"#b592ef" } },
+  cocoa: { name: "Cream and cocoa",
+    light: { bg:"#f6f0e4", panel:"#fffaf0", ink:"#2a2118", muted:"#74685a", line:"#e3d8c4", chip:"#f3ead9", head:"#4a3426", "head-ink":"#f8efe0", field:"#fffaf0", "field-ink":"#2a2118", tile:"#efd7a0", "tile-edge":"#c19d5a", "tile-ink":"#2a1f0e", accent:"#b5532e", "on-accent":"#ffffff", link:"#2f6f8f", good:"#3d7d3a", bad:"#b5532e", new:"#8a4fa8", warn:"#a66300" },
+    dark:  { bg:"#1c1712", panel:"#251e17", ink:"#f1e7d6", muted:"#a99a85", line:"#3a2f24", chip:"#2c241c", head:"#2c2119", "head-ink":"#f1e7d6", field:"#f1e7d6", "field-ink":"#2a2118", tile:"#e8cf96", "tile-edge":"#a7854a", "tile-ink":"#2a1f0e", accent:"#e58a5e", "on-accent":"#1c0f08", link:"#8cc3dc", good:"#7cc576", bad:"#ec8a6a", new:"#c9a0e8", warn:"#f0b45a" } },
+  vanilla: { name: "Vanilla and sage",
+    light: { bg:"#f5f2e8", panel:"#fffdf6", ink:"#22271f", muted:"#687060", line:"#e0dccb", chip:"#f0ede0", head:"#5f7a5b", "head-ink":"#fbfaf2", field:"#fffdf6", "field-ink":"#22271f", tile:"#f0dcaa", "tile-edge":"#c4a463", "tile-ink":"#2a1f0e", accent:"#8f4a62", "on-accent":"#ffffff", link:"#3b6e8a", good:"#3f7d45", bad:"#b3483d", new:"#7a55b0", warn:"#a66300" },
+    dark:  { bg:"#171a15", panel:"#1f231c", ink:"#e9ebe0", muted:"#9ba395", line:"#313828", chip:"#262b22", head:"#2f3d2c", "head-ink":"#e9ebe0", field:"#e9ebe0", "field-ink":"#22271f", tile:"#e6d19c", "tile-edge":"#a68a4f", "tile-ink":"#2a1f0e", accent:"#d98aa6", "on-accent":"#20101a", link:"#8fbfd8", good:"#86c98b", bad:"#e8877b", new:"#bfa3ec", warn:"#f0b45a" } },
+  parchment: { name: "Parchment and ink",
+    light: { bg:"#f3ecdc", panel:"#fbf6ea", ink:"#1f2433", muted:"#6b6555", line:"#dfd4bd", chip:"#efe6d3", head:"#1f2a44", "head-ink":"#f3ecdc", field:"#fbf6ea", "field-ink":"#1f2433", tile:"#ecd39a", "tile-edge":"#bb9853", "tile-ink":"#2a1f0e", accent:"#9c2f2f", "on-accent":"#ffffff", link:"#2c5aa0", good:"#2f7a4b", bad:"#9c2f2f", new:"#6c4fb0", warn:"#a66300" },
+    dark:  { bg:"#15171f", panel:"#1d2029", ink:"#ece5d4", muted:"#a39d8c", line:"#2f3340", chip:"#242833", head:"#10131c", "head-ink":"#ece5d4", field:"#ece5d4", "field-ink":"#1f2433", tile:"#e6cd92", "tile-edge":"#a4844a", "tile-ink":"#2a1f0e", accent:"#e07b70", "on-accent":"#1d0b0a", link:"#8db3f0", good:"#6fcb92", bad:"#e07b70", new:"#b9a0f0", warn:"#f0b45a" } },
+  blush: { name: "Butter and blush",
+    light: { bg:"#fbf3ea", panel:"#fffaf5", ink:"#2b2224", muted:"#7a6a6c", line:"#ecdcd3", chip:"#f7ebe3", head:"#a85d70", "head-ink":"#fff7f2", field:"#fffaf5", "field-ink":"#2b2224", tile:"#f3dca6", "tile-edge":"#c9a462", "tile-ink":"#2a1f0e", accent:"#a8445e", "on-accent":"#ffffff", link:"#3d6c9a", good:"#3a7f55", bad:"#b8424f", new:"#7d4fb8", warn:"#a66300" },
+    dark:  { bg:"#1d1618", panel:"#261d20", ink:"#f3e6e4", muted:"#ad9a9c", line:"#3b2d31", chip:"#2d2226", head:"#3a2229", "head-ink":"#f3e6e4", field:"#f3e6e4", "field-ink":"#2b2224", tile:"#ead09a", "tile-edge":"#a8874f", "tile-ink":"#2a1f0e", accent:"#ec8fa6", "on-accent":"#2a0f17", link:"#95bfe8", good:"#7ccc9a", bad:"#f08a92", new:"#c7a6f0", warn:"#f0b45a" } },
+  oat: { name: "Oat and olive",
+    light: { bg:"#f2ede1", panel:"#fbf8ef", ink:"#26261c", muted:"#6e6b5a", line:"#ddd6c3", chip:"#eee8d9", head:"#4f5a2c", "head-ink":"#f6f3e6", field:"#fbf8ef", "field-ink":"#26261c", tile:"#eed69e", "tile-edge":"#bd9a57", "tile-ink":"#2a1f0e", accent:"#9a5b1f", "on-accent":"#ffffff", link:"#33658a", good:"#3e7a3c", bad:"#b1452f", new:"#7552a8", warn:"#a66300" },
+    dark:  { bg:"#191912", panel:"#22221a", ink:"#ece8da", muted:"#a39f8b", line:"#34342a", chip:"#29291f", head:"#2c3318", "head-ink":"#ece8da", field:"#ece8da", "field-ink":"#26261c", tile:"#e6cd92", "tile-edge":"#a4844a", "tile-ink":"#2a1f0e", accent:"#e0a35e", "on-accent":"#1e1206", link:"#8cb9de", good:"#85c47e", bad:"#ea8a70", new:"#bc9fe8", warn:"#f0b45a" } },
   tournament: { name: "Tournament board",
     light: { bg:"#e9ece4", panel:"#fbfcf8", ink:"#18211f", muted:"#5d6863", line:"#cfd6cc", chip:"#eff2ea", head:"#0e6a62", "head-ink":"#f0faf7", field:"#ffffff", "field-ink":"#18211f", tile:"#f0d9a4", "tile-edge":"#bf9d5c", "tile-ink":"#2a1f0e", accent:"#cf3b45", "on-accent":"#ffffff", link:"#2f7fc1", good:"#2a8551", bad:"#cf3b45", new:"#c2507f" },
     dark:  { bg:"#121a19", panel:"#1a2423", ink:"#e4ecea", muted:"#93a39f", line:"#2b3a38", chip:"#202d2b", head:"#0b4d47", "head-ink":"#e4f6f2", field:"#e4f6f2", "field-ink":"#122020", tile:"#e8d09a", "tile-edge":"#a6874e", "tile-ink":"#2a1f0e", accent:"#f0727a", "on-accent":"#1e0d0f", link:"#7dbbf0", good:"#5ccb8c", bad:"#f0727a", new:"#ee8db5" } },
+  ocean: { name: "Ocean",
+    light: { bg:"#eaf1f4", panel:"#ffffff", ink:"#13232c", muted:"#5a6d77", line:"#cfdde3", chip:"#eff5f7", head:"#12485e", "head-ink":"#e9f4f8", field:"#e9f4f8", "field-ink":"#13232c", tile:"#f0d9a4", "tile-edge":"#c09d5b", "tile-ink":"#2a1f0e", accent:"#c4562f", "on-accent":"#ffffff", link:"#1f6fa8", good:"#23825a", bad:"#c2453a", new:"#7650c4", warn:"#a66300" },
+    dark:  { bg:"#0e1a20", panel:"#15242c", ink:"#e1edf2", muted:"#8ea5b0", line:"#24363f", chip:"#1a2b34", head:"#0b3344", "head-ink":"#e1edf2", field:"#e1edf2", "field-ink":"#13232c", tile:"#e8cf96", "tile-edge":"#a7854a", "tile-ink":"#2a1f0e", accent:"#f08a63", "on-accent":"#24100a", link:"#86c3ee", good:"#5fd09a", bad:"#f08a7d", new:"#b49cf5", warn:"#f0b45a" } },
+  plum: { name: "Plum",
+    light: { bg:"#f2eef4", panel:"#ffffff", ink:"#211a26", muted:"#6b6072", line:"#ddd4e2", chip:"#f5f1f7", head:"#4b2c5e", "head-ink":"#f6eefa", field:"#f6eefa", "field-ink":"#211a26", tile:"#f0d8a2", "tile-edge":"#c19c58", "tile-ink":"#2a1f0e", accent:"#b8502b", "on-accent":"#ffffff", link:"#4561c2", good:"#2f8257", bad:"#be3d4f", new:"#8a4fc9", warn:"#a66300" },
+    dark:  { bg:"#18131c", panel:"#211a27", ink:"#ece4f1", muted:"#a597ad", line:"#352a3d", chip:"#281f2f", head:"#2b1838", "head-ink":"#ece4f1", field:"#ece4f1", "field-ink":"#211a26", tile:"#e8cd94", "tile-edge":"#a6834a", "tile-ink":"#2a1f0e", accent:"#f09062", "on-accent":"#241008", link:"#9db0f5", good:"#6fcf9a", bad:"#f28597", new:"#c9a3f5", warn:"#f0b45a" } },
   midnight: { name: "Midnight gold",
     light: { bg:"#eceff6", panel:"#ffffff", ink:"#151b2b", muted:"#5d6680", line:"#d4d9e6", chip:"#f1f3f9", head:"#1c2541", "head-ink":"#eef1fb", field:"#eef1fb", "field-ink":"#151b2b", tile:"#f2cf72", "tile-edge":"#c19a36", "tile-ink":"#251c05", accent:"#c4621a", "on-accent":"#ffffff", link:"#2f5fd0", good:"#25865a", bad:"#c43b3b", new:"#7a52cc" },
     dark:  { bg:"#0e1422", panel:"#161e31", ink:"#e5e9f4", muted:"#8e99b6", line:"#26304a", chip:"#1c253b", head:"#0a0f1c", "head-ink":"#e5e9f4", field:"#1c253b", "field-ink":"#e5e9f4", tile:"#efc45a", "tile-edge":"#b48d2c", "tile-ink":"#231a03", accent:"#f2a050", "on-accent":"#1f1203", link:"#86aefc", good:"#5fcf96", bad:"#ff7d7d", new:"#b79bff" } },
@@ -248,7 +275,8 @@ function applySettings() {
   const t = THEMES[SET.theme] || THEMES.board;
   const dark = SET.mode === "dark" || (SET.mode === "auto" && darkMQ.matches);
   const root = document.documentElement;
-  for (const [k, v] of Object.entries(t[dark ? "dark" : "light"])) root.style.setProperty("--" + k, v);
+  const tok = { warn: dark ? "#f0b45a" : "#a66300", ...t[dark ? "dark" : "light"] };
+  for (const [k, v] of Object.entries(tok)) root.style.setProperty("--" + k, v);
   root.style.colorScheme = dark ? "dark" : "light";
   root.style.fontSize = { sm: "14px", md: "16px", lg: "18px" }[SET.size] || "16px";
   root.dataset.values = SET.values ? "on" : "off";
@@ -402,7 +430,7 @@ let lastResults = [];
 function results(el, words, opts = {}) {
   const st = { len: opts.len || 0, shown: +SET.pageSize };
   const lens = [...new Set(words.map(w => w.length))].sort((a, b) => a - b);
-  if (st.len && !lens.includes(st.len)) st.len = 0;
+  if (st.len && (!lens.includes(st.len) || lens.length < 2)) st.len = 0;
   function draw() {
     const list = (st.len ? words.filter(w => w.length === st.len) : [...words]).sort(sorters[SET.sort] || sorters.prob);
     lastResults = list;
@@ -642,11 +670,11 @@ function doSearch() {
 VIEWS.lists = (id) => {
   const g = G(id);
   if (!g) {
-    let html = `<div><h3 class="title">Word lists</h3><p class="sub">Ready-made study groups, with hooks and definitions. The same groups are in the Search group picker, so you can combine them with patterns and racks.</p></div>`;
+    let html = `<h3 class="title">Word lists</h3>`;
     let open = false;
     for (const x of GROUPS) {
       if (x.sect) { html += `${open ? "</div>" : ""}<div class="sect">${x.sect}</div><div class="listgrid">`; open = true; }
-      else html += `<button class="lcard" data-list="${x.id}"><b>${esc(x.name)}</b><span>${esc(x.blurb)}</span><i id="cnt_${x.id}">${cache[x.id] ? cache[x.id].length.toLocaleString() + (x.special ? " stems" : " words") : "…"}</i></button>`;
+      else html += `<button class="lcard" data-list="${x.id}"><b>${esc(x.name)}</b><i id="cnt_${x.id}">${cache[x.id] ? cache[x.id].length.toLocaleString() + (x.special ? " stems" : " words") : "…"}</i></button>`;
     }
     $("#view").innerHTML = html + "</div>";
     $("#view").querySelectorAll("[data-list]").forEach(b => b.onclick = () => location.hash = "lists/" + b.dataset.list);
@@ -763,19 +791,34 @@ function record(w, ok) {
 function drawQuestion() {
   const q = Q.qs[Q.i], e = DICT.get(q.w), mode = Q.mode;
   let prompt = "", input = "";
-  if (mode === "anagram") { prompt = tilesHTML(alpha(q.w)); input = `<input class="qinput" id="qa" placeholder="Type the word(s), space between">`; }
+  Q.found = [];
+  const nAna = anagrams(q.w).length;
+  if (mode === "anagram") { prompt = tilesHTML(alpha(q.w)); input = `<input class="qinput" id="qa" placeholder="${nAna > 1 ? `Type each word (${nAna} to find)` : "Type the word"}"><div class="words" id="found" style="margin-top:8px"></div><p class="small" style="margin:6px 0 0">Correct words are taken as you type. Press Enter to give up and see the answer.</p>`; }
   if (mode === "phony") { prompt = `<div class="qprompt">${q.show}</div>`; input = `<div class="row"><button type="button" class="btn primary" data-ans="valid">Valid (V)</button><button type="button" class="btn" data-ans="phony">Phony (P)</button></div>`; }
   if (mode === "hooks") { prompt = `<div class="qprompt">${q.w}</div>`; input = `<div class="pair"><input class="qinput" id="qf" placeholder="front hooks"><input class="qinput" id="qb" placeholder="back hooks"></div><p class="small" style="margin:6px 0 0">Leave blank if none. Press Enter to check.</p>`; }
-  if (mode === "def") { prompt = `<div class="qdef">${esc(e.d)}</div><p class="small" style="margin:0">${q.w.length} letters · <a href="#" id="hint">show tiles</a></p><div id="hintBox"></div>`; input = `<input class="qinput" id="qa" placeholder="The word">`; }
+  if (mode === "def") { prompt = `<div class="qdef">${esc(e.d)}</div><p class="small" style="margin:0">${q.w.length} letters · <a href="#" id="hint">show tiles</a></p><div id="hintBox"></div>`; input = `<input class="qinput" id="qa" placeholder="The word"><p class="small" style="margin:6px 0 0">The right word is taken as you type. Press Enter to give up.</p>`; }
   $("#view").innerHTML = `<div class="row"><b style="font-family:var(--display)">${MODES[mode].name}</b><span class="small">Question ${Q.i + 1} of ${Q.qs.length} · ${Q.right} right</span><button class="btn sm" id="qquit" style="margin-left:auto">End quiz</button></div>
     <div class="progress"><div style="width:${(Q.i / Q.qs.length) * 100}%"></div></div>
     <div class="card" style="display:flex;flex-direction:column;gap:14px">
-      ${mode === "anagram" ? `<p class="small" style="margin:0">${anagrams(q.w).length > 1 ? "More than one word. Find them all." : "One word."}</p>` : ""}
+      ${mode === "anagram" ? `<p class="small" style="margin:0">${nAna > 1 ? `${nAna} words. Find them all.` : "One word."}</p>` : ""}
       ${prompt}<form id="qform" autocomplete="off">${input}</form><div id="qfb"></div>
     </div>`;
   $("#qquit").onclick = () => { Q.done = true; VIEWS.quiz(); };
   $("#hint")?.addEventListener("click", ev => { ev.preventDefault(); $("#hintBox").innerHTML = tilesHTML(alpha(q.w), true); });
   ($("#qa") || $("#qf"))?.focus();
+  // take a correct answer the moment it is typed; with several anagrams, clear the box after each one
+  $("#qa")?.addEventListener("input", ev => {
+    if (Q.answered) return;
+    const v = ev.target.value.toUpperCase().replace(/[^A-Z]/g, "");
+    if (mode === "anagram") {
+      const want = anagrams(q.w);
+      if (want.includes(v) && !Q.found.includes(v)) {
+        Q.found.push(v); ev.target.value = "";
+        $("#found").innerHTML = Q.found.map(w => `<span class="w got">✓ ${w}</span>`).join("");
+        if (Q.found.length === want.length) check();
+      }
+    } else if (mode === "def" && (v === q.w || (v.length === q.w.length && DICT.get(v)?.d === e.d))) check();
+  });
   $("#qform").addEventListener("submit", ev => { ev.preventDefault(); Q.answered ? next() : check(); });
   $("#view").querySelectorAll("[data-ans]").forEach(b => b.onclick = () => { if (!Q.answered) check(b.dataset.ans); });
   document.onkeydown = ev => {
@@ -788,9 +831,10 @@ function check(ans) {
   let ok = false, reveal = "";
   const letters = s => [...new Set((s || "").toUpperCase().replace(/[^A-Z]/g, ""))].sort().join("");
   if (mode === "anagram") {
-    const want = anagrams(q.w), got = new Set($("#qa").value.toUpperCase().split(/[^A-Z]+/).filter(Boolean));
-    ok = want.every(a => got.has(a)) && [...got].every(g => want.includes(g));
-    reveal = want.map(chip).join(" ");
+    const want = anagrams(q.w);
+    ok = want.every(a => Q.found.includes(a));
+    reveal = want.map(w => `<a class="w ${Q.found.includes(w) ? "got" : "miss"}" href="#w/${w}">${Q.found.includes(w) ? "✓ " : ""}${w}</a>`).join(" ");
+    if (!ok && Q.found.length) reveal += `<span class="small">You found ${Q.found.length} of ${want.length}.</span>`;
   } else if (mode === "phony") {
     ok = (ans === "phony") === !!q.phony;
     reveal = q.phony ? `<span>${q.show} is phony. It came from</span> ${chip(q.w)}` : `${chip(q.w)} <span>is valid</span>`;
@@ -799,7 +843,7 @@ function check(ans) {
     reveal = `<span class="small">front</span> <b>${e.fh || "none"}</b> <span class="small">back</span> <b>${e.bh || "none"}</b>`;
   } else {
     const g = $("#qa").value.toUpperCase().replace(/[^A-Z]/g, "");
-    ok = g === q.w || (DICT.has(g) && DICT.get(g).d === e.d);
+    ok = g === q.w || (g.length === q.w.length && DICT.get(g)?.d === e.d);
     reveal = chip(q.w);
   }
   Q.answered = true;
@@ -900,6 +944,7 @@ function route() {
   const t = VIEWS[tab] ? tab : "w";
   document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === t));
   if (t !== "quiz") document.onkeydown = null;
+  $("#view").classList.toggle("quizv", t === "quiz");
   VIEWS[t](arg);
   window.scrollTo({ top: 0 });
 }
