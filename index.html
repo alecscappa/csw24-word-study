@@ -915,6 +915,28 @@ function practicePool(o) {
   if (mine) { const set = new Set(mine); pool = pool.filter(w => set.has(w)); }
   return (poolCache = { key, pool, error: r.error }).pool;
 }
+const leftText = () => { const n = P.want.length, f = P.found.length; return n === 1 ? (f ? "Found it" : "1 word") : `${n} words · ${f} found · ${n - f} left`; };
+// Review queue, like a cardbox: a missed rack comes back ~4 cards later; each correct
+// answer on a review pushes it further out (10, then 25 cards); a third correct retires it.
+const GAPS = [4, 10, 25];
+const getPQ = () => store.get("pq", { n: 0, items: [] });
+function schedule(a, ok) {
+  const q = getPQ(); q.n++;
+  const it = q.items.find(x => x.a === a);
+  if (!ok) { if (it) { it.lvl = 0; it.due = q.n + GAPS[0]; } else q.items.push({ a, lvl: 0, due: q.n + GAPS[0] }); }
+  else if (it) { it.lvl++; if (it.lvl >= GAPS.length) q.items = q.items.filter(x => x !== it); else it.due = q.n + GAPS[it.lvl]; }
+  store.set("pq", q);
+}
+const recent = [];
+function pickPractice(pool) {
+  const q = getPQ();
+  const inPool = new Set(pool.map(alpha));
+  const due = q.items.filter(x => x.due <= q.n && inPool.has(x.a) && !recent.includes(x.a)).sort((a, b) => a.due - b.due)[0];
+  let w = due ? anagrams(due.a)[0] : null;
+  for (let t = 0; !w && t < 30; t++) { const c = pool[Math.floor(Math.random() * pool.length)]; if (!recent.includes(alpha(c)) || t === 29) w = c; }
+  recent.unshift(alpha(w)); recent.length = Math.min(recent.length, Math.min(20, Math.floor(pool.length / 2)));
+  return w;
+}
 VIEWS.practice = () => {
   const o = { ...PO_DEFAULT, ...(SET.practice || {}) };
   const pool = practicePool(o);
@@ -936,7 +958,7 @@ VIEWS.practice = () => {
     </details>`;
   const lenRow = `<div class="row">
       <div class="chips"><button class="btn sm ${o.len ? "" : "on"}" data-plen="0">Any</button>${range(2, 15).map(n => `<button class="btn sm ${n === +o.len ? "on" : ""}" data-plen="${n}">${n}</button>`).join("")}</div>
-      <span class="small" style="margin-left:auto">Streak <b>${P.streak}</b> · solved ${P.solved} of ${P.seen}</span>
+      <span class="small" style="margin-left:auto">Streak <b>${P.streak}</b> · solved ${P.solved} of ${P.seen} · ${getPQ().items.length} to review</span>
     </div>`;
   const wire = () => {
     $("#pOpts").addEventListener("toggle", e => store.set("pOpen", e.target.open));
@@ -950,18 +972,20 @@ VIEWS.practice = () => {
     $("#view").innerHTML = lenRow + opts + `<div class="card"><p class="empty">${esc(poolCache.error || "No words match these options. Try another length or loosen a filter.")}</p></div>`;
     return wire();
   }
-  const w = pool[Math.floor(Math.random() * pool.length)];
+  const w = pickPractice(pool);
   P.want = anagrams(w); P.found = []; P.done = false; P.letters = alpha(w);
+  P.review = !!getPQ().items.find(x => x.a === P.letters);
   $("#view").innerHTML = lenRow + `
     <div class="card practice">
       <div class="ptiles" id="ptiles">${tilesHTML(P.letters)}</div>
-      <p class="small" style="margin:0">${P.want.length > 1 ? `${P.want.length} words` : "1 word"}</p>
+      <p class="small" style="margin:0;text-align:center"><span id="pleft">${leftText()}</span>${P.review ? ` · <b style="color:var(--warn)">review</b>` : ""}</p>
       <input class="qinput" id="pa" placeholder="Type the answer" autocomplete="off" autocapitalize="characters" spellcheck="false">
       <div class="row"><button class="btn" id="pShuf">Shuffle</button><button class="btn" id="pReveal">Show answer</button><button class="btn primary" id="pNext">Next</button></div>
       <div class="rows" id="pfound"></div>
     </div>` + opts;
   const finish = ok => {
     P.done = true; P.seen++;
+    schedule(P.letters, ok);
     if (ok) { P.streak++; P.solved++; } else P.streak = 0;
     for (const x of P.want) record(x, ok);
     $("#pfound").insertAdjacentHTML("beforeend", P.want.filter(x => !P.found.includes(x)).map(x => quizRow(x, "miss")).join(""));
@@ -973,13 +997,14 @@ VIEWS.practice = () => {
     const v = ev.target.value.toUpperCase().replace(/[^A-Z]/g, "");
     if (P.done || !P.want.includes(v) || P.found.includes(v)) return;
     P.found.push(v); ev.target.value = "";
+    $("#pleft").textContent = leftText();
     $("#pfound").insertAdjacentHTML("beforeend", quizRow(v, "got"));
     if (P.found.length === P.want.length) finish(true);
   });
   $("#pa").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); P.done ? VIEWS.practice() : finish(false); } });
   $("#pShuf").onclick = () => { $("#ptiles").innerHTML = tilesHTML(shuffle([...P.letters]).join("")); $("#pa").focus(); };
   $("#pReveal").onclick = () => { if (!P.done) finish(false); };
-  $("#pNext").onclick = () => { if (!P.done && P.found.length < P.want.length) P.streak = 0; VIEWS.practice(); };
+  $("#pNext").onclick = () => { if (!P.done) { P.streak = 0; P.seen++; schedule(P.letters, false); } VIEWS.practice(); };
   wire();
 };
 
