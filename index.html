@@ -1102,7 +1102,7 @@ VIEWS.settings = () => {
   </div>
   <div class="card">
     <div class="fs"><h2 class="lbl">Your data</h2><p class="small" style="margin:0 0 10px">Study list ${getStars().length} · memory hooks ${Object.keys(getNotes()).length} · quiz records ${Object.keys(store.get("stats", {})).length}</p>
-      <div class="row"><button class="btn sm" id="clrHist">Clear history</button><button class="btn sm" id="clrStats">Clear quiz records</button><button class="btn sm" id="resetSet">Reset settings</button></div></div>
+      <div class="row"><button class="btn sm" id="clrHist">Clear history</button><button class="btn sm" id="clrStats">Clear quiz records</button><button class="btn sm" id="clrReview">Clear practice review (${getPQ().items.length})</button><button class="btn sm" id="resetSet">Reset settings</button></div></div>
   </div>`;
   const v = $("#view");
   v.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => { saveSettings({ theme: b.dataset.theme }); VIEWS.settings(); });
@@ -1114,6 +1114,7 @@ VIEWS.settings = () => {
   $("#setRmin").onchange = e => saveSettings({ randMin: +e.target.value, randMax: Math.max(+e.target.value, SET.randMax) });
   $("#setRmax").onchange = e => saveSettings({ randMax: +e.target.value, randMin: Math.min(+e.target.value, SET.randMin) });
   confirmBtn($("#clrHist"), () => { store.set("hist", []); VIEWS.settings(); });
+  confirmBtn($("#clrReview"), () => { store.set("pq", { n: getPQ().n, items: [] }); VIEWS.settings(); });
   confirmBtn($("#clrStats"), () => { store.set("stats", {}); store.set("missed", []); VIEWS.settings(); });
   confirmBtn($("#resetSet"), () => { SET = { ...SET_DEFAULT }; store.set("settings", SET); applySettings(); VIEWS.settings(); });
 };
