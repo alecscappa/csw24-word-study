@@ -123,8 +123,14 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 @media (max-width: 620px) {
   .r { grid-template-columns: 3.2em max-content minmax(0,1fr); }
   .r .d { grid-column: 2 / -1; } .r .meta { display: none; }
+  .rows.ranked .r { grid-template-columns: 2em 2.4em max-content minmax(0,1fr); gap: 6px; }
+  .rows.ranked .r .d { grid-column: 3 / -1; }
 }
 .more { margin-top: 12px; }
+.rangebar { margin-top: 10px; gap: 6px; }
+.rangebar input { width: 4.5em; border: 1px solid var(--line); background: var(--chip); border-radius: 6px; padding: 4px 7px; font: 600 .85rem var(--mono); }
+.r .rk { font: 400 .74rem var(--mono); color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.rows.ranked .r { grid-template-columns: 3em 4.5em max-content 4.5em minmax(0,1fr) auto; }
 
 /* forms */
 .fs + .fs { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 14px; }
@@ -428,24 +434,49 @@ const sorters = {
 let lastResults = [];
 // Results component: toolbar (count, length chips, sort, toggles, actions) + rows + paging
 function results(el, words, opts = {}) {
-  const st = { len: opts.len || 0, shown: +SET.pageSize };
+  // range = which ranks to show, counted in the current sort order (e.g. 1–100 or 30–50)
+  const st = { len: opts.len || 0, shown: +SET.pageSize, from: +opts.range?.from || 0, to: +opts.range?.to || 0 };
   const lens = [...new Set(words.map(w => w.length))].sort((a, b) => a - b);
   if (st.len && (!lens.includes(st.len) || lens.length < 2)) st.len = 0;
   function draw() {
-    const list = (st.len ? words.filter(w => w.length === st.len) : [...words]).sort(sorters[SET.sort] || sorters.prob);
+    const full = (st.len ? words.filter(w => w.length === st.len) : [...words]).sort(sorters[SET.sort] || sorters.prob);
+    const ranged = st.from > 1 || st.to > 0;
+    const lo = Math.max(1, st.from || 1), hi = st.to ? Math.max(st.to, lo) : full.length;
+    const list = ranged ? full.slice(lo - 1, hi) : full;
+    const offset = ranged ? lo - 1 : 0;
     lastResults = list;
+    const total = st.len ? `${full.length.toLocaleString()} ${st.len}-letter words <span class="small">(${words.length.toLocaleString()} in all)</span>` : `${full.length.toLocaleString()} word${full.length === 1 ? "" : "s"}`;
     el.innerHTML = `
       <div class="toolbar">
-        <span class="count">${st.len ? `${list.length.toLocaleString()} of ${words.length.toLocaleString()} words <span class="small">(${st.len}-letter only)</span>` : `${list.length.toLocaleString()} word${list.length === 1 ? "" : "s"}`}</span>
+        <span class="count">${ranged ? `Ranks ${lo.toLocaleString()}–${Math.min(hi, full.length).toLocaleString()} <span class="small">of ${total}</span>` : total}</span>
         <select id="sortSel" aria-label="Sort by">${Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${k === SET.sort ? "selected" : ""}>Sort: ${v}</option>`).join("")}</select>
         <label class="check small"><input type="checkbox" id="defChk" ${SET.defs ? "checked" : ""}> Definitions</label>
         <button class="btn sm" id="quizThese">Quiz these</button>
         <button class="btn sm" id="starAll">Star all</button>
       </div>
+      <div class="row rangebar">
+        <span class="small">Show ranks</span>
+        <input id="rFrom" inputmode="numeric" placeholder="1" value="${st.from || ""}" aria-label="From rank">
+        <span class="small">to</span>
+        <input id="rTo" inputmode="numeric" placeholder="all" value="${st.to || ""}" aria-label="To rank">
+        ${[30, 50, 100].map(n => `<button class="btn sm ${st.from <= 1 && st.to === n ? "on" : ""}" data-top="${n}">Top ${n}</button>`).join("")}
+        <button class="btn sm ${ranged ? "" : "on"}" data-top="0">All</button>
+        <span class="small">in ${SORTS[SET.sort] || "Probability"} order</span>
+      </div>
       ${lens.length > 1 ? `<div class="chips" style="margin:10px 0 6px"><button class="btn sm ${st.len ? "" : "on"}" data-len="0">All lengths</button>${lens.map(n => `<button class="btn sm ${st.len === n ? "on" : ""}" data-len="${n}">${n}</button>`).join("")}</div>` : ""}
-      ${list.length ? `<div class="rows ${SET.defs ? "" : "nodefs"} ${SET.prob ? "" : "noprob"} ${SET.hooks ? "" : "nohooks"}">${list.slice(0, st.shown).map(w => rowHTML(w, opts.masks?.get(w))).join("")}</div>` : `<p class="empty" style="margin-top:10px">No words match.</p>`}
+      ${list.length ? `<div class="rows ${ranged ? "ranked" : ""} ${SET.defs ? "" : "nodefs"} ${SET.prob ? "" : "noprob"} ${SET.hooks ? "" : "nohooks"}">${list.slice(0, st.shown).map((w, i) => rowHTML(w, opts.masks?.get(w), ranged ? offset + i + 1 : 0)).join("")}</div>` : `<p class="empty" style="margin-top:10px">${ranged && full.length ? `There are only ${full.length.toLocaleString()} words, so rank ${lo.toLocaleString()} is past the end.` : "No words match."}</p>`}
       ${list.length > st.shown ? `<button class="btn more" id="moreBtn">Show ${Math.min(+SET.pageSize, list.length - st.shown).toLocaleString()} more</button>` : ""}`;
     el.querySelectorAll("[data-len]").forEach(b => b.onclick = () => { st.len = +b.dataset.len; st.shown = +SET.pageSize; draw(); });
+    const setRange = (from, to) => {
+      from = Math.max(0, parseInt(from) || 0); to = Math.max(0, parseInt(to) || 0);
+      if (from && to && to < from) [from, to] = [to, from];
+      st.from = from; st.to = to; st.shown = +SET.pageSize; opts.range?.save?.(from || "", to || ""); draw();
+    };
+    el.querySelectorAll("[data-top]").forEach(b => b.onclick = () => setRange(0, +b.dataset.top));
+    for (const id of ["#rFrom", "#rTo"]) {
+      el.querySelector(id).onchange = () => setRange(el.querySelector("#rFrom").value, el.querySelector("#rTo").value);
+      el.querySelector(id).onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); e.target.dispatchEvent(new Event("change")); } };
+    }
     el.querySelector("#sortSel").onchange = e => { saveSettings({ sort: e.target.value }); draw(); };
     el.querySelector("#defChk").onchange = e => { saveSettings({ defs: e.target.checked }); el.querySelector(".rows")?.classList.toggle("nodefs", !SET.defs); };
     el.querySelector("#moreBtn")?.addEventListener("click", () => { st.shown += +SET.pageSize; draw(); });
@@ -454,10 +485,10 @@ function results(el, words, opts = {}) {
   }
   draw();
 }
-function rowHTML(w, mask) {
+function rowHTML(w, mask, rank) {
   const e = DICT.get(w);
   const label = mask ? [...w].map((c, i) => mask[i] ? `<mark>${c.toLowerCase()}</mark>` : c).join("") : w;
-  return `<div class="r" data-go="${w}"><span class="fh">${hookText(e.fh, e.fhNew)}</span><span class="wl">${label}${e.n ? "<sup>+</sup>" : ""}</span><span class="bh">${hookText(e.bh, e.bhNew)}</span><span class="d">${esc(e.d)}</span><span class="meta">#${e.p.toLocaleString()}</span></div>`;
+  return `<div class="r" data-go="${w}">${rank ? `<span class="rk">${rank}.</span>` : ""}<span class="fh">${hookText(e.fh, e.fhNew)}</span><span class="wl">${label}${e.n ? "<sup>+</sup>" : ""}</span><span class="bh">${hookText(e.bh, e.bhNew)}</span><span class="d">${esc(e.d)}</span><span class="meta">#${e.p.toLocaleString()}</span></div>`;
 }
 
 // ---------- views ----------
@@ -561,7 +592,7 @@ async function fetchOnline(w) {
 }
 
 // ---------- search ----------
-const SEARCH_DEFAULT = { pattern: "", rack: "", mode: "exact", min: "", max: "", starts: "", ends: "", contains: "", incl: "", excl: "", def: "", group: "", top: "" };
+const SEARCH_DEFAULT = { pattern: "", rack: "", mode: "exact", min: "", max: "", starts: "", ends: "", contains: "", incl: "", excl: "", def: "", group: "", top: "", from: "", to: "" };
 let searchState = Object.fromEntries(Object.keys(SEARCH_DEFAULT).map(k => [k, store.get("search", {})[k] ?? SEARCH_DEFAULT[k]]));
 if (!G(searchState.group) || G(searchState.group).special) searchState.group = "";
 
@@ -655,14 +686,14 @@ VIEWS.search = () => {
 };
 function doSearch() {
   const box = $("#sres"), s = searchState;
-  if (!Object.entries(s).some(([k, v]) => k !== "mode" && v)) { box.innerHTML = `<p class="empty">Pick a group or set at least one option.</p>`; return; }
+  if (!Object.entries(s).some(([k, v]) => !["mode", "from", "to"].includes(k) && v)) { box.innerHTML = `<p class="empty">Pick a group or set at least one option.</p>`; return; }
   box.innerHTML = `<p class="small">Searching…</p>`;
   setTimeout(() => {
     const r = runSearch(s);
     if (r.error) { box.innerHTML = `<p class="empty">${esc(r.error)}</p>`; return; }
     const g = s.group && G(s.group);
-    const onlyGroup = g && !Object.entries(s).some(([k, v]) => !["mode", "group"].includes(k) && v);
-    results(box, r.words, { masks: r.masks, len: onlyGroup ? g.len : 0 });
+    const onlyGroup = g && !Object.entries(s).some(([k, v]) => !["mode", "group", "from", "to"].includes(k) && v);
+    results(box, r.words, { masks: r.masks, len: onlyGroup ? g.len : 0, range: { from: s.from, to: s.to, save: (from, to) => { searchState.from = from; searchState.to = to; store.set("search", searchState); } } });
   }, 10);
 }
 
