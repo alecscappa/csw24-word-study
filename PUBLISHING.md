@@ -39,7 +39,23 @@ advice.
 
 ## Getting it on your phone
 
-**Best option: a private website plus "Add to Home Screen" (free).**
+**Chosen route: a public website with no word list, and you load the lexicon
+yourself.** The site code has no Collins words in it, so it can be public.
+
+- **Settings → Lexicon → Load lexicon file:** pick `words.js` (made by
+  `python3 build.py`). The site saves it on that device only and never uploads it.
+  It has to be done once per device or browser.
+- **Getting `words.js` onto the phone:** AirDrop it to Files, or put it in
+  iCloud Drive.
+- **Install it:** open the site in Safari, then tap Share → Add to Home Screen.
+  It gets its own icon, opens full-screen and works offline (`manifest.json`
+  and `sw.js`).
+- **On the Mac:** opening `index.html` from the folder still uses `words.js`
+  straight away, as before.
+
+### Options considered
+
+**Private website plus "Add to Home Screen" (free).**
 
 - Put the site online, open it in your phone's browser, and use "Add to Home
   Screen". It gets its own icon and opens full-screen like an app.

@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CSW24 Word Study</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="CSW24">
+<meta name="theme-color" content="#1f5c4a">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
@@ -232,6 +237,39 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 
 <script src="words.js"></script>
 <script>
+// Lexicon loader. The word list comes from words.js beside this page (local build), or from a copy the
+// user loaded in Settings, which is kept in this browser's IndexedDB. The app script below starts once it's ready.
+const LEX = {
+  source: window.CSW_TSV ? "file" : null,
+  db: () => new Promise((ok, no) => { const r = indexedDB.open("csw24", 1); r.onupgradeneeded = () => r.result.createObjectStore("lex"); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); }),
+  async get() { const db = await LEX.db(); return new Promise((ok, no) => { const r = db.transaction("lex").objectStore("lex").get("tsv"); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); }); },
+  async put(v) { const db = await LEX.db(); return new Promise((ok, no) => { const t = db.transaction("lex", "readwrite"), st = t.objectStore("lex"); v == null ? st.delete("tsv") : st.put(v, "tsv"); t.oncomplete = ok; t.onerror = () => no(t.error); }); },
+  // accepts words.js from build.py, or the plain tab-separated text inside it
+  parse(text) {
+    const m = text.match(/^\s*window\.CSW_TSV\s*=\s*/);
+    const tsv = m ? JSON.parse(text.slice(m[0].length).trim().replace(/;$/, "")) : text.trim();
+    if (!/^[A-Z]+\t[^\n]*\t[^\n]*\t[^\n]*\t[^\n]*\t\d+/.test(tsv)) throw new Error("it isn't a words.js file from build.py");
+    return tsv;
+  },
+  async load(file) { await LEX.put(LEX.parse(await file.text())); await navigator.storage?.persist?.().catch(() => {}); location.reload(); },
+  html: () => `<p class="small" style="margin:0 0 10px">${{ file: "Using <code>words.js</code> from this folder.", saved: "Using the lexicon loaded on this device." }[LEX.source] || "No lexicon loaded yet."}
+    Load <code>words.js</code> (made by <code>python3 build.py</code> from your Zyzzyva CSW24 lexicon). It stays on this device and is never uploaded.</p>
+    <div class="row"><label class="btn sm">Load lexicon file<input type="file" id="lexFile" accept=".js,.tsv,.txt,text/plain,text/javascript" hidden></label>${LEX.source === "saved" ? `<button class="btn sm" id="lexDel">Remove from this device</button>` : ""}<span class="small" id="lexMsg"></span></div>`,
+  wire() {
+    const msg = document.getElementById("lexMsg");
+    document.getElementById("lexFile").onchange = e => { const f = e.target.files[0]; if (!f) return; msg.textContent = "Loading…"; LEX.load(f).catch(err => msg.textContent = "Couldn't load that file: " + err.message); };
+  },
+};
+if (location.protocol === "https:" && "serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+(async () => {
+  if (!window.CSW_TSV) { try { window.CSW_TSV = await LEX.get(); if (window.CSW_TSV) LEX.source = "saved"; } catch {} }
+  if (document.readyState === "loading") await new Promise(r => document.addEventListener("DOMContentLoaded", r));
+  const app = document.createElement("script");
+  app.textContent = document.getElementById("app").textContent;
+  document.body.append(app);
+})();
+</script>
+<script id="app" type="text/plain">
 const VALUES = {A:1,B:3,C:3,D:2,E:1,F:4,G:2,H:4,I:1,J:8,K:5,L:1,M:3,N:1,O:1,P:3,Q:10,R:1,S:1,T:1,U:1,V:4,W:4,X:8,Y:4,Z:10};
 const AZ = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const $ = s => document.querySelector(s);
@@ -305,8 +343,9 @@ applySettings();
 // ---------- lexicon ----------
 const DICT = new Map(), ANA = new Map(), BYLEN = {};
 if (!window.CSW_TSV) {
-  $("#view").innerHTML = `<div class="card"><h3 class="title">Word data missing</h3><p>Run <code>python3 build.py</code> in this folder to create <code>words.js</code> from your Zyzzyva CSW24 lexicon, then reload.</p></div>`;
-  throw new Error("words.js not found");
+  $("#view").innerHTML = `<div class="card"><h3 class="title">Load your lexicon</h3>${LEX.html()}</div>`;
+  LEX.wire();
+  throw new Error("no lexicon loaded");
 }
 for (const line of window.CSW_TSV.split("\n")) {
   const [w, d, fh, bh, sym, p, pl] = line.split("\t");
@@ -1101,6 +1140,9 @@ VIEWS.settings = () => {
       <select id="setRmax" aria-label="Longest">${range(2, 15).map(n => `<option ${n === +SET.randMax ? "selected" : ""}>${n}</option>`).join("")}</select></div></div></div></div>
   </div>
   <div class="card">
+    <div class="fs"><h2 class="lbl">Lexicon</h2>${LEX.html()}</div>
+  </div>
+  <div class="card">
     <div class="fs"><h2 class="lbl">Your data</h2><p class="small" style="margin:0 0 10px">Study list ${getStars().length} · memory hooks ${Object.keys(getNotes()).length} · quiz records ${Object.keys(store.get("stats", {})).length}</p>
       <div class="row"><button class="btn sm" id="clrHist">Clear history</button><button class="btn sm" id="clrStats">Clear quiz records</button><button class="btn sm" id="clrReview">Clear practice review (${getPQ().items.length})</button><button class="btn sm" id="resetSet">Reset settings</button></div></div>
   </div>`;
@@ -1113,6 +1155,8 @@ VIEWS.settings = () => {
   $("#setPhony").onchange = e => saveSettings({ phony: +e.target.value });
   $("#setRmin").onchange = e => saveSettings({ randMin: +e.target.value, randMax: Math.max(+e.target.value, SET.randMax) });
   $("#setRmax").onchange = e => saveSettings({ randMax: +e.target.value, randMin: Math.min(+e.target.value, SET.randMin) });
+  LEX.wire();
+  confirmBtn($("#lexDel"), () => LEX.put(null).then(() => location.reload()));
   confirmBtn($("#clrHist"), () => { store.set("hist", []); VIEWS.settings(); });
   confirmBtn($("#clrReview"), () => { store.set("pq", { n: getPQ().n, items: [] }); VIEWS.settings(); });
   confirmBtn($("#clrStats"), () => { store.set("stats", {}); store.set("missed", []); VIEWS.settings(); });
