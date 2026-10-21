@@ -491,13 +491,19 @@ const TILES = { theme: ["Theme", ""], classic: ["Classic", "#f1dcaa"], ivory: ["
   walnut: ["Walnut", "#6b4a2f"], slate: ["Slate", "#2f3437"], gold: ["Gold", "#f2c94c"], orange: ["Orange", "#f39c45"], ruby: ["Ruby", "#c0392b"],
   pink: ["Pink", "#f4a6c1"], lilac: ["Lilac", "#b49be6"], ocean: ["Ocean", "#3b7dd8"], sky: ["Sky", "#9fd3f5"], jade: ["Jade", "#2e9e6e"], mint: ["Mint", "#a8e6cf"] };
 const SET_DEFAULT = { theme: "board", mode: "auto", size: "md", values: true, sort: "prob", defs: true, prob: true, hooks: true, pageSize: 300, online: true, phony: 50, randMin: 2, randMax: 8, qcount: 20,
-  tiles: "theme", tileCustom: "#f1dcaa", headCustom: "", accentCustom: "" };
+  tiles: "theme", tileCustom: "#f1dcaa", headCustom: "", accentCustom: "", glare: "soft" };
 let SET = { ...SET_DEFAULT, ...store.get("settings", {}) };
 const darkMQ = matchMedia("(prefers-color-scheme: dark)");
 const isDark = () => SET.mode === "dark" || (SET.mode === "auto" && darkMQ.matches);
 function tokensFor(dark) {
   const t = THEMES[SET.theme] || THEMES.board;
   const tok = { warn: dark ? "#f0b45a" : "#a66300", ...t[dark ? "dark" : "light"] };
+  // light mode: tone the near-white page and cards down a little (Soft) or more (Dim); High contrast stays as it is
+  const g = !dark && SET.theme !== "contrast" && { soft: [.03, .45], dim: [.08, .45] }[SET.glare];
+  if (g) {
+    const [k, toBg] = g, d = c => mix(c, "#000000", k), bg = d(tok.bg);
+    Object.assign(tok, { bg, panel: mix(d(tok.panel), bg, toBg), chip: mix(d(tok.chip), bg, .3), line: d(tok.line), field: d(tok.field) });
+  }
   const tc = SET.tiles === "custom" ? SET.tileCustom : TILES[SET.tiles]?.[1];
   if (tc) Object.assign(tok, { tile: tc, "tile-edge": mix(tc, "#000000", .26), "tile-ink": inkOn(tc) === "#ffffff" ? "#fbf6ea" : "#2a1f0e" });
   if (SET.headCustom) { const h = dark ? mix(SET.headCustom, "#000000", .3) : SET.headCustom; Object.assign(tok, { head: h, "head-ink": inkOn(h) }); }
@@ -1357,6 +1363,7 @@ VIEWS.settings = () => {
       <details class="more-themes" id="moreThemes" ${store.get("themesOpen", false) ? "open" : ""}><summary>More themes (${themeList.length - 5})${themeList.findIndex(([id]) => id === SET.theme) >= 5 ? ` · using ${esc(THEMES[SET.theme].name)}` : ""}</summary>
         <div class="swatches">${themeList.slice(5).map(([id, t]) => swatch(id, t)).join("")}</div></details></div>
     <div class="fs"><h2 class="lbl">Light or dark</h2>${seg("mode", [["auto", "Match my device"], ["light", "Light"], ["dark", "Dark"]])}</div>
+    <div class="fs"><h2 class="lbl">Light mode brightness</h2>${seg("glare", [["bright", "Bright"], ["soft", "Soft"], ["dim", "Dim"]])}<p class="small" style="margin:8px 0 0">How white the page and cards are in light mode.</p></div>
     <div class="fs"><h2 class="lbl">Text size</h2>${seg("size", [["sm", "Small"], ["md", "Normal"], ["lg", "Large"]])}</div>
     <div class="fs"><h2 class="lbl">Tile colour</h2><div class="tilepick">${Object.entries(TILES).map(([id, [n, c]]) => tileBtn(id, n, c || (THEMES[SET.theme] || THEMES.board)[isDark() ? "dark" : "light"].tile)).join("")}
       <label class="pickc ${SET.tiles === "custom" ? "on" : ""}"><div class="tile" style="background:conic-gradient(#e74c3c,#f1c40f,#2ecc71,#3498db,#9b59b6,#e74c3c);color:#fff">?</div>Pick…<input type="color" id="tileCustom" value="${SET.tileCustom}" aria-label="Pick a tile colour"></label></div>
