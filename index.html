@@ -498,6 +498,39 @@ Object.assign(THEMES, {
   charcoal: mkTheme("Charcoal and orange", 0, 0, "#2a2a2a", "#e8611a", "#2f6fb8"),
   neon: mkTheme("Neon night", 260, 30, "#1a0b2e", "#00a896", "#7b5cff", "#c6f6ff"),
 });
+// the coffee family: hand-made light and dark colours
+const LG = { good: "#2a8050", bad: "#bf3b45", new: "#7d50c4" }, DK = { good: "#5ccb8c", bad: "#f0808a", new: "#b79bff" };
+const brew = (name, light, dark) => ({ name, light: { ...LG, ...light }, dark: { ...DK, ...dark } });
+Object.assign(THEMES, {
+  espresso: brew("Espresso",
+    { bg:"#f3ebe1", panel:"#fffaf3", ink:"#22160f", muted:"#6f5d4d", line:"#e2d4c3", chip:"#f5ede3", head:"#2a1a11", "head-ink":"#f3e3cc", field:"#fffaf3", "field-ink":"#22160f", tile:"#efdcbd", "tile-edge":"#b89a6e", "tile-ink":"#2a1a0e", accent:"#a8702c", "on-accent":"#ffffff", link:"#2f6a8f" },
+    { bg:"#140d09", panel:"#1f1510", ink:"#f0e4d4", muted:"#b09a84", line:"#3a2a1f", chip:"#271b14", head:"#2a1a11", "head-ink":"#f3e3cc", field:"#f0e2cc", "field-ink":"#2a1a11", tile:"#efdcbd", "tile-edge":"#b89a6e", "tile-ink":"#2a1a0e", accent:"#d9a35f", "on-accent":"#1a0f06", link:"#9fc0d6" }),
+  mocha: brew("Mocha",
+    { bg:"#efe3d6", panel:"#fbf5ee", ink:"#2a1f18", muted:"#74604f", line:"#dfcdbb", chip:"#f3e9de", head:"#6b4a36", "head-ink":"#fbf1e4", field:"#fbf5ee", "field-ink":"#2a1f18", tile:"#d9b99b", "tile-edge":"#a3825f", "tile-ink":"#2a1a0e", accent:"#c06a22", "on-accent":"#ffffff", link:"#2f6a8f" },
+    { bg:"#2a1f18", panel:"#35281f", ink:"#f3e8da", muted:"#bba58f", line:"#4d3b2e", chip:"#3d2f25", head:"#1f1611", "head-ink":"#f3e3cc", field:"#f3e8da", "field-ink":"#2a1f18", tile:"#d9b99b", "tile-edge":"#a3825f", "tile-ink":"#2a1a0e", accent:"#e8a15a", "on-accent":"#22140a", link:"#a8c8dc" }),
+  latenight: brew("Latte at night",
+    { bg:"#f4ece1", panel:"#fffaf3", ink:"#2a1a11", muted:"#75604d", line:"#e4d5c2", chip:"#f6eee4", head:"#d9c2a3", "head-ink":"#2a1a11", field:"#fffaf3", "field-ink":"#2a1a11", tile:"#f1e2c8", "tile-edge":"#b89e78", "tile-ink":"#2a1a0e", accent:"#b5652a", "on-accent":"#ffffff", link:"#2f6a8f" },
+    { bg:"#1c140f", panel:"#271c15", ink:"#efe3d3", muted:"#ad9883", line:"#3f2f24", chip:"#2e2219", head:"#d9c2a3", "head-ink":"#2a1a11", field:"#fbf3e6", "field-ink":"#2a1a11", tile:"#f1e2c8", "tile-edge":"#b89e78", "tile-ink":"#2a1a0e", accent:"#c9783a", "on-accent":"#fff6ec", link:"#9fc0d6" }),
+  coldbrew: brew("Cold brew",
+    { bg:"#eeebe7", panel:"#fbfaf8", ink:"#1f1c19", muted:"#66605a", line:"#dbd5ce", chip:"#f3f0ec", head:"#2f3a46", "head-ink":"#e9eef3", field:"#fbfaf8", "field-ink":"#1f1c19", tile:"#d8bf9c", "tile-edge":"#a08965", "tile-ink":"#24190d", accent:"#a87536", "on-accent":"#ffffff", link:"#2f64a0" },
+    { bg:"#141210", panel:"#1d1a17", ink:"#e8e2da", muted:"#9f978d", line:"#34302b", chip:"#24201c", head:"#232a33", "head-ink":"#e3e8ee", field:"#e3e8ee", "field-ink":"#1d2228", tile:"#d8bf9c", "tile-edge":"#a08965", "tile-ink":"#24190d", accent:"#c99a63", "on-accent":"#1a1108", link:"#8fb3d9" }),
+  velvet: brew("Cocoa velvet",
+    { bg:"#f5e9e6", panel:"#fff8f6", ink:"#2c1715", muted:"#7a5f5d", line:"#e7d2ce", chip:"#f8eeeb", head:"#5a2a26", "head-ink":"#fbeae5", field:"#fff8f6", "field-ink":"#2c1715", tile:"#e9c9a9", "tile-edge":"#b08b68", "tile-ink":"#2a1610", accent:"#b8553a", "on-accent":"#ffffff", link:"#4e5fb0" },
+    { bg:"#1d1211", panel:"#29191a", ink:"#f2e3df", muted:"#b8999a", line:"#432a2a", chip:"#321f1f", head:"#3a1d1b", "head-ink":"#f6e2dc", field:"#f4e3dc", "field-ink":"#2c1715", tile:"#e9c9a9", "tile-edge":"#b08b68", "tile-ink":"#2a1610", accent:"#e08a6d", "on-accent":"#22100b", link:"#b0b8e6" }),
+  cafe: brew("Coffee shop",
+    { bg:"#efe8de", panel:"#fcf8f1", ink:"#221a14", muted:"#6c5f50", line:"#dfd3c3", chip:"#f3ece2", head:"#24352d", "head-ink":"#e9f1ec", field:"#fcf8f1", "field-ink":"#221a14", tile:"#e8d2ad", "tile-edge":"#ad9168", "tile-ink":"#2a1a0e", accent:"#9c7a24", "on-accent":"#ffffff", link:"#2f7a5f" },
+    { bg:"#1a1410", panel:"#251c16", ink:"#efe6d8", muted:"#ab9c88", line:"#3d3026", chip:"#2c221b", head:"#1f2b25", "head-ink":"#e6efe9", field:"#e6efe9", "field-ink":"#1f2b25", tile:"#e8d2ad", "tile-edge":"#ad9168", "tile-ink":"#2a1a0e", accent:"#c9a24d", "on-accent":"#1a1306", link:"#9fcbb6" }),
+});
+// how the theme picker groups the themes under "More themes"; anything not listed lands in Other
+const THEME_GROUPS = [
+  ["Classic", ["board", "tournament", "paper", "contrast", "midnight"]],
+  ["Coffee and cocoa", ["coffee", "espresso", "mocha", "latenight", "coldbrew", "velvet", "cafe", "cocoa"]],
+  ["Greens", ["forest", "emerald", "mint", "oat", "vanilla"]],
+  ["Blues", ["ocean", "sky", "royal", "nord", "slate", "teal"]],
+  ["Purples and pinks", ["plum", "lavender", "grape", "dusk", "bubblegum", "rose", "blush"]],
+  ["Warm", ["cherry", "terracotta", "autumn", "desert", "lemon", "parchment", "solar"]],
+  ["Dark and bold", ["charcoal", "neon"]],
+];
 // each theme's own tiles, matched to its colours (Board green and High contrast keep theirs); a touch darker in dark mode
 const THEME_TILES = { cocoa: "#e8c48a", vanilla: "#dfe5c4", parchment: "#f3e7c6", blush: "#f6c9cf", oat: "#d9d3a0", tournament: "#f7efd8", ocean: "#bfe0ef",
   plum: "#dcc6e8", midnight: "#f2cf72", paper: "#ffffff", forest: "#c9dbb2", emerald: "#f2cf72", mint: "#c4f0dc", teal: "#ffc2b0", sky: "#cfe8fb",
@@ -1417,6 +1450,10 @@ VIEWS.settings = () => {
   const colour = (key, title, sub) => `<label class="colour"><input type="color" data-colour="${key}" value="${SET[key] || getComputedStyle(document.documentElement).getPropertyValue("--" + (key === "headCustom" ? "head" : "accent")).trim()}">
       <span><b>${title}</b><span class="small">${SET[key] ? `Custom · <a href="#" data-uncolour="${key}">use theme</a>` : sub}</span></span></label>`;
   const themeList = Object.entries(THEMES);
+  // the first five always show; the rest sit in their groups inside the dropdown
+  const top5 = new Set(themeList.slice(0, 5).map(([id]) => id)), grouped = new Set(THEME_GROUPS.flatMap(g => g[1]));
+  const moreGroups = [...THEME_GROUPS, ["Other", themeList.map(([id]) => id).filter(id => !grouped.has(id))]]
+    .map(([g, ids]) => [g, ids.filter(id => THEMES[id] && !top5.has(id))]).filter(([, ids]) => ids.length);
   // a swatch: the theme preview, plus its Bright / Mellow light-mode tones (hidden while the page is dark)
   const tone = (id, t, k, n) => { const c = k === "bright" ? t.light : t.mellow, on = (SET.tones?.[id] === "bright") === (k === "bright");
     return `<button type="button" class="${on ? "on" : ""}" data-tone="${k}" data-tid="${id}"><i style="background:linear-gradient(135deg, ${c.bg} 50%, ${c.panel} 50%)"></i>${n}</button>`; };
@@ -1428,7 +1465,7 @@ VIEWS.settings = () => {
   <div class="card">
     <div class="fs"><h2 class="lbl">Colour theme</h2><div class="swatches">${themeList.slice(0, 5).map(([id, t]) => swatch(id, t)).join("")}</div>
       <details class="more-themes" id="moreThemes" ${store.get("themesOpen", false) ? "open" : ""}><summary>More themes (${themeList.length - 5})${themeList.findIndex(([id]) => id === SET.theme) >= 5 ? ` · using ${esc(THEMES[SET.theme].name)}` : ""}</summary>
-        <div class="swatches">${themeList.slice(5).map(([id, t]) => swatch(id, t)).join("")}</div></details></div>
+        ${moreGroups.map(([g, ids]) => `<div class="sect" style="margin:14px 0 0">${g}</div><div class="swatches">${ids.map(id => swatch(id, THEMES[id])).join("")}</div>`).join("")}</details></div>
     <div class="fs"><h2 class="lbl">Light or dark</h2>${seg("mode", [["auto", "Match my device"], ["light", "Light"], ["dark", "Dark"]])}</div>
     <div class="fs"><h2 class="lbl">Light mode brightness</h2>${seg("glare", [["bright", "Bright"], ["soft", "Soft"], ["dim", "Dim"]])}<p class="small" style="margin:8px 0 0">How white the page and cards are in light mode.</p></div>
     <div class="fs"><h2 class="lbl">Text size</h2>${seg("size", [["sm", "Small"], ["md", "Normal"], ["lg", "Large"]])}</div>
