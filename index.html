@@ -1079,7 +1079,7 @@ function drawQuestion() {
     <div class="card" style="display:flex;flex-direction:column;gap:14px">
       ${mode === "anagram" ? `<p class="small" style="margin:0">${nAna > 1 ? `${nAna} words. Find them all.` : "One word."}</p>` : ""}
       ${prompt}<form id="qform" autocomplete="off">${input}</form>
-      ${mode === "phony" ? "" : `<div class="pbtns" id="qmark"><button type="button" class="btn no" id="qNo" title="Give up: show the answer">✗</button><button type="button" class="btn yes" id="qYes" title="Knew it: show the answer and count it right">✓</button></div>`}<div id="qfb"></div>
+      ${mode === "phony" ? "" : `<div class="pbtns" id="qmark"><button type="button" class="btn no" id="qNo" title="Give up: show the answer">✗</button><button type="button" class="btn yes" id="qYes" title="Knew it: show the answer and count it right">✓</button><button type="button" class="btn primary" id="qSkip" title="Skip; counts as known">Next</button></div>`}<div id="qfb"></div>
     </div>`;
   $("#qquit").onclick = () => { commitQuiz(); Q.answered = false; Q.done = true; VIEWS.quiz(); };
   $("#hint")?.addEventListener("click", ev => { ev.preventDefault(); $("#hintBox").innerHTML = tilesHTML(alpha(q.w), true); });
@@ -1101,6 +1101,7 @@ function drawQuestion() {
   $("#view").querySelectorAll("[data-ans]").forEach(b => b.onclick = () => { if (!Q.answered) check(b.dataset.ans); });
   $("#qNo")?.addEventListener("click", () => { if (!Q.answered) check(); });
   $("#qYes")?.addEventListener("click", () => { if (!Q.answered) check(undefined, true); });
+  $("#qSkip")?.addEventListener("click", () => { if (!Q.answered) { check(undefined, true); next(); } });
   document.onkeydown = ev => {
     if (location.hash !== "#quiz" || Q.mode !== "phony" || Q.answered) return;
     if (/^[vp]$/i.test(ev.key)) check(ev.key.toLowerCase() === "v" ? "valid" : "phony");
@@ -1273,7 +1274,7 @@ VIEWS.practice = () => {
       <input class="qinput" id="pa" placeholder="Type the answer" autocomplete="off" autocapitalize="characters" spellcheck="false">
       <div class="pbtns"><button class="btn ib" id="pShuf" title="Shuffle" aria-label="Shuffle"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></button>
         <button class="btn no" id="pNo" title="Didn't know it: show the answer and review it later">✗</button><button class="btn yes" id="pYes" title="Knew it: show the answer, no review">✓</button>
-        <button class="btn primary" id="pNext" hidden>Next</button></div>
+        <button class="btn primary" id="pNext" title="Next card; if not marked yet, counts as known">Next</button></div>
       <div class="rows" id="pfound"></div><div class="rows" id="preveal"></div>
     </div>` + opts;
   // on a phone, focusing the box pops the keyboard up, so only do it where there's a real keyboard
@@ -1283,7 +1284,7 @@ VIEWS.practice = () => {
   const finish = (ok, solved) => {
     P.done = true; P.verdict = { letters: P.letters, want: P.want, ok };
     $("#preveal").innerHTML = P.want.filter(x => !P.found.includes(x)).map(x => quizRow(x, ok ? "got" : "miss")).join("");
-    $("#pNo").classList.toggle("on", !ok); $("#pYes").classList.toggle("on", ok); $("#pNext").hidden = false;
+    $("#pNo").classList.toggle("on", !ok); $("#pYes").classList.toggle("on", ok);
     clearTimeout(P.auto);
     if (solved) P.auto = setTimeout(() => { if (P.done && location.hash === "#practice") VIEWS.practice(); }, 900);
     else if (!touch) $("#pNext").focus();
@@ -1301,7 +1302,8 @@ VIEWS.practice = () => {
   $("#pShuf").onclick = () => { $("#ptiles").innerHTML = tilesHTML(shuffle([...P.letters]).join("")); if (!touch) $("#pa").focus(); };
   $("#pNo").onclick = () => finish(false);
   $("#pYes").onclick = () => finish(true);
-  $("#pNext").onclick = () => VIEWS.practice();
+  // Next before marking skips the card and counts it as known
+  $("#pNext").onclick = () => { if (!P.done) P.verdict = { letters: P.letters, want: P.want, ok: true }; VIEWS.practice(); };
   wire();
 };
 
