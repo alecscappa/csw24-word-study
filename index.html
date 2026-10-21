@@ -1332,6 +1332,7 @@ VIEWS.settings = () => {
     <div class="fs"><h2 class="lbl">Text size</h2>${seg("size", [["sm", "Small"], ["md", "Normal"], ["lg", "Large"]])}</div>
     <div class="fs"><h2 class="lbl">Tile colour</h2><div class="tilepick">${Object.entries(TILES).map(([id, [n, c]]) => tileBtn(id, n, c || (THEMES[SET.theme] || THEMES.board)[isDark() ? "dark" : "light"].tile)).join("")}
       <label class="pickc ${SET.tiles === "custom" ? "on" : ""}"><div class="tile" style="background:conic-gradient(#e74c3c,#f1c40f,#2ecc71,#3498db,#9b59b6,#e74c3c);color:#fff">?</div>Pick…<input type="color" id="tileCustom" value="${SET.tileCustom}" aria-label="Pick a tile colour"></label></div>
+      <div style="margin-top:14px">${tilesHTML(sampleWord())}</div>
       <div style="margin-top:12px">${chk("values", "Show letter values on tiles")}</div></div>
     <div class="fs"><h2 class="lbl">Custom colours</h2><p class="small" style="margin:0 0 10px">Tap a colour to open the colour wheel. These sit on top of whichever theme you pick.</p>
       <div class="colours">${colour("headCustom", "Header", "From the theme")}${colour("accentCustom", "Accent", "Buttons and highlights, from the theme")}</div></div>
@@ -1381,6 +1382,8 @@ VIEWS.settings = () => {
   confirmBtn($("#clrStats"), () => { store.set("stats", {}); store.set("missed", []); VIEWS.settings(); });
   confirmBtn($("#resetSet"), () => { SET = { ...SET_DEFAULT }; store.set("settings", SET); applySettings(); VIEWS.settings(); });
 };
+// the tile-colour preview shows the word in the search bar, else the last word viewed
+const sampleWord = () => [$("#q").value, store.get("hist", [])[0], "SCRABBLE"].map(w => (w || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 15)).find(Boolean);
 const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 
 // ---------- routing ----------
