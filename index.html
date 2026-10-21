@@ -208,6 +208,15 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .r.got .wl { color: var(--good); } .r.miss .wl { color: var(--warn); }
 .w.miss { border-color: var(--warn); color: var(--warn); }
 .seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.pbtns { display: flex; gap: 8px; }
+.pbtns .btn { flex: 1; text-align: center; font-size: 1.05rem; line-height: 1.2; }
+.pbtns .ib { flex: none; width: 3.4em; display: grid; place-items: center; }
+.pbtns .no { color: var(--warn); border-color: var(--warn); }
+.pbtns .yes { color: var(--good); border-color: var(--good); }
+.pbtns [hidden] { display: none; }
+details.more-themes { margin-top: 10px; }
+details.more-themes > summary { cursor: pointer; font: 600 .88rem var(--display); color: var(--link); padding: 6px 0; }
+details.more-themes .swatches { margin-top: 8px; }
 
 /* settings */
 .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
@@ -238,25 +247,23 @@ details.acc[open] > summary::after { transform: rotate(-135deg); margin-top: 4px
 details.acc[open] > summary { margin-bottom: 12px; }
 details.acc .accn { font: 400 .74rem var(--mono); letter-spacing: 0; text-transform: none; color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 
-/* tab icons and short names are for the phone's bottom bar only */
-nav.tabs .ico, nav.tabs .sh { display: none; }
+/* short tab names are for the phone only */
+nav.tabs .sh { display: none; }
 
 /* ---------- phone layout (desktop above 620px is untouched) ---------- */
 @media (max-width: 620px) {
-  header { padding: calc(10px + env(safe-area-inset-top)) 12px 10px; }
+  header { padding: calc(10px + env(safe-area-inset-top)) 8px 0; }
+  .top { padding: 0 4px; }
   .top h1 { display: none; }
   form.search { flex-basis: 100%; gap: 6px; }
   form.search input { font-size: 16px; padding: 10px 12px; }
   form.search .btn { padding: 9px 12px; }
-  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; margin: 0; gap: 0; overflow: visible;
-    background: var(--panel); border-top: 1px solid var(--line); padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
-    box-shadow: 0 -4px 16px color-mix(in srgb, var(--ink) 8%, transparent); }
-  nav.tabs a { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0 4px; border-radius: 8px; color: var(--muted); opacity: 1; font: 600 .66rem/1.2 var(--display); }
-  nav.tabs a.on { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+  /* tabs stay at the top like on the computer, but share the width evenly with short names and tall tap areas */
+  nav.tabs { margin-top: 10px; gap: 2px; overflow: visible; }
+  nav.tabs a { flex: 1 1 0; min-width: 0; text-align: center; padding: 12px 2px; font-size: .8rem; opacity: .8; }
   nav.tabs a.end { margin-left: 0; }
-  nav.tabs .ico { display: block; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   nav.tabs .sh { display: inline; } nav.tabs .lg { display: none; }
-  main.wrap { padding: 14px 12px calc(86px + env(safe-area-inset-bottom)); gap: 12px; }
+  main.wrap { padding: 14px 12px 32px; gap: 12px; }
   .card { padding: 14px; border-radius: 10px; }
   .title { font-size: 1.3rem; }
 
@@ -299,8 +306,7 @@ nav.tabs .ico, nav.tabs .sh { display: none; }
 
   /* practice: big answer box, three equal buttons */
   .ptiles { padding: 4px 0; }
-  .practice .row { display: grid; grid-template-columns: repeat(3, 1fr); }
-  .practice .row .btn { text-align: center; padding: 12px 6px; }
+  .pbtns .btn { padding: 13px 8px; }
   .practice .qinput { font-size: 1.3rem; padding: 12px; text-align: center; }
   .pprog { gap: 8px 14px; }
 
@@ -330,13 +336,13 @@ nav.tabs .ico, nav.tabs .sh { display: none; }
       </form>
     </div>
     <nav class="tabs" id="tabs">
-      <a href="#w" data-tab="w"><svg class="ico" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 16l3-8 3 8M10.2 13h3.6"/></svg>Word</a>
-      <a href="#search" data-tab="search"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Search</a>
-      <a href="#lists" data-tab="lists"><svg class="ico" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg><span class="lg">Word lists</span><span class="sh">Lists</span></a>
-      <a href="#practice" data-tab="practice"><svg class="ico" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.5-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.5 4.5L20 16M20 20v-4h-4"/></svg>Practice</a>
-      <a href="#quiz" data-tab="quiz"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.3M12 16.8v.01"/></svg>Quiz</a>
-      <a href="#mine" data-tab="mine"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></svg><span class="lg">My words</span><span class="sh">Mine</span></a>
-      <a href="#settings" data-tab="settings" class="end"><svg class="ico" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/></svg>Settings</a>
+      <a href="#w" data-tab="w">Word</a>
+      <a href="#search" data-tab="search">Search</a>
+      <a href="#lists" data-tab="lists"><span class="lg">Word lists</span><span class="sh">Lists</span></a>
+      <a href="#practice" data-tab="practice">Practice</a>
+      <a href="#quiz" data-tab="quiz">Quiz</a>
+      <a href="#mine" data-tab="mine"><span class="lg">My words</span><span class="sh">Mine</span></a>
+      <a href="#settings" data-tab="settings" class="end">Settings</a>
     </nav>
   </div>
 </header>
@@ -1237,33 +1243,39 @@ VIEWS.practice = () => {
       <div class="ptiles" id="ptiles">${tilesHTML(P.letters)}</div>
       <p class="small" style="margin:0;text-align:center"><span id="pleft">${leftText()}</span>${P.review ? ` · <b style="color:var(--warn)">review</b>` : ""}</p>
       <input class="qinput" id="pa" placeholder="Type the answer" autocomplete="off" autocapitalize="characters" spellcheck="false">
-      <div class="row"><button class="btn" id="pShuf">Shuffle</button><button class="btn" id="pReveal">Show answer</button><button class="btn primary" id="pNext">Next</button></div>
+      <div class="pbtns"><button class="btn ib" id="pShuf" title="Shuffle" aria-label="Shuffle"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></button>
+        <button class="btn no" id="pNo" title="Didn't know it: show the answer and review it later">✗</button><button class="btn yes" id="pYes" title="Knew it: show the answer, no review">✓</button>
+        <button class="btn primary" id="pNext" hidden>Next</button></div>
       <div class="rows" id="pfound"></div>
     </div>` + opts;
-  const finish = ok => {
+  // on a phone, focusing the box pops the keyboard up, so only do it where there's a real keyboard
+  const touch = matchMedia("(pointer: coarse)").matches;
+  // solved = every word typed (moves on by itself); ✓ = knew it, ✗ = didn't. Both ✓ and ✗ show the answers.
+  const finish = (ok, solved) => {
     P.done = true; P.seen++;
     schedule(P.letters, ok); setLearnt(P.letters, ok);
     const pr = progress(practicePool(o)); $("#pprog").innerHTML = progText(pr);
     if (ok) { P.streak++; P.solved++; } else P.streak = 0;
     for (const x of P.want) record(x, ok);
-    $("#pfound").insertAdjacentHTML("beforeend", P.want.filter(x => !P.found.includes(x)).map(x => quizRow(x, "miss")).join(""));
-    if (ok) setTimeout(() => { if (P.done && location.hash === "#practice") VIEWS.practice(); }, 900);
-    else $("#pNext").focus();
+    $("#pfound").insertAdjacentHTML("beforeend", P.want.filter(x => !P.found.includes(x)).map(x => quizRow(x, ok ? "got" : "miss")).join(""));
+    $("#pNo").hidden = $("#pYes").hidden = true; $("#pNext").hidden = false;
+    if (solved) setTimeout(() => { if (P.done && location.hash === "#practice") VIEWS.practice(); }, 900);
+    else if (!touch) $("#pNext").focus();
   };
-  $("#pa").focus();
+  if (!touch) $("#pa").focus();
   $("#pa").addEventListener("input", ev => {
     const v = ev.target.value.toUpperCase().replace(/[^A-Z]/g, "");
     if (P.done || !P.want.includes(v) || P.found.includes(v)) return;
     P.found.push(v); ev.target.value = "";
     $("#pleft").textContent = leftText();
     $("#pfound").insertAdjacentHTML("beforeend", quizRow(v, "got"));
-    if (P.found.length === P.want.length) finish(true);
+    if (P.found.length === P.want.length) finish(true, true);
   });
   $("#pa").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); P.done ? VIEWS.practice() : finish(false); } });
-  $("#pShuf").onclick = () => { $("#ptiles").innerHTML = tilesHTML(shuffle([...P.letters]).join("")); $("#pa").focus(); };
-  $("#pReveal").onclick = () => { if (!P.done) finish(false); };
-  // Next before finishing means "I know this one": mark it learnt, don't add it to review
-  $("#pNext").onclick = () => { if (!P.done) { P.seen++; schedule(P.letters, true); setLearnt(P.letters, true); } VIEWS.practice(); };
+  $("#pShuf").onclick = () => { $("#ptiles").innerHTML = tilesHTML(shuffle([...P.letters]).join("")); if (!touch) $("#pa").focus(); };
+  $("#pNo").onclick = () => { if (!P.done) finish(false); };
+  $("#pYes").onclick = () => { if (!P.done) finish(true); };
+  $("#pNext").onclick = () => VIEWS.practice();
   wire();
 };
 
@@ -1306,13 +1318,16 @@ VIEWS.settings = () => {
     return `<button type="button" class="${SET.tiles === id ? "on" : ""}" data-tiles="${id}"><div class="tile" ${tok ? `style="background:${tok.tile};color:${tok.ink};box-shadow:inset 0 -3px 0 ${tok.edge}"` : ""}>A<sub>1</sub></div>${name}</button>`; };
   const colour = (key, title, sub) => `<label class="colour"><input type="color" data-colour="${key}" value="${SET[key] || getComputedStyle(document.documentElement).getPropertyValue("--" + (key === "headCustom" ? "head" : "accent")).trim()}">
       <span><b>${title}</b><span class="small">${SET[key] ? `Custom · <a href="#" data-uncolour="${key}">use theme</a>` : sub}</span></span></label>`;
+  const themeList = Object.entries(THEMES);
   const swatch = (id, t) => { const c = t[isDark() ? "dark" : "light"]; return `<button type="button" class="swatch ${SET.theme === id ? "on" : ""}" data-theme="${id}">
       <div class="bar" style="background:${c.head}"><i style="background:${c.tile}"></i><i style="background:${c.tile}"></i><i style="background:${c.accent}"></i></div>
       <div class="body" style="background:${c.bg}"><i style="width:40%;background:${c.ink}"></i><i style="width:20%;background:${c.link}"></i></div>
       <span>${t.name}</span></button>`; };
   $("#view").innerHTML = `<div><h3 class="title">Settings</h3><p class="sub">Saved in this browser and applied straight away.</p></div>
   <div class="card">
-    <div class="fs"><h2 class="lbl">Colour theme</h2><div class="swatches">${Object.entries(THEMES).map(([id, t]) => swatch(id, t)).join("")}</div></div>
+    <div class="fs"><h2 class="lbl">Colour theme</h2><div class="swatches">${themeList.slice(0, 5).map(([id, t]) => swatch(id, t)).join("")}</div>
+      <details class="more-themes" id="moreThemes" ${store.get("themesOpen", false) ? "open" : ""}><summary>More themes (${themeList.length - 5})${themeList.findIndex(([id]) => id === SET.theme) >= 5 ? ` · using ${esc(THEMES[SET.theme].name)}` : ""}</summary>
+        <div class="swatches">${themeList.slice(5).map(([id, t]) => swatch(id, t)).join("")}</div></details></div>
     <div class="fs"><h2 class="lbl">Light or dark</h2>${seg("mode", [["auto", "Match my device"], ["light", "Light"], ["dark", "Dark"]])}</div>
     <div class="fs"><h2 class="lbl">Text size</h2>${seg("size", [["sm", "Small"], ["md", "Normal"], ["lg", "Large"]])}</div>
     <div class="fs"><h2 class="lbl">Tile colour</h2><div class="tilepick">${Object.entries(TILES).map(([id, [n, c]]) => tileBtn(id, n, c || (THEMES[SET.theme] || THEMES.board)[isDark() ? "dark" : "light"].tile)).join("")}
@@ -1345,6 +1360,7 @@ VIEWS.settings = () => {
   const v = $("#view");
   v.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => { saveSettings({ theme: b.dataset.theme }); VIEWS.settings(); });
   v.querySelectorAll("[data-set]").forEach(b => b.onclick = () => { saveSettings({ [b.dataset.set]: b.dataset.val }); VIEWS.settings(); });
+  $("#moreThemes").addEventListener("toggle", e => store.set("themesOpen", e.target.open));
   v.querySelectorAll("[data-tiles]").forEach(b => b.onclick = () => { saveSettings({ tiles: b.dataset.tiles }); VIEWS.settings(); });
   // colour inputs preview live while the wheel is open and redraw the page once a colour is chosen
   const tc = $("#tileCustom");
