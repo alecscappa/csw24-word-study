@@ -33,8 +33,11 @@ advice.
 
 - Your Claude account and GitHub account aren't connected. Other people using
   the same Claude account can't see the repo through Claude.
-- The private repo `github.com/alecscappa/csw24-word-study` is visible only to
-  the `alecscappa` GitHub account and anyone you invite.
+- The repo `github.com/alecscappa/csw24-word-study` is **public** (made public
+  on 2026-10-21 so GitHub Pages can host it). It holds only code and notes;
+  `words.js` has never been committed. Keep it that way.
+- The live site is https://alecscappa.github.io/csw24-word-study/ and is empty
+  until a lexicon is loaded in Settings.
 - Anyone using your logged-in Mac could see your files, as with anything on it.
 
 ## Getting it on your phone
