@@ -235,6 +235,11 @@ details.more-themes .swatches { margin-top: 8px; }
 .swatch .body { height: 34px; display: flex; align-items: center; gap: 6px; padding: 0 8px; }
 .swatch .body i { height: 8px; border-radius: 4px; display: block; }
 .swatch span { display: block; padding: 6px 8px; font: 600 .82rem var(--display); }
+.swatch .swmain { display: block; width: 100%; border: 0; padding: 0; background: none; text-align: left; cursor: pointer; color: inherit; }
+.tones { display: flex; gap: 4px; padding: 0 8px 8px; }
+.tones button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; border: 1px solid var(--line); border-radius: 99px; background: var(--chip); padding: 3px 6px; font: 600 .7rem var(--display); color: var(--muted); cursor: pointer; }
+.tones button.on { border-color: var(--accent); color: var(--ink); }
+.tones i { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgb(0 0 0 / .18); flex: none; }
 .tilepick { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .tilepick label { position: relative; }
 .tilepick label input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
@@ -500,6 +505,26 @@ const THEME_TILES = { cocoa: "#e8c48a", vanilla: "#dfe5c4", parchment: "#f3e7c6"
   rose: "#f7c6d0", cherry: "#ffc9c9", terracotta: "#e9b08f", autumn: "#e3b87a", coffee: "#d9b99b", desert: "#ecd2a6", lemon: "#fff3b0",
   charcoal: "#3a3a3a", neon: "#c6f6ff" };
 for (const [id, c] of Object.entries(THEME_TILES)) { Object.assign(THEMES[id].light, tileTok(c)); Object.assign(THEMES[id].dark, tileTok(mix(c, "#000000", .08))); }
+// Each theme's light mode comes in two tones, picked on its swatch: Bright (the near-white original) and Mellow
+// (t.mellow): a mid-tone page in the theme's own hue, slightly lighter cards, and pale tiles lifted lighter than the page.
+// High contrast has only one. Coffee's Mellow is a hand-made latte.
+function hslOf(hex) {
+  const [r, g, b] = hex2rgb(hex).map(v => v / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  if (!d) return [0, 0, l * 100];
+  const s = d / (1 - Math.abs(2 * l - 1));
+  const h = mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h * 60, s * 100, l * 100];
+}
+for (const [id, t] of Object.entries(THEMES)) {
+  if (id === "contrast") continue;
+  const [h, s0] = hslOf(t.light.bg), s = s0 < 2 ? 0 : Math.min(38, Math.max(10, s0 * 1.4 + 8));
+  const M = t.mellow = { ...t.light, bg: hsl(h, s, 84), panel: hsl(h, s + 5, 90), chip: hsl(h, s + 3, 87), line: hsl(h, s * .8, 73), field: hsl(h, s + 5, 94), muted: hsl(h, s * .6, 34) };
+  if (lum(M.tile) > .55) Object.assign(M, tileTok(mix(M.tile, "#ffffff", .4)));
+}
+Object.assign(THEMES.coffee.mellow, { bg: "#e4d6c5", panel: "#efe5d8", chip: "#e9dccb", line: "#cdb9a2", ink: "#2e2118", muted: "#6e5a48",
+  field: "#f3ebe0", "field-ink": "#2e2118", accent: "#a85d1c", link: "#355f7c" }, tileTok("#f4e6cf"));
+// a theme's light colours in its chosen tone (Mellow unless set to Bright)
+const lightOf = (id, t) => SET.tones?.[id] !== "bright" && t.mellow || t.light;
 // tile colours: "theme" keeps the theme's own tiles, "custom" uses SET.tileCustom
 const TILES = { theme: ["Theme", ""], classic: ["Classic", "#f1dcaa"], ivory: ["Ivory", "#f7f1e1"], white: ["White", "#ffffff"], maple: ["Maple", "#e3b87a"],
   walnut: ["Walnut", "#6b4a2f"], slate: ["Slate", "#2f3437"], gold: ["Gold", "#f2c94c"], orange: ["Orange", "#f39c45"], ruby: ["Ruby", "#c0392b"],
@@ -531,7 +556,7 @@ const darkMQ = matchMedia("(prefers-color-scheme: dark)");
 const isDark = () => SET.mode === "dark" || (SET.mode === "auto" && darkMQ.matches);
 function tokensFor(dark) {
   const t = THEMES[SET.theme] || THEMES.board;
-  const tok = { warn: dark ? "#f0b45a" : "#a66300", ...t[dark ? "dark" : "light"] };
+  const tok = { warn: dark ? "#f0b45a" : "#a66300", ...(dark ? t.dark : lightOf(THEMES[SET.theme] ? SET.theme : "board", t)) };
   // light mode: tone the near-white page and cards down a little (Soft) or more (Dim); High contrast stays as it is
   const g = !dark && SET.theme !== "contrast" && { soft: [.03, .45], dim: [.08, .45] }[SET.glare];
   if (g) {
@@ -1389,10 +1414,13 @@ VIEWS.settings = () => {
   const colour = (key, title, sub) => `<label class="colour"><input type="color" data-colour="${key}" value="${SET[key] || getComputedStyle(document.documentElement).getPropertyValue("--" + (key === "headCustom" ? "head" : "accent")).trim()}">
       <span><b>${title}</b><span class="small">${SET[key] ? `Custom · <a href="#" data-uncolour="${key}">use theme</a>` : sub}</span></span></label>`;
   const themeList = Object.entries(THEMES);
-  const swatch = (id, t) => { const c = t[isDark() ? "dark" : "light"]; return `<button type="button" class="swatch ${SET.theme === id ? "on" : ""}" data-theme="${id}">
+  // a swatch: the theme preview, plus its Bright / Mellow light-mode tones (hidden while the page is dark)
+  const tone = (id, t, k, n) => { const c = k === "bright" ? t.light : t.mellow, on = (SET.tones?.[id] === "bright") === (k === "bright");
+    return `<button type="button" class="${on ? "on" : ""}" data-tone="${k}" data-tid="${id}"><i style="background:linear-gradient(135deg, ${c.bg} 50%, ${c.panel} 50%)"></i>${n}</button>`; };
+  const swatch = (id, t) => { const c = isDark() ? t.dark : lightOf(id, t); return `<div class="swatch ${SET.theme === id ? "on" : ""}"><button type="button" class="swmain" data-theme="${id}">
       <div class="bar" style="background:${c.head}"><i style="background:${c.tile}"></i><i style="background:${c.tile}"></i><i style="background:${c.accent}"></i></div>
       <div class="body" style="background:${c.bg}"><i style="width:40%;background:${c.ink}"></i><i style="width:20%;background:${c.link}"></i></div>
-      <span>${t.name}</span></button>`; };
+      <span>${t.name}</span></button>${t.mellow && !isDark() ? `<div class="tones">${tone(id, t, "bright", "Bright")}${tone(id, t, "mellow", "Mellow")}</div>` : ""}</div>`; };
   $("#view").innerHTML = `<div><h3 class="title">Settings</h3><p class="sub">Saved in this browser and applied straight away.</p></div>
   <div class="card">
     <div class="fs"><h2 class="lbl">Colour theme</h2><div class="swatches">${themeList.slice(0, 5).map(([id, t]) => swatch(id, t)).join("")}</div>
@@ -1401,7 +1429,7 @@ VIEWS.settings = () => {
     <div class="fs"><h2 class="lbl">Light or dark</h2>${seg("mode", [["auto", "Match my device"], ["light", "Light"], ["dark", "Dark"]])}</div>
     <div class="fs"><h2 class="lbl">Light mode brightness</h2>${seg("glare", [["bright", "Bright"], ["soft", "Soft"], ["dim", "Dim"]])}<p class="small" style="margin:8px 0 0">How white the page and cards are in light mode.</p></div>
     <div class="fs"><h2 class="lbl">Text size</h2>${seg("size", [["sm", "Small"], ["md", "Normal"], ["lg", "Large"]])}</div>
-    <div class="fs"><h2 class="lbl">Tile colour</h2><div class="tilepick">${Object.entries(TILES).map(([id, [n, c]]) => tileBtn(id, n, c || (THEMES[SET.theme] || THEMES.board)[isDark() ? "dark" : "light"].tile)).join("")}
+    <div class="fs"><h2 class="lbl">Tile colour</h2><div class="tilepick">${Object.entries(TILES).map(([id, [n, c]]) => tileBtn(id, n, c || (isDark() ? (THEMES[SET.theme] || THEMES.board).dark : lightOf(SET.theme, THEMES[SET.theme] || THEMES.board)).tile)).join("")}
       <label class="pickc ${SET.tiles === "custom" ? "on" : ""}"><div class="tile" style="background:conic-gradient(#e74c3c,#f1c40f,#2ecc71,#3498db,#9b59b6,#e74c3c);color:#fff">?</div>Pick…<input type="color" id="tileCustom" value="${SET.tileCustom}" aria-label="Pick a tile colour"></label></div>
       <h2 class="lbl" style="margin-top:18px">Tile style</h2>
       <div class="tilepick tstyles">${Object.entries(TILE_STYLES).map(([id, [n]]) => `<button type="button" class="${SET.tileStyle === id ? "on" : ""}" data-tstyle-pick="${id}"><div class="tile ts-${id}">A<sub>1</sub></div>${n}</button>`).join("")}</div>
@@ -1434,6 +1462,7 @@ VIEWS.settings = () => {
   </div>`;
   const v = $("#view");
   v.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => { saveSettings({ theme: b.dataset.theme }); VIEWS.settings(); });
+  v.querySelectorAll("[data-tone]").forEach(b => b.onclick = () => { saveSettings({ theme: b.dataset.tid, tones: { ...SET.tones, [b.dataset.tid]: b.dataset.tone } }); VIEWS.settings(); });
   v.querySelectorAll("[data-set]").forEach(b => b.onclick = () => { saveSettings({ [b.dataset.set]: b.dataset.val }); VIEWS.settings(); });
   $("#moreThemes").addEventListener("toggle", e => store.set("themesOpen", e.target.open));
   v.querySelectorAll("[data-tstyle-pick]").forEach(b => b.onclick = () => { saveSettings({ tileStyle: b.dataset.tstylePick }); VIEWS.settings(); });
