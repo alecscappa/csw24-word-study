@@ -945,8 +945,10 @@ VIEWS.search = () => {
   const s = searchState;
   const f = (id, label, ph, hint = "", cls = "") => `<div class="field"><label for="s_${id}">${label}</label><input id="s_${id}" class="${cls}" value="${esc(s[id])}" placeholder="${ph}" spellcheck="false">${hint ? `<span class="hint">${hint}</span>` : ""}</div>`;
   // each section folds; it starts open if it was left open or has something filled in
-  const opened = store.get("searchOpen", { group: true });
-  const acc = (key, title) => `<details class="fs acc" data-acc="${key}" ${opened[key] || accSummary(key) ? "open" : ""}><summary class="lbl">${title}<span class="accn" id="accn_${key}">${esc(accSummary(key))}</span></summary>`;
+  // searching from the top bar folds every section so the results show straight away
+  const fold = searchFromBar; searchFromBar = false;
+  const opened = fold ? {} : store.get("searchOpen", { group: true });
+  const acc = (key, title) => `<details class="fs acc" data-acc="${key}" ${!fold && (opened[key] || accSummary(key)) ? "open" : ""}><summary class="lbl">${title}<span class="accn" id="accn_${key}">${esc(accSummary(key))}</span></summary>`;
   $("#view").innerHTML = `<div class="card">
     <form id="sform" autocomplete="off">
       ${acc("group", "Group and meaning")}<div class="form">
@@ -987,6 +989,7 @@ VIEWS.search = () => {
   if (Object.entries(searchState).some(([k, v]) => v && v !== SEARCH_DEFAULT[k])) doSearch();
 };
 // short "what's set" text shown beside each folded search section
+let searchFromBar = false;
 function accSummary(key) {
   const s = searchState, up = v => String(v || "").toUpperCase();
   const parts = {
@@ -1506,7 +1509,7 @@ $("#form").addEventListener("submit", ev => {
   ev.preventDefault();
   const q = $("#q").value.toUpperCase().replace(/[^A-Z?.*\[\]^]/g, "");
   if (!q) return;
-  const go = patch => { searchState = { ...SEARCH_DEFAULT, ...patch }; store.set("search", searchState); location.hash === "#search" ? VIEWS.search() : location.hash = "search"; };
+  const go = patch => { searchFromBar = true; searchState = { ...SEARCH_DEFAULT, ...patch }; store.set("search", searchState); location.hash === "#search" ? VIEWS.search() : location.hash = "search"; };
   if (/[.*\[]/.test(q)) go({ pattern: q });
   else if (q.includes("?")) go({ rack: q, mode: "exact" });
   else location.hash = "w/" + q;
