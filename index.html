@@ -450,9 +450,10 @@ function hsl(h, s, l) {
   const f = n => { const k = (n + h / 30) % 12; return 255 * (l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1))); };
   return rgb2hex([f(0), f(8), f(4)]);
 }
+const tileTok = c => ({ tile: c, "tile-edge": mix(c, "#000000", .26), "tile-ink": inkOn(c) === "#ffffff" ? "#fbf6ea" : "#2a1f0e" });
 // a full light + dark theme from a neutral hue/saturation, a header colour, an accent and a link colour
 function mkTheme(name, h, s, head, accent, link, tile = "#f1dcaa") {
-  const tt = { tile, "tile-edge": mix(tile, "#000000", .26), "tile-ink": inkOn(tile) === "#ffffff" ? "#fbf6ea" : "#2a1f0e" };
+  const tt = tileTok(tile);
   const headD = mix(head, "#000000", .38), accentD = mix(accent, "#ffffff", .3), linkD = mix(link, "#ffffff", .4);
   return { name,
     light: { bg: hsl(h, s, 94), panel: hsl(h, s * .6, 99), ink: hsl(h, s * .5, 11), muted: hsl(h, s * .3, 40), line: hsl(h, s * .6, 85), chip: hsl(h, s, 96),
@@ -486,6 +487,13 @@ Object.assign(THEMES, {
   charcoal: mkTheme("Charcoal and orange", 0, 0, "#2a2a2a", "#e8611a", "#2f6fb8"),
   neon: mkTheme("Neon night", 260, 30, "#1a0b2e", "#00a896", "#7b5cff", "#c6f6ff"),
 });
+// each theme's own tiles, matched to its colours (Board green and High contrast keep theirs); a touch darker in dark mode
+const THEME_TILES = { cocoa: "#e8c48a", vanilla: "#dfe5c4", parchment: "#f3e7c6", blush: "#f6c9cf", oat: "#d9d3a0", tournament: "#f7efd8", ocean: "#bfe0ef",
+  plum: "#dcc6e8", midnight: "#f2cf72", paper: "#ffffff", forest: "#c9dbb2", emerald: "#f2cf72", mint: "#c4f0dc", teal: "#ffc2b0", sky: "#cfe8fb",
+  royal: "#f2cf72", nord: "#e5e9f0", slate: "#ffb48a", solar: "#fdf6e3", lavender: "#e3d7f7", grape: "#f2cf72", dusk: "#ffb6d9", bubblegum: "#ffd6e8",
+  rose: "#f7c6d0", cherry: "#ffc9c9", terracotta: "#e9b08f", autumn: "#e3b87a", coffee: "#d9b99b", desert: "#ecd2a6", lemon: "#fff3b0",
+  charcoal: "#3a3a3a", neon: "#c6f6ff" };
+for (const [id, c] of Object.entries(THEME_TILES)) { Object.assign(THEMES[id].light, tileTok(c)); Object.assign(THEMES[id].dark, tileTok(mix(c, "#000000", .08))); }
 // tile colours: "theme" keeps the theme's own tiles, "custom" uses SET.tileCustom
 const TILES = { theme: ["Theme", ""], classic: ["Classic", "#f1dcaa"], ivory: ["Ivory", "#f7f1e1"], white: ["White", "#ffffff"], maple: ["Maple", "#e3b87a"],
   walnut: ["Walnut", "#6b4a2f"], slate: ["Slate", "#2f3437"], gold: ["Gold", "#f2c94c"], orange: ["Orange", "#f39c45"], ruby: ["Ruby", "#c0392b"],
@@ -505,7 +513,7 @@ function tokensFor(dark) {
     Object.assign(tok, { bg, panel: mix(d(tok.panel), bg, toBg), chip: mix(d(tok.chip), bg, .3), line: d(tok.line), field: d(tok.field) });
   }
   const tc = SET.tiles === "custom" ? SET.tileCustom : TILES[SET.tiles]?.[1];
-  if (tc) Object.assign(tok, { tile: tc, "tile-edge": mix(tc, "#000000", .26), "tile-ink": inkOn(tc) === "#ffffff" ? "#fbf6ea" : "#2a1f0e" });
+  if (tc) Object.assign(tok, tileTok(tc));
   if (SET.headCustom) { const h = dark ? mix(SET.headCustom, "#000000", .3) : SET.headCustom; Object.assign(tok, { head: h, "head-ink": inkOn(h) }); }
   if (SET.accentCustom) { const a = dark ? mix(SET.accentCustom, "#ffffff", .2) : SET.accentCustom; Object.assign(tok, { accent: a, "on-accent": inkOn(a) }); }
   return tok;
