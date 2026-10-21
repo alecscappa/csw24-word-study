@@ -214,6 +214,8 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .pbtns .no { color: var(--warn); border-color: var(--warn); }
 .pbtns .yes { color: var(--good); border-color: var(--good); }
 .pbtns [hidden] { display: none; }
+.pbtns .no.on { background: var(--warn); border-color: var(--warn); color: var(--panel); }
+.pbtns .yes.on { background: var(--good); border-color: var(--good); color: var(--panel); }
 details.more-themes { margin-top: 10px; }
 details.more-themes > summary { cursor: pointer; font: 600 .88rem var(--display); color: var(--link); padding: 6px 0; }
 details.more-themes .swatches { margin-top: 8px; }
@@ -1076,9 +1078,10 @@ function drawQuestion() {
     <div class="progress"><div style="width:${(Q.i / Q.qs.length) * 100}%"></div></div>
     <div class="card" style="display:flex;flex-direction:column;gap:14px">
       ${mode === "anagram" ? `<p class="small" style="margin:0">${nAna > 1 ? `${nAna} words. Find them all.` : "One word."}</p>` : ""}
-      ${prompt}<form id="qform" autocomplete="off">${input}</form><div id="qfb"></div>
+      ${prompt}<form id="qform" autocomplete="off">${input}</form>
+      ${mode === "phony" ? "" : `<div class="pbtns" id="qmark"><button type="button" class="btn no" id="qNo" title="Give up: show the answer">✗</button><button type="button" class="btn yes" id="qYes" title="Knew it: show the answer and count it right">✓</button></div>`}<div id="qfb"></div>
     </div>`;
-  $("#qquit").onclick = () => { Q.done = true; VIEWS.quiz(); };
+  $("#qquit").onclick = () => { commitQuiz(); Q.answered = false; Q.done = true; VIEWS.quiz(); };
   $("#hint")?.addEventListener("click", ev => { ev.preventDefault(); $("#hintBox").innerHTML = tilesHTML(alpha(q.w), true); });
   ($("#qa") || $("#qf"))?.focus();
   // take a correct answer the moment it is typed; with several anagrams, clear the box after each one
@@ -1096,12 +1099,15 @@ function drawQuestion() {
   });
   $("#qform").addEventListener("submit", ev => { ev.preventDefault(); Q.answered ? next() : check(); });
   $("#view").querySelectorAll("[data-ans]").forEach(b => b.onclick = () => { if (!Q.answered) check(b.dataset.ans); });
+  $("#qNo")?.addEventListener("click", () => { if (!Q.answered) check(); });
+  $("#qYes")?.addEventListener("click", () => { if (!Q.answered) check(undefined, true); });
   document.onkeydown = ev => {
     if (location.hash !== "#quiz" || Q.mode !== "phony" || Q.answered) return;
     if (/^[vp]$/i.test(ev.key)) check(ev.key.toLowerCase() === "v" ? "valid" : "phony");
   };
 }
-function check(ans) {
+// force: the ✓ button counts it right whatever was typed
+function check(ans, force) {
   const q = Q.qs[Q.i], e = DICT.get(q.w), mode = Q.mode;
   let ok = false, reveal = "";
   const letters = s => [...new Set((s || "").toUpperCase().replace(/[^A-Z]/g, ""))].sort().join("");
@@ -1122,17 +1128,30 @@ function check(ans) {
     ok = g === q.w || (g.length === q.w.length && DICT.get(g)?.d === e.d);
     reveal = chip(q.w);
   }
+  if (force !== undefined) ok = force;
   Q.answered = true;
-  if (ok) Q.right++; else Q.wrong.push(q.w);
-  record(q.w, ok);
-  $("#qfb").innerHTML = `<p class="fb ${ok ? "ok" : "no"}" style="margin:0 0 6px">${ok ? "Correct" : "Not quite"}</p><div class="words" style="align-items:center">${reveal}</div>
-    ${mode === "anagram" ? "" : `<p class="small" style="margin:8px 0 0">${esc(e.d)}</p>`}<div class="actions"><button class="btn primary" id="qnext">${Q.i + 1 < Q.qs.length ? "Next (Enter)" : "Finish"}</button></div>`;
+  $("#qmark")?.remove();
+  // the mark is only saved on Next, so ✗ and ✓ can still switch it
+  $("#qfb").innerHTML = `<p class="fb" id="qverdict" style="margin:0 0 6px"></p><div class="words" style="align-items:center">${reveal}</div>
+    ${mode === "anagram" ? "" : `<p class="small" style="margin:8px 0 0">${esc(e.d)}</p>`}
+    <div class="pbtns" style="margin-top:16px"><button type="button" class="btn no" id="qNo2" title="Count it wrong">✗</button><button type="button" class="btn yes" id="qYes2" title="Count it right">✓</button><button class="btn primary" id="qnext">${Q.i + 1 < Q.qs.length ? "Next (Enter)" : "Finish"}</button></div>`;
+  const mark = v => { Q.ok = v; $("#qverdict").className = "fb " + (v ? "ok" : "no"); $("#qverdict").textContent = v ? "Correct" : "Not quite"; $("#qNo2").classList.toggle("on", !v); $("#qYes2").classList.toggle("on", v); };
+  mark(ok);
+  $("#qNo2").onclick = () => mark(false);
+  $("#qYes2").onclick = () => mark(true);
   $("#qnext").onclick = next;
   $("#qnext").focus();
+}
+function commitQuiz() {
+  if (!Q.answered) return;
+  const w = Q.qs[Q.i].w;
+  if (Q.ok) Q.right++; else Q.wrong.push(w);
+  record(w, Q.ok);
 }
 // a result row for the quiz: not clickable, so the quiz isn't left mid-question
 const quizRow = (w, cls) => rowHTML(w).replace('class="r" data-go=', `class="r ${cls}" data-w=`).replace('<span class="wl">', `<span class="wl">${cls === "got" ? "✓ " : "✗ "}`);
 function next() {
+  commitQuiz();
   Q.i++; Q.answered = false;
   if (Q.i >= Q.qs.length) { Q.done = true; document.onkeydown = null; VIEWS.quiz(); } else drawQuestion();
 }
@@ -1189,7 +1208,16 @@ function pickPractice(pool) {
   recent.unshift(alpha(w)); recent.length = Math.min(recent.length, Math.min(20, Math.floor(pool.length / 2)));
   return w;
 }
+// a practice mark is saved when moving on (Next, the next card, or leaving the tab)
+function commitPractice() {
+  const v = P?.verdict; if (!v) return;
+  P.verdict = null; clearTimeout(P.auto); P.seen++;
+  schedule(v.letters, v.ok); setLearnt(v.letters, v.ok);
+  if (v.ok) { P.streak++; P.solved++; } else P.streak = 0;
+  for (const x of v.want) record(x, v.ok);
+}
 VIEWS.practice = () => {
+  commitPractice();
   const o = { ...PO_DEFAULT, ...(SET.practice || {}) };
   const pool = practicePool(o);
   const key = JSON.stringify(o);
@@ -1246,20 +1274,18 @@ VIEWS.practice = () => {
       <div class="pbtns"><button class="btn ib" id="pShuf" title="Shuffle" aria-label="Shuffle"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></button>
         <button class="btn no" id="pNo" title="Didn't know it: show the answer and review it later">✗</button><button class="btn yes" id="pYes" title="Knew it: show the answer, no review">✓</button>
         <button class="btn primary" id="pNext" hidden>Next</button></div>
-      <div class="rows" id="pfound"></div>
+      <div class="rows" id="pfound"></div><div class="rows" id="preveal"></div>
     </div>` + opts;
   // on a phone, focusing the box pops the keyboard up, so only do it where there's a real keyboard
   const touch = matchMedia("(pointer: coarse)").matches;
-  // solved = every word typed (moves on by itself); ✓ = knew it, ✗ = didn't. Both ✓ and ✗ show the answers.
+  // solved = every word typed (moves on by itself); ✓ = knew it, ✗ = didn't. Both show the answers,
+  // and either can still be pressed to switch the mark until Next saves it.
   const finish = (ok, solved) => {
-    P.done = true; P.seen++;
-    schedule(P.letters, ok); setLearnt(P.letters, ok);
-    const pr = progress(practicePool(o)); $("#pprog").innerHTML = progText(pr);
-    if (ok) { P.streak++; P.solved++; } else P.streak = 0;
-    for (const x of P.want) record(x, ok);
-    $("#pfound").insertAdjacentHTML("beforeend", P.want.filter(x => !P.found.includes(x)).map(x => quizRow(x, ok ? "got" : "miss")).join(""));
-    $("#pNo").hidden = $("#pYes").hidden = true; $("#pNext").hidden = false;
-    if (solved) setTimeout(() => { if (P.done && location.hash === "#practice") VIEWS.practice(); }, 900);
+    P.done = true; P.verdict = { letters: P.letters, want: P.want, ok };
+    $("#preveal").innerHTML = P.want.filter(x => !P.found.includes(x)).map(x => quizRow(x, ok ? "got" : "miss")).join("");
+    $("#pNo").classList.toggle("on", !ok); $("#pYes").classList.toggle("on", ok); $("#pNext").hidden = false;
+    clearTimeout(P.auto);
+    if (solved) P.auto = setTimeout(() => { if (P.done && location.hash === "#practice") VIEWS.practice(); }, 900);
     else if (!touch) $("#pNext").focus();
   };
   if (!touch) $("#pa").focus();
@@ -1273,8 +1299,8 @@ VIEWS.practice = () => {
   });
   $("#pa").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); P.done ? VIEWS.practice() : finish(false); } });
   $("#pShuf").onclick = () => { $("#ptiles").innerHTML = tilesHTML(shuffle([...P.letters]).join("")); if (!touch) $("#pa").focus(); };
-  $("#pNo").onclick = () => { if (!P.done) finish(false); };
-  $("#pYes").onclick = () => { if (!P.done) finish(true); };
+  $("#pNo").onclick = () => finish(false);
+  $("#pYes").onclick = () => finish(true);
   $("#pNext").onclick = () => VIEWS.practice();
   wire();
 };
@@ -1388,6 +1414,7 @@ const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 
 // ---------- routing ----------
 function route() {
+  commitPractice();
   const [tab, arg] = decodeURIComponent(location.hash.slice(1)).split("/");
   const t = VIEWS[tab] ? tab : "w";
   document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === t));
