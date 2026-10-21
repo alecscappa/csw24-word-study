@@ -2,13 +2,29 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CSW24 Word Study</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="CSW24">
-<meta name="theme-color" content="#1f5c4a">
+<meta name="theme-color" content="#1f5c4a" id="themeColor">
+<script>
+// Paint the saved theme before anything else loads, so a reload (or the phone's top bar) doesn't flash the default green.
+// applySettings() in the app script writes csw24:paint with the finished colours for light and dark.
+try {
+  const p = JSON.parse(localStorage.getItem("csw24:paint"));
+  if (p) {
+    const dark = p.mode === "dark" || (p.mode === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+    const r = document.documentElement, tok = p[dark ? "dark" : "light"];
+    for (const k in tok) r.style.setProperty("--" + k, tok[k]);
+    r.style.colorScheme = dark ? "dark" : "light";
+    r.style.fontSize = p.size;
+    r.dataset.values = p.values;
+    document.getElementById("themeColor").content = tok.head;
+  }
+} catch {}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
@@ -202,6 +218,98 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .swatch .body { height: 34px; display: flex; align-items: center; gap: 6px; padding: 0 8px; }
 .swatch .body i { height: 8px; border-radius: 4px; display: block; }
 .swatch span { display: block; padding: 6px 8px; font: 600 .82rem var(--display); }
+.tilepick { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tilepick label { position: relative; }
+.tilepick label input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+.tilepick button, .tilepick label { border: 2px solid transparent; background: none; padding: 2px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; font: 600 .68rem var(--display); color: var(--muted); }
+.tilepick .on { border-color: var(--accent); color: var(--ink); }
+.tilepick .tile { width: 34px; height: 34px; font-size: 1.15rem; animation: none; }
+.tilepick .tile sub { font-size: .45rem; right: 3px; bottom: 3px; }
+.colours { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px 16px; }
+.colour { display: flex; align-items: center; gap: 10px; }
+.colour input[type=color] { width: 46px; height: 38px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--chip); cursor: pointer; flex: none; }
+.colour b { font: 600 .9rem var(--display); display: block; }
+
+/* search sections fold open and shut */
+details.acc > summary { list-style: none; display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0; padding: 2px 0; }
+details.acc > summary::-webkit-details-marker { display: none; }
+details.acc > summary::after { content: ""; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); margin: -4px 4px 0 auto; transition: transform .15s; flex: none; }
+details.acc[open] > summary::after { transform: rotate(-135deg); margin-top: 4px; }
+details.acc[open] > summary { margin-bottom: 12px; }
+details.acc .accn { font: 400 .74rem var(--mono); letter-spacing: 0; text-transform: none; color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+/* tab icons and short names are for the phone's bottom bar only */
+nav.tabs .ico, nav.tabs .sh { display: none; }
+
+/* ---------- phone layout (desktop above 620px is untouched) ---------- */
+@media (max-width: 620px) {
+  header { padding: calc(10px + env(safe-area-inset-top)) 12px 10px; }
+  .top h1 { display: none; }
+  form.search { flex-basis: 100%; gap: 6px; }
+  form.search input { font-size: 16px; padding: 10px 12px; }
+  form.search .btn { padding: 9px 12px; }
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; margin: 0; gap: 0; overflow: visible;
+    background: var(--panel); border-top: 1px solid var(--line); padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+    box-shadow: 0 -4px 16px color-mix(in srgb, var(--ink) 8%, transparent); }
+  nav.tabs a { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0 4px; border-radius: 8px; color: var(--muted); opacity: 1; font: 600 .66rem/1.2 var(--display); }
+  nav.tabs a.on { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+  nav.tabs a.end { margin-left: 0; }
+  nav.tabs .ico { display: block; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  nav.tabs .sh { display: inline; } nav.tabs .lg { display: none; }
+  main.wrap { padding: 14px 12px calc(86px + env(safe-area-inset-bottom)); gap: 12px; }
+  .card { padding: 14px; border-radius: 10px; }
+  .title { font-size: 1.3rem; }
+
+  /* bigger touch targets; 16px inputs stop iOS zooming in on focus */
+  .btn { padding: 10px 14px; }
+  .btn.sm { padding: 7px 11px; font-size: .84rem; }
+  select, .field input, .rangebar input, textarea { font-size: 16px; }
+  select, .field input { padding: 9px 10px; }
+  .hook button { padding: 5px 9px; font-size: 1rem; }
+
+  /* forms: two columns, wide fields full width */
+  .form { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .field.wide { grid-column: 1 / -1; }
+  .actions .btn.primary { flex: 1; }
+
+  /* results: tidy toolbar, length chips and ranks scroll sideways instead of wrapping */
+  .toolbar { gap: 8px; }
+  .toolbar .count { flex-basis: 100%; }
+  .toolbar select { flex: 1; }
+  .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .chips::-webkit-scrollbar, .toolbar + .rangebar::-webkit-scrollbar { display: none; }
+  .chips .btn { flex: none; }
+  .row > .chips { flex: 1 1 100%; min-width: 0; }
+  .toolbar + .rangebar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .toolbar + .rangebar > * { flex: none; }
+  .r { padding: 9px 2px; }
+
+  /* word page: tiles fill the width, hooks sit underneath with labels */
+  .tiles:not(.mini) { --sz: min(42px, calc((100vw - 58px) / var(--n, 7) - 4px)); flex-wrap: nowrap; }
+  .tiles:not(.mini) .tile { width: var(--sz); height: var(--sz); font-size: calc(var(--sz) * .58); }
+  .tilerow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tilerow .tiles { grid-column: 1 / -1; order: -1; justify-content: center; }
+  .tilerow .hook { max-width: none; align-content: flex-start; }
+  .tilerow .hook:not(.none)::before { content: "Front hooks"; flex-basis: 100%; font: 700 .66rem var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .tilerow .hook.b:not(.none)::before { content: "Back hooks"; }
+  .tilerow .hook.b { justify-content: flex-end; text-align: right; }
+  .tilerow .hook.none br { display: none; }
+  .badges .btn { margin-left: 0 !important; }
+  .stats { gap: 10px; }
+
+  /* practice: big answer box, three equal buttons */
+  .ptiles { padding: 4px 0; }
+  .practice .row { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .practice .row .btn { text-align: center; padding: 12px 6px; }
+  .practice .qinput { font-size: 1.3rem; padding: 12px; text-align: center; }
+  .pprog { gap: 8px 14px; }
+
+  .listgrid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .lcard { padding: 12px; }
+  .swatches { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+  .seg .btn { flex: 1 1 auto; text-align: center; }
+  .qprompt { text-align: center; }
+}
 
 @media (prefers-reduced-motion: no-preference) {
   .tile { animation: drop .25s ease-out both; }
@@ -222,13 +330,13 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
       </form>
     </div>
     <nav class="tabs" id="tabs">
-      <a href="#w" data-tab="w">Word</a>
-      <a href="#search" data-tab="search">Search</a>
-      <a href="#lists" data-tab="lists">Word lists</a>
-      <a href="#practice" data-tab="practice">Practice</a>
-      <a href="#quiz" data-tab="quiz">Quiz</a>
-      <a href="#mine" data-tab="mine">My words</a>
-      <a href="#settings" data-tab="settings" class="end">Settings</a>
+      <a href="#w" data-tab="w"><svg class="ico" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 16l3-8 3 8M10.2 13h3.6"/></svg>Word</a>
+      <a href="#search" data-tab="search"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Search</a>
+      <a href="#lists" data-tab="lists"><svg class="ico" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg><span class="lg">Word lists</span><span class="sh">Lists</span></a>
+      <a href="#practice" data-tab="practice"><svg class="ico" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.5-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.5 4.5L20 16M20 20v-4h-4"/></svg>Practice</a>
+      <a href="#quiz" data-tab="quiz"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.3M12 16.8v.01"/></svg>Quiz</a>
+      <a href="#mine" data-tab="mine"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></svg><span class="lg">My words</span><span class="sh">Mine</span></a>
+      <a href="#settings" data-tab="settings" class="end"><svg class="ico" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/></svg>Settings</a>
     </nav>
   </div>
 </header>
@@ -323,18 +431,82 @@ const THEMES = {
     light: { bg:"#ffffff", panel:"#ffffff", ink:"#000000", muted:"#2b2b2b", line:"#000000", chip:"#ffffff", head:"#000000", "head-ink":"#ffffff", field:"#ffffff", "field-ink":"#000000", tile:"#ffe066", "tile-edge":"#000000", "tile-ink":"#000000", accent:"#b00020", "on-accent":"#ffffff", link:"#0039a6", good:"#006b2e", bad:"#b00020", new:"#5a1fb0" },
     dark:  { bg:"#000000", panel:"#000000", ink:"#ffffff", muted:"#dddddd", line:"#ffffff", chip:"#000000", head:"#000000", "head-ink":"#ffffff", field:"#ffffff", "field-ink":"#000000", tile:"#ffe066", "tile-edge":"#ffffff", "tile-ink":"#000000", accent:"#ff6b6b", "on-accent":"#000000", link:"#8cc8ff", good:"#5eea9a", bad:"#ff6b6b", new:"#d0b0ff" } },
 };
-const SET_DEFAULT = { theme: "board", mode: "auto", size: "md", values: true, sort: "prob", defs: true, prob: true, hooks: true, pageSize: 300, online: true, phony: 50, randMin: 2, randMax: 8, qcount: 20 };
+// colour maths for the generated themes, tile colours and the custom colour pickers
+const hex2rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const rgb2hex = c => "#" + c.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
+const mix = (a, b, t) => { const x = hex2rgb(a), y = hex2rgb(b); return rgb2hex(x.map((v, i) => v + (y[i] - v) * t)); };
+const lum = h => { const [r, g, b] = hex2rgb(h).map(v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
+const inkOn = h => lum(h) > .36 ? "#161410" : "#ffffff";
+function hsl(h, s, l) {
+  s /= 100; l /= 100;
+  const f = n => { const k = (n + h / 30) % 12; return 255 * (l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1))); };
+  return rgb2hex([f(0), f(8), f(4)]);
+}
+// a full light + dark theme from a neutral hue/saturation, a header colour, an accent and a link colour
+function mkTheme(name, h, s, head, accent, link, tile = "#f1dcaa") {
+  const tt = { tile, "tile-edge": mix(tile, "#000000", .26), "tile-ink": inkOn(tile) === "#ffffff" ? "#fbf6ea" : "#2a1f0e" };
+  const headD = mix(head, "#000000", .38), accentD = mix(accent, "#ffffff", .3), linkD = mix(link, "#ffffff", .4);
+  return { name,
+    light: { bg: hsl(h, s, 94), panel: hsl(h, s * .6, 99), ink: hsl(h, s * .5, 11), muted: hsl(h, s * .3, 40), line: hsl(h, s * .6, 85), chip: hsl(h, s, 96),
+      head, "head-ink": inkOn(head) === "#ffffff" ? hsl(h, s, 97) : hsl(h, s * .5, 11), field: hsl(h, s * .6, 99), "field-ink": hsl(h, s * .5, 11), ...tt,
+      accent, "on-accent": inkOn(accent), link, good: "#2a8050", bad: "#bf3b45", new: "#7d50c4" },
+    dark: { bg: hsl(h, s * .7, 8), panel: hsl(h, s * .6, 11.5), ink: hsl(h, s * .4, 91), muted: hsl(h, s * .25, 63), line: hsl(h, s * .5, 21), chip: hsl(h, s * .5, 14.5),
+      head: headD, "head-ink": inkOn(headD) === "#ffffff" ? hsl(h, s * .4, 92) : hsl(h, s * .5, 10), field: hsl(h, s * .4, 91), "field-ink": hsl(h, s * .5, 11), ...tt,
+      accent: accentD, "on-accent": inkOn(accentD), link: linkD, good: "#5ccb8c", bad: "#f0808a", new: "#b79bff" } };
+}
+Object.assign(THEMES, {
+  forest: mkTheme("Forest", 110, 14, "#2d5a27", "#c0612b", "#2f6fa0"),
+  emerald: mkTheme("Emerald and gold", 150, 18, "#046c4e", "#b8860b", "#2f6fa0", "#f2cf72"),
+  mint: mkTheme("Mint", 155, 28, "#2f8f6f", "#c64f6f", "#2c6fa8"),
+  teal: mkTheme("Teal and coral", 180, 18, "#0f766e", "#d4543a", "#2c6fa8"),
+  sky: mkTheme("Sky blue", 205, 35, "#2b7bbd", "#e2693b", "#1f62a8"),
+  royal: mkTheme("Royal blue", 230, 25, "#233a8f", "#d4931a", "#2f5fd0", "#f2cf72"),
+  nord: mkTheme("Nordic frost", 220, 16, "#3b4252", "#bf616a", "#5e81ac", "#e5e9f0"),
+  slate: mkTheme("Slate and orange", 215, 12, "#334155", "#e0623a", "#2f6fb8"),
+  solar: mkTheme("Solarized", 45, 40, "#073642", "#cb4b16", "#268bd2"),
+  lavender: mkTheme("Lavender", 265, 25, "#6b5b9a", "#c2547a", "#4a63c2"),
+  grape: mkTheme("Grape soda", 280, 22, "#5b2a86", "#e0a526", "#5865d8", "#f2cf72"),
+  dusk: mkTheme("Dusk", 250, 15, "#44475a", "#c2307f", "#4b6cd0"),
+  bubblegum: mkTheme("Bubblegum", 320, 40, "#d6589f", "#4a7fd6", "#3a6cc0", "#ffd6e8"),
+  rose: mkTheme("Rose", 345, 30, "#9b2f4f", "#2f7f78", "#3b68a8"),
+  cherry: mkTheme("Cherry", 0, 20, "#8f1d2c", "#c47d12", "#2f68a8"),
+  terracotta: mkTheme("Terracotta", 22, 30, "#a24b2a", "#2d6a6a", "#2f6a96"),
+  autumn: mkTheme("Autumn", 28, 35, "#8a3b12", "#b8860b", "#3a6890", "#e3b87a"),
+  coffee: mkTheme("Coffee", 30, 20, "#5b3a29", "#c27a2c", "#3a6a8a", "#e3b87a"),
+  desert: mkTheme("Desert sand", 38, 35, "#b07a3a", "#3d6e8a", "#2f6a96"),
+  lemon: mkTheme("Lemon", 55, 45, "#b39a12", "#2f6fa0", "#2f6fa0", "#fff3b0"),
+  charcoal: mkTheme("Charcoal and orange", 0, 0, "#2a2a2a", "#e8611a", "#2f6fb8"),
+  neon: mkTheme("Neon night", 260, 30, "#1a0b2e", "#00a896", "#7b5cff", "#c6f6ff"),
+});
+// tile colours: "theme" keeps the theme's own tiles, "custom" uses SET.tileCustom
+const TILES = { theme: ["Theme", ""], classic: ["Classic", "#f1dcaa"], ivory: ["Ivory", "#f7f1e1"], white: ["White", "#ffffff"], maple: ["Maple", "#e3b87a"],
+  walnut: ["Walnut", "#6b4a2f"], slate: ["Slate", "#2f3437"], gold: ["Gold", "#f2c94c"], orange: ["Orange", "#f39c45"], ruby: ["Ruby", "#c0392b"],
+  pink: ["Pink", "#f4a6c1"], lilac: ["Lilac", "#b49be6"], ocean: ["Ocean", "#3b7dd8"], sky: ["Sky", "#9fd3f5"], jade: ["Jade", "#2e9e6e"], mint: ["Mint", "#a8e6cf"] };
+const SET_DEFAULT = { theme: "board", mode: "auto", size: "md", values: true, sort: "prob", defs: true, prob: true, hooks: true, pageSize: 300, online: true, phony: 50, randMin: 2, randMax: 8, qcount: 20,
+  tiles: "theme", tileCustom: "#f1dcaa", headCustom: "", accentCustom: "" };
 let SET = { ...SET_DEFAULT, ...store.get("settings", {}) };
 const darkMQ = matchMedia("(prefers-color-scheme: dark)");
-function applySettings() {
+const isDark = () => SET.mode === "dark" || (SET.mode === "auto" && darkMQ.matches);
+function tokensFor(dark) {
   const t = THEMES[SET.theme] || THEMES.board;
-  const dark = SET.mode === "dark" || (SET.mode === "auto" && darkMQ.matches);
-  const root = document.documentElement;
   const tok = { warn: dark ? "#f0b45a" : "#a66300", ...t[dark ? "dark" : "light"] };
+  const tc = SET.tiles === "custom" ? SET.tileCustom : TILES[SET.tiles]?.[1];
+  if (tc) Object.assign(tok, { tile: tc, "tile-edge": mix(tc, "#000000", .26), "tile-ink": inkOn(tc) === "#ffffff" ? "#fbf6ea" : "#2a1f0e" });
+  if (SET.headCustom) { const h = dark ? mix(SET.headCustom, "#000000", .3) : SET.headCustom; Object.assign(tok, { head: h, "head-ink": inkOn(h) }); }
+  if (SET.accentCustom) { const a = dark ? mix(SET.accentCustom, "#ffffff", .2) : SET.accentCustom; Object.assign(tok, { accent: a, "on-accent": inkOn(a) }); }
+  return tok;
+}
+function applySettings() {
+  const dark = isDark();
+  const root = document.documentElement;
+  const tok = tokensFor(dark);
   for (const [k, v] of Object.entries(tok)) root.style.setProperty("--" + k, v);
   root.style.colorScheme = dark ? "dark" : "light";
   root.style.fontSize = { sm: "14px", md: "16px", lg: "18px" }[SET.size] || "16px";
   root.dataset.values = SET.values ? "on" : "off";
+  // the phone's browser bar follows the header colour
+  document.getElementById("themeColor").content = tok.head;
+  store.set("paint", { mode: SET.mode, light: tokensFor(false), dark: tokensFor(true), size: root.style.fontSize, values: root.dataset.values });
 }
 function saveSettings(patch) { SET = { ...SET, ...patch }; store.set("settings", SET); applySettings(); }
 darkMQ.addEventListener?.("change", applySettings);
@@ -470,7 +642,7 @@ function defHTML(d) {
 const hookText = (letters, nw) => [...letters].map(h => nw.includes(h) ? `${h}<sup title="new hook in CSW24">+</sup>` : h).join("");
 const chip = w => `<a class="w" href="#w/${w}" title="${esc(DICT.get(w)?.d)}">${w}${DICT.get(w)?.n ? "<sup>+</sup>" : ""}</a>`;
 function tilesHTML(w, mini) {
-  return `<div class="tiles${mini ? " mini" : ""}">${[...w].map((c, i) => `<div class="tile" style="animation-delay:${i * 25}ms">${c}<sub>${VALUES[c]}</sub></div>`).join("")}</div>`;
+  return `<div class="tiles${mini ? " mini" : ""}" style="--n:${w.length}">${[...w].map((c, i) => `<div class="tile" style="animation-delay:${i * 25}ms">${c}<sub>${VALUES[c]}</sub></div>`).join("")}</div>`;
 }
 
 const SORTS = { prob: "Probability", alpha: "A–Z", len: "Length", score: "Points", play: "Playability" };
@@ -557,8 +729,8 @@ VIEWS.w = (arg) => {
   const qs = store.get("stats", {})[w];
   const inGroups = valid ? GROUPS.filter(g => g.test && !["threes", "twos", "fours", "jqxz", "j", "q", "x", "z"].includes(g.id) && g.test(w, e)) : [];
   const hooks = (s, side) => s
-    ? `<div class="hook">${[...s].map(h => `<button type="button" data-go="${side === "f" ? h.toUpperCase() + w : w + h.toUpperCase()}" title="${side === "f" ? h.toUpperCase() + w : w + h.toUpperCase()}">${h}${(side === "f" ? e.fhNew : e.bhNew).includes(h) ? "<sup>+</sup>" : ""}</button>`).join("")}</div>`
-    : `<div class="hook none">no ${side === "f" ? "front" : "back"}<br>hooks</div>`;
+    ? `<div class="hook ${side}">${[...s].map(h => `<button type="button" data-go="${side === "f" ? h.toUpperCase() + w : w + h.toUpperCase()}" title="${side === "f" ? h.toUpperCase() + w : w + h.toUpperCase()}">${h}${(side === "f" ? e.fhNew : e.bhNew).includes(h) ? "<sup>+</sup>" : ""}</button>`).join("")}</div>`
+    : `<div class="hook none ${side}">no ${side === "f" ? "front" : "back"}<br>hooks</div>`;
   let html = `<div class="card">
     <div class="tilerow">${valid ? hooks(e.fh, "f") : ""}${tilesHTML(w)}${valid ? hooks(e.bh, "b") : ""}</div>
     <div class="badges">
@@ -697,22 +869,25 @@ function runSearch(s) {
 VIEWS.search = () => {
   const s = searchState;
   const f = (id, label, ph, hint = "", cls = "") => `<div class="field"><label for="s_${id}">${label}</label><input id="s_${id}" class="${cls}" value="${esc(s[id])}" placeholder="${ph}" spellcheck="false">${hint ? `<span class="hint">${hint}</span>` : ""}</div>`;
+  // each section folds; it starts open if it was left open or has something filled in
+  const opened = store.get("searchOpen", { group: true });
+  const acc = (key, title) => `<details class="fs acc" data-acc="${key}" ${opened[key] || accSummary(key) ? "open" : ""}><summary class="lbl">${title}<span class="accn" id="accn_${key}">${esc(accSummary(key))}</span></summary>`;
   $("#view").innerHTML = `<div class="card">
     <form id="sform" autocomplete="off">
-      <div class="fs"><h2 class="lbl">Group and meaning</h2><div class="form">
+      ${acc("group", "Group and meaning")}<div class="form">
         <div class="field wide"><label for="s_group">Word group</label><select id="s_group"><option value="">Any word</option>${groupOptions(s.group)}</select>
           <span class="hint" id="groupHint">${esc(G(s.group)?.blurb || "Vowel dumps, JQXZ, Q without U, new words and more. Combines with everything below.")}</span></div>
         ${f("def", "Definition mentions", "e.g. fish, plant, Hindu", "", "lc")}
-      </div></div>
-      <div class="fs"><h2 class="lbl">Letters</h2><div class="form">
+      </div></details>
+      ${acc("letters", "Letters")}<div class="form">
         ${f("pattern", "Pattern", "e.g. Q*, .A.E, *[JX]*", ". or ? one letter · * any run · [AEIOU] one of · [^S] not")}
         ${f("rack", "Rack", "e.g. AEINRT?", "? is a blank")}
         <div class="field"><label for="s_mode">Rack mode</label><select id="s_mode">
           <option value="exact" ${s.mode === "exact" ? "selected" : ""}>Anagram: use every tile</option>
           <option value="build" ${s.mode === "build" ? "selected" : ""}>Build: any words from these tiles</option>
           <option value="super" ${s.mode === "super" ? "selected" : ""}>Contains all these letters</option></select></div>
-      </div></div>
-      <div class="fs"><h2 class="lbl">Narrow down</h2><div class="form">
+      </div></details>
+      ${acc("narrow", "Narrow down")}<div class="form">
         <div class="field"><span class="flabel">Length</span><div class="pair"><input id="s_min" value="${esc(s.min)}" placeholder="min" inputmode="numeric" aria-label="Minimum length"><input id="s_max" value="${esc(s.max)}" placeholder="max" inputmode="numeric" aria-label="Maximum length"></div></div>
         ${f("starts", "Starts with", "e.g. UN")}
         ${f("ends", "Ends with", "e.g. ZA")}
@@ -720,7 +895,7 @@ VIEWS.search = () => {
         ${f("incl", "Must use letters", "e.g. VV")}
         ${f("excl", "Without letters", "e.g. AEIOU")}
         <div class="field"><label for="s_top">Probability</label><select id="s_top">${[["", "All words"], ["500", "Top 500 of each length"], ["1000", "Top 1,000 of each length"], ["3000", "Top 3,000 of each length"], ["6000", "Top 6,000 of each length"], ["10000", "Top 10,000 of each length"]].map(([v, t]) => `<option value="${v}" ${String(s.top) === v ? "selected" : ""}>${t}</option>`).join("")}</select><span class="hint">Most likely words to draw</span></div>
-      </div></div>
+      </div></details>
       <div class="actions">
         <button class="btn primary" type="submit">Search</button>
         <button class="btn" type="button" id="sClear">Clear all</button>
@@ -729,11 +904,24 @@ VIEWS.search = () => {
   </div>
   <div class="card" id="sres"><p class="empty">Pick a group or fill in any options, then press Search. Hooks show either side of each word; red lowercase letters are blanks.</p></div>`;
   const read = () => { for (const k of Object.keys(SEARCH_DEFAULT)) { const el = $("#s_" + k); if (el) searchState[k] = el.value; } store.set("search", searchState); };
+  $("#sform").querySelectorAll("details.acc").forEach(d => d.addEventListener("toggle", () => { const o = store.get("searchOpen", { group: true }); o[d.dataset.acc] = d.open; store.set("searchOpen", o); }));
+  $("#sform").addEventListener("input", () => { read(); for (const k of ["group", "letters", "narrow"]) $("#accn_" + k).textContent = accSummary(k); });
   $("#s_group").onchange = e => { $("#groupHint").textContent = G(e.target.value)?.blurb || "Any word."; read(); doSearch(); };
   $("#sform").addEventListener("submit", ev => { ev.preventDefault(); read(); doSearch(); });
   $("#sClear").onclick = () => { searchState = { ...SEARCH_DEFAULT }; store.set("search", searchState); VIEWS.search(); };
   if (Object.entries(searchState).some(([k, v]) => v && v !== SEARCH_DEFAULT[k])) doSearch();
 };
+// short "what's set" text shown beside each folded search section
+function accSummary(key) {
+  const s = searchState, up = v => String(v || "").toUpperCase();
+  const parts = {
+    group: [G(s.group)?.name, s.def && `“${s.def}”`],
+    letters: [s.pattern && up(s.pattern), s.rack && `rack ${up(s.rack)}`],
+    narrow: [(s.min || s.max) && `${s.min || 2}–${s.max || 15} letters`, s.starts && `${up(s.starts)}…`, s.ends && `…${up(s.ends)}`, s.contains && `has ${up(s.contains)}`,
+      s.incl && `uses ${up(s.incl)}`, s.excl && `no ${up(s.excl)}`, s.top && `top ${(+s.top).toLocaleString()}`],
+  }[key];
+  return parts.filter(Boolean).join(" · ");
+}
 function doSearch() {
   const box = $("#sres"), s = searchState;
   if (!Object.entries(s).some(([k, v]) => !["mode", "from", "to"].includes(k) && v)) { box.innerHTML = `<p class="empty">Pick a group or set at least one option.</p>`; return; }
@@ -1114,7 +1302,11 @@ function confirmBtn(el, fn) {
 VIEWS.settings = () => {
   const seg = (key, opts) => `<div class="seg">${opts.map(([v, t]) => `<button type="button" class="btn ${String(SET[key]) === String(v) ? "on" : ""}" data-set="${key}" data-val="${v}">${t}</button>`).join("")}</div>`;
   const chk = (key, label) => `<label class="check"><input type="checkbox" data-chk="${key}" ${SET[key] ? "checked" : ""}> ${label}</label>`;
-  const swatch = (id, t) => { const c = t[SET.mode === "dark" || (SET.mode === "auto" && darkMQ.matches) ? "dark" : "light"]; return `<button type="button" class="swatch ${SET.theme === id ? "on" : ""}" data-theme="${id}">
+  const tileBtn = (id, name, c) => { const tok = c ? { tile: c, ink: inkOn(c) === "#ffffff" ? "#fbf6ea" : "#2a1f0e", edge: mix(c, "#000000", .26) } : null;
+    return `<button type="button" class="${SET.tiles === id ? "on" : ""}" data-tiles="${id}"><div class="tile" ${tok ? `style="background:${tok.tile};color:${tok.ink};box-shadow:inset 0 -3px 0 ${tok.edge}"` : ""}>A<sub>1</sub></div>${name}</button>`; };
+  const colour = (key, title, sub) => `<label class="colour"><input type="color" data-colour="${key}" value="${SET[key] || getComputedStyle(document.documentElement).getPropertyValue("--" + (key === "headCustom" ? "head" : "accent")).trim()}">
+      <span><b>${title}</b><span class="small">${SET[key] ? `Custom · <a href="#" data-uncolour="${key}">use theme</a>` : sub}</span></span></label>`;
+  const swatch = (id, t) => { const c = t[isDark() ? "dark" : "light"]; return `<button type="button" class="swatch ${SET.theme === id ? "on" : ""}" data-theme="${id}">
       <div class="bar" style="background:${c.head}"><i style="background:${c.tile}"></i><i style="background:${c.tile}"></i><i style="background:${c.accent}"></i></div>
       <div class="body" style="background:${c.bg}"><i style="width:40%;background:${c.ink}"></i><i style="width:20%;background:${c.link}"></i></div>
       <span>${t.name}</span></button>`; };
@@ -1123,7 +1315,11 @@ VIEWS.settings = () => {
     <div class="fs"><h2 class="lbl">Colour theme</h2><div class="swatches">${Object.entries(THEMES).map(([id, t]) => swatch(id, t)).join("")}</div></div>
     <div class="fs"><h2 class="lbl">Light or dark</h2>${seg("mode", [["auto", "Match my device"], ["light", "Light"], ["dark", "Dark"]])}</div>
     <div class="fs"><h2 class="lbl">Text size</h2>${seg("size", [["sm", "Small"], ["md", "Normal"], ["lg", "Large"]])}</div>
-    <div class="fs"><h2 class="lbl">Tiles</h2>${chk("values", "Show letter values on tiles")}</div>
+    <div class="fs"><h2 class="lbl">Tile colour</h2><div class="tilepick">${Object.entries(TILES).map(([id, [n, c]]) => tileBtn(id, n, c || (THEMES[SET.theme] || THEMES.board)[isDark() ? "dark" : "light"].tile)).join("")}
+      <label class="pickc ${SET.tiles === "custom" ? "on" : ""}"><div class="tile" style="background:conic-gradient(#e74c3c,#f1c40f,#2ecc71,#3498db,#9b59b6,#e74c3c);color:#fff">?</div>Pick…<input type="color" id="tileCustom" value="${SET.tileCustom}" aria-label="Pick a tile colour"></label></div>
+      <div style="margin-top:12px">${chk("values", "Show letter values on tiles")}</div></div>
+    <div class="fs"><h2 class="lbl">Custom colours</h2><p class="small" style="margin:0 0 10px">Tap a colour to open the colour wheel. These sit on top of whichever theme you pick.</p>
+      <div class="colours">${colour("headCustom", "Header", "From the theme")}${colour("accentCustom", "Accent", "Buttons and highlights, from the theme")}</div></div>
   </div>
   <div class="card">
     <div class="fs"><h2 class="lbl">Word lists and search results</h2><div class="form">
@@ -1149,6 +1345,13 @@ VIEWS.settings = () => {
   const v = $("#view");
   v.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => { saveSettings({ theme: b.dataset.theme }); VIEWS.settings(); });
   v.querySelectorAll("[data-set]").forEach(b => b.onclick = () => { saveSettings({ [b.dataset.set]: b.dataset.val }); VIEWS.settings(); });
+  v.querySelectorAll("[data-tiles]").forEach(b => b.onclick = () => { saveSettings({ tiles: b.dataset.tiles }); VIEWS.settings(); });
+  // colour inputs preview live while the wheel is open and redraw the page once a colour is chosen
+  const tc = $("#tileCustom");
+  tc.oninput = () => saveSettings({ tiles: "custom", tileCustom: tc.value });
+  tc.onchange = () => VIEWS.settings();
+  v.querySelectorAll("[data-colour]").forEach(i => { i.oninput = () => saveSettings({ [i.dataset.colour]: i.value }); i.onchange = () => VIEWS.settings(); });
+  v.querySelectorAll("[data-uncolour]").forEach(a => a.onclick = ev => { ev.preventDefault(); saveSettings({ [a.dataset.uncolour]: "" }); VIEWS.settings(); });
   v.querySelectorAll("[data-chk]").forEach(c => c.onchange = () => saveSettings({ [c.dataset.chk]: c.checked }));
   $("#setSort").onchange = e => saveSettings({ sort: e.target.value });
   $("#setPage").onchange = e => saveSettings({ pageSize: +e.target.value });
