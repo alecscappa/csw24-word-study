@@ -21,6 +21,8 @@ try {
     r.style.colorScheme = dark ? "dark" : "light";
     r.style.fontSize = p.size;
     r.dataset.values = p.values;
+    r.dataset.tstyle = p.tstyle || "soft";
+    r.dataset.tfont = p.tfont || "sans";
     document.getElementById("themeColor").content = tok.head;
   }
 } catch {}
@@ -93,10 +95,14 @@ main.wrap { padding: 22px 16px 32px; display: flex; flex-direction: column; gap:
 /* word page */
 .tilerow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .tiles { display: flex; gap: 4px; flex-wrap: wrap; }
-.tile { width: 46px; height: 46px; background: var(--tile); color: var(--tile-ink); border-radius: 5px; box-shadow: inset 0 -3px 0 var(--tile-edge); position: relative; display: grid; place-items: center; font: 700 1.6rem/1 var(--display); }
+/* the tile's look (shadow, bevel, gloss…) is added by the Tile style setting; see TILE_STYLES */
+.tile { --lip: 3px; width: 46px; height: 46px; background: var(--tile); color: var(--tile-ink); border-radius: 5px; position: relative;
+  box-shadow: inset 0 calc(-1 * var(--lip)) 0 var(--tile-edge); display: grid; place-items: center; font: 700 1.6rem/1 var(--display); }
 .tile sub { position: absolute; right: 4px; bottom: 5px; font: 600 .6rem var(--mono); }
 :root[data-values="off"] .tile sub { display: none; }
-.tiles.mini .tile { width: 30px; height: 30px; font-size: 1.05rem; border-radius: 4px; box-shadow: inset 0 -2px 0 var(--tile-edge); }
+.tiles.mini .tile { --lip: 2px; width: 30px; height: 30px; font-size: 1.05rem; border-radius: 4px; }
+:root[data-tfont="serif"] .tile { font-family: var(--body); font-weight: 600; }
+:root[data-tfont="mono"] .tile { font-family: var(--mono); font-weight: 600; }
 .tiles.mini .tile sub { font-size: .45rem; right: 2px; bottom: 2px; }
 .hook { display: flex; gap: 3px; flex-wrap: wrap; max-width: 150px; }
 .hook button { border: 1px dashed var(--muted); background: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font: 600 .95rem var(--mono); }
@@ -498,8 +504,28 @@ for (const [id, c] of Object.entries(THEME_TILES)) { Object.assign(THEMES[id].li
 const TILES = { theme: ["Theme", ""], classic: ["Classic", "#f1dcaa"], ivory: ["Ivory", "#f7f1e1"], white: ["White", "#ffffff"], maple: ["Maple", "#e3b87a"],
   walnut: ["Walnut", "#6b4a2f"], slate: ["Slate", "#2f3437"], gold: ["Gold", "#f2c94c"], orange: ["Orange", "#f39c45"], ruby: ["Ruby", "#c0392b"],
   pink: ["Pink", "#f4a6c1"], lilac: ["Lilac", "#b49be6"], ocean: ["Ocean", "#3b7dd8"], sky: ["Sky", "#9fd3f5"], jade: ["Jade", "#2e9e6e"], mint: ["Mint", "#a8e6cf"] };
+// tile looks: [name, CSS for .tile]. --lip is the darker bottom edge (thinner on mini tiles).
+const LIP = "inset 0 calc(-1 * var(--lip)) 0 var(--tile-edge)";
+const TILE_STYLES = {
+  flat: ["Flat", `box-shadow: ${LIP};`],
+  soft: ["Soft shadow", `background-image: linear-gradient(180deg, rgb(255 255 255 / .16), rgb(0 0 0 / .04)); box-shadow: ${LIP}, inset 0 1px 0 rgb(255 255 255 / .45), 0 1px 1px rgb(0 0 0 / .2), 0 3px 6px -1px rgb(0 0 0 / .25);`],
+  chunky: ["Chunky", `box-shadow: ${LIP}, 2px 3px 0 rgb(0 0 0 / .28);`],
+  float: ["Floating", `box-shadow: ${LIP}, 0 2px 3px rgb(0 0 0 / .12), 0 8px 16px -4px rgb(0 0 0 / .35); transform: translateY(-1px);`],
+  bevel: ["Bevelled", `border-radius: 6px; background-image: linear-gradient(145deg, rgb(255 255 255 / .35), rgb(255 255 255 / 0) 45%, rgb(0 0 0 / .08)); box-shadow: inset 2px 2px 0 rgb(255 255 255 / .45), inset -2px calc(-1 * var(--lip)) 0 var(--tile-edge), 0 2px 4px rgb(0 0 0 / .25);`],
+  outline: ["Outlined", `box-shadow: ${LIP}, 0 0 0 1px color-mix(in srgb, var(--tile) 55%, #000), 0 2px 4px rgb(0 0 0 / .25);`],
+  wood: ["Wood grain", `background-image: repeating-linear-gradient(100deg, rgb(0 0 0 / .035) 0 2px, transparent 2px 7px), linear-gradient(180deg, rgb(255 255 255 / .2), rgb(0 0 0 / .05)); box-shadow: ${LIP}, inset 0 1px 0 rgb(255 255 255 / .4), 0 2px 5px rgb(0 0 0 / .25);`],
+  gloss: ["Glossy", `border-radius: 9px; background-image: linear-gradient(180deg, rgb(255 255 255 / .5), rgb(255 255 255 / 0) 50%); box-shadow: ${LIP}, 0 3px 8px rgb(0 0 0 / .22);`],
+  block: ["Thick block", `box-shadow: inset 0 1px 0 rgb(255 255 255 / .4), 0 var(--lip) 0 color-mix(in srgb, var(--tile-edge) 80%, #000), 0 calc(var(--lip) + 3px) 6px rgb(0 0 0 / .25); margin-bottom: var(--lip);`],
+  glow: ["Glow", `box-shadow: ${LIP}, 0 0 0 1px color-mix(in srgb, var(--tile) 70%, #fff), 0 0 14px color-mix(in srgb, var(--tile) 75%, transparent);`],
+  sticker: ["Sticker", `border-radius: 7px; box-shadow: ${LIP}, 0 0 0 2.5px #fff, 0 3px 7px rgb(0 0 0 / .3);`],
+  pressed: ["Pressed in", `box-shadow: inset 0 3px 5px rgb(0 0 0 / .28), inset 0 -1px 0 rgb(255 255 255 / .35);`],
+  pebble: ["Pebble", `border-radius: 34%; transform: scale(1.1); margin: 0 2px; background-image: radial-gradient(circle at 35% 30%, rgb(255 255 255 / .45), rgb(255 255 255 / 0) 55%); box-shadow: ${LIP}, 0 3px 6px rgb(0 0 0 / .25);`, "right: 17%; bottom: 15%;"],
+};
+// the page's tiles follow the setting; the previews in Settings (.ts-<id>) come after so they win
+document.head.insertAdjacentHTML("beforeend", `<style>${Object.entries(TILE_STYLES).map(([id, [, css, sub]]) => `:root[data-tstyle="${id}"] .tile { ${css} }${sub ? ` :root[data-tstyle="${id}"] .tile sub { ${sub} }` : ""}`).join("\n")}
+${Object.entries(TILE_STYLES).map(([id, [, css, sub]]) => `.tstyles .tile.ts-${id} { ${css} }${sub ? ` .tstyles .tile.ts-${id} sub { ${sub} }` : ""}`).join("\n")}</style>`);
 const SET_DEFAULT = { theme: "board", mode: "auto", size: "md", values: true, sort: "prob", defs: true, prob: true, hooks: true, pageSize: 300, online: true, phony: 50, randMin: 2, randMax: 8, qcount: 20,
-  tiles: "theme", tileCustom: "#f1dcaa", headCustom: "", accentCustom: "", glare: "soft" };
+  tiles: "theme", tileCustom: "#f1dcaa", headCustom: "", accentCustom: "", glare: "soft", tileStyle: "soft", tileFont: "sans" };
 let SET = { ...SET_DEFAULT, ...store.get("settings", {}) };
 const darkMQ = matchMedia("(prefers-color-scheme: dark)");
 const isDark = () => SET.mode === "dark" || (SET.mode === "auto" && darkMQ.matches);
@@ -526,9 +552,11 @@ function applySettings() {
   root.style.colorScheme = dark ? "dark" : "light";
   root.style.fontSize = { sm: "14px", md: "16px", lg: "18px" }[SET.size] || "16px";
   root.dataset.values = SET.values ? "on" : "off";
+  root.dataset.tstyle = SET.tileStyle;
+  root.dataset.tfont = SET.tileFont;
   // the phone's browser bar follows the header colour
   document.getElementById("themeColor").content = tok.head;
-  store.set("paint", { mode: SET.mode, light: tokensFor(false), dark: tokensFor(true), size: root.style.fontSize, values: root.dataset.values });
+  store.set("paint", { mode: SET.mode, light: tokensFor(false), dark: tokensFor(true), size: root.style.fontSize, values: root.dataset.values, tstyle: SET.tileStyle, tfont: SET.tileFont });
 }
 function saveSettings(patch) { SET = { ...SET, ...patch }; store.set("settings", SET); applySettings(); }
 darkMQ.addEventListener?.("change", applySettings);
@@ -1357,7 +1385,7 @@ VIEWS.settings = () => {
   const seg = (key, opts) => `<div class="seg">${opts.map(([v, t]) => `<button type="button" class="btn ${String(SET[key]) === String(v) ? "on" : ""}" data-set="${key}" data-val="${v}">${t}</button>`).join("")}</div>`;
   const chk = (key, label) => `<label class="check"><input type="checkbox" data-chk="${key}" ${SET[key] ? "checked" : ""}> ${label}</label>`;
   const tileBtn = (id, name, c) => { const tok = c ? { tile: c, ink: inkOn(c) === "#ffffff" ? "#fbf6ea" : "#2a1f0e", edge: mix(c, "#000000", .26) } : null;
-    return `<button type="button" class="${SET.tiles === id ? "on" : ""}" data-tiles="${id}"><div class="tile" ${tok ? `style="background:${tok.tile};color:${tok.ink};box-shadow:inset 0 -3px 0 ${tok.edge}"` : ""}>A<sub>1</sub></div>${name}</button>`; };
+    return `<button type="button" class="${SET.tiles === id ? "on" : ""}" data-tiles="${id}"><div class="tile" ${tok ? `style="background-color:${tok.tile};--tile:${tok.tile};color:${tok.ink};--tile-edge:${tok.edge}"` : ""}>A<sub>1</sub></div>${name}</button>`; };
   const colour = (key, title, sub) => `<label class="colour"><input type="color" data-colour="${key}" value="${SET[key] || getComputedStyle(document.documentElement).getPropertyValue("--" + (key === "headCustom" ? "head" : "accent")).trim()}">
       <span><b>${title}</b><span class="small">${SET[key] ? `Custom · <a href="#" data-uncolour="${key}">use theme</a>` : sub}</span></span></label>`;
   const themeList = Object.entries(THEMES);
@@ -1375,7 +1403,10 @@ VIEWS.settings = () => {
     <div class="fs"><h2 class="lbl">Text size</h2>${seg("size", [["sm", "Small"], ["md", "Normal"], ["lg", "Large"]])}</div>
     <div class="fs"><h2 class="lbl">Tile colour</h2><div class="tilepick">${Object.entries(TILES).map(([id, [n, c]]) => tileBtn(id, n, c || (THEMES[SET.theme] || THEMES.board)[isDark() ? "dark" : "light"].tile)).join("")}
       <label class="pickc ${SET.tiles === "custom" ? "on" : ""}"><div class="tile" style="background:conic-gradient(#e74c3c,#f1c40f,#2ecc71,#3498db,#9b59b6,#e74c3c);color:#fff">?</div>Pick…<input type="color" id="tileCustom" value="${SET.tileCustom}" aria-label="Pick a tile colour"></label></div>
-      <div style="margin-top:14px">${tilesHTML(sampleWord())}</div>
+      <h2 class="lbl" style="margin-top:18px">Tile style</h2>
+      <div class="tilepick tstyles">${Object.entries(TILE_STYLES).map(([id, [n]]) => `<button type="button" class="${SET.tileStyle === id ? "on" : ""}" data-tstyle-pick="${id}"><div class="tile ts-${id}">A<sub>1</sub></div>${n}</button>`).join("")}</div>
+      <h2 class="lbl" style="margin-top:18px">Tile letters</h2>${seg("tileFont", [["sans", "Bold"], ["serif", "Serif"], ["mono", "Typewriter"]])}
+      <div style="margin-top:16px">${tilesHTML(sampleWord())}</div>
       <div style="margin-top:12px">${chk("values", "Show letter values on tiles")}</div></div>
     <div class="fs"><h2 class="lbl">Custom colours</h2><p class="small" style="margin:0 0 10px">Tap a colour to open the colour wheel. These sit on top of whichever theme you pick.</p>
       <div class="colours">${colour("headCustom", "Header", "From the theme")}${colour("accentCustom", "Accent", "Buttons and highlights, from the theme")}</div></div>
@@ -1405,6 +1436,7 @@ VIEWS.settings = () => {
   v.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => { saveSettings({ theme: b.dataset.theme }); VIEWS.settings(); });
   v.querySelectorAll("[data-set]").forEach(b => b.onclick = () => { saveSettings({ [b.dataset.set]: b.dataset.val }); VIEWS.settings(); });
   $("#moreThemes").addEventListener("toggle", e => store.set("themesOpen", e.target.open));
+  v.querySelectorAll("[data-tstyle-pick]").forEach(b => b.onclick = () => { saveSettings({ tileStyle: b.dataset.tstylePick }); VIEWS.settings(); });
   v.querySelectorAll("[data-tiles]").forEach(b => b.onclick = () => { saveSettings({ tiles: b.dataset.tiles }); VIEWS.settings(); });
   // colour inputs preview live while the wheel is open and redraw the page once a colour is chosen
   const tc = $("#tileCustom");
