@@ -219,6 +219,7 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .r.got .wl { color: var(--good); } .r.miss .wl { color: var(--warn); }
 .w.miss { border-color: var(--warn); color: var(--warn); }
 .seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.stype .btn { flex: 1 1 auto; text-align: center; }
 .pbtns { display: flex; gap: 8px; }
 .pbtns .btn { flex: 1; text-align: center; font-size: 1.05rem; line-height: 1.2; }
 .pbtns .ib { flex: none; width: 3.4em; display: grid; place-items: center; }
@@ -335,6 +336,67 @@ nav.tabs .sh { display: none; }
   .qprompt { text-align: center; }
 }
 
+/* ---------- phone: word hero, search chips + sheets ---------- */
+@media (max-width: 620px) {
+  /* shared: pills, sideways rows, bottom sheets */
+  .pill { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--panel); font: 600 .86rem var(--display); white-space: nowrap; color: var(--ink); cursor: pointer; flex: none; }
+  .pill.on { background: var(--head); border-color: var(--head); color: var(--head-ink); }
+  .pill.add { border-style: dashed; color: var(--muted); }
+  .pill .x { border: 0; background: none; color: inherit; opacity: .75; font-size: 1.15rem; line-height: 1; padding: 6px 0 6px 4px; margin-right: -6px; cursor: pointer; }
+  .hscroll { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -12px; padding: 0 12px; }
+  .hscroll::-webkit-scrollbar { display: none; }
+  .sheetwrap { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; justify-content: flex-end; }
+  .sheetwrap[hidden] { display: none; }
+  .scrim { position: absolute; inset: 0; background: rgb(10 20 15 / .42); }
+  .sheet { position: relative; background: var(--panel); border-radius: 22px 22px 0 0; padding: 8px 16px calc(20px + env(safe-area-inset-bottom)); max-height: 85vh; max-height: 85dvh; overflow-y: auto; box-shadow: 0 -10px 30px rgb(0 0 0 / .2); animation: up .2s ease-out; }
+  @keyframes up { from { transform: translateY(40px); opacity: .4; } }
+  .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 10px; }
+  .sheet h3 { font: 700 1.15rem var(--display); margin: 0 0 10px; display: flex; justify-content: space-between; align-items: center; }
+  .sheet h3 button { border: 0; background: none; font: 600 .9rem var(--display); color: var(--link); min-height: 44px; cursor: pointer; }
+  .sheet [data-sec][hidden] { display: none; }
+  body.sheet-open { overflow: hidden; }
+  .btn.block { width: 100%; min-height: 50px; font-size: 1rem; border-radius: 12px; margin-top: 16px; }
+  .stepper { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 10px; background: var(--chip); }
+  .stepper input { flex: 1; text-align: center; border: 0; background: none; width: 100%; padding: 9px 0; }
+  .stepper button { width: 44px; height: 44px; border: 0; background: none; font-size: 1.3rem; color: var(--muted); cursor: pointer; flex: none; }
+
+  /* word page: big header in the theme colour, sections as tabs */
+  .wtop { margin: -14px -12px 0; }
+  .hero { background: var(--head); color: var(--head-ink); padding: 8px 16px 20px; text-align: center; position: relative; }
+  .hero .tiles:not(.mini) { --sz: min(54px, calc((100vw - 48px) / var(--n, 7) - 4px)); justify-content: center; }
+  .hstar { position: absolute; top: 0; right: 4px; width: 44px; height: 44px; border: 0; background: none; color: var(--head-ink); font-size: 1.5rem; cursor: pointer; opacity: .85; }
+  .hstar.on { color: var(--tile); opacity: 1; }
+  .hooksline { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; }
+  .hooksline > span { font: .7rem var(--mono); opacity: .7; }
+  .hk { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+  .hk.f { justify-content: flex-end; }
+  .hk button { min-width: 34px; height: 34px; padding: 0 6px; border: 1.5px dashed color-mix(in srgb, var(--head-ink) 55%, transparent); border-radius: 8px; background: none; color: var(--head-ink); font: 600 1rem var(--mono); cursor: pointer; }
+  .hk.none { font: .7rem var(--mono); opacity: .6; }
+  .hk sup { color: inherit; }
+  .hero .badges { justify-content: center; }
+  .hero .badge { color: var(--head-ink); border-color: color-mix(in srgb, var(--head-ink) 50%, transparent); }
+  .hero .badge.ok { background: var(--head-ink); color: var(--head); border-color: var(--head-ink); }
+  .hero .badge.bad { background: var(--bad); border-color: var(--bad); color: #fff; }
+  .hdef { font-size: 1.12rem; margin: 12px 8px 0; }
+  .hdef a { color: inherit; text-decoration: underline dotted; }
+  .hdef .pos { color: inherit; opacity: .7; }
+  .segtabs { display: flex; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .segtabs button { flex: 1; min-height: 48px; border: 0; background: none; border-bottom: 2.5px solid transparent; font: 600 .86rem var(--display); color: var(--muted); cursor: pointer; }
+  .segtabs button.on { color: var(--ink); border-bottom-color: var(--accent); }
+  .segtabs em { font: normal .7rem var(--mono); color: var(--muted); margin-left: 3px; }
+  .wpane { display: flex; flex-direction: column; gap: 12px; }
+  .wpane[hidden] { display: none; }
+  .bigchips { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .bigchips a { min-height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; font: 700 1.05rem var(--mono); letter-spacing: .06em; color: var(--ink); text-decoration: none; }
+  .bigchips a small { font: 400 .9rem var(--mono); color: var(--muted); }
+
+  .hero.long { padding-top: 46px; }
+
+  /* search: filter chips, one sheet per section */
+  .filterbar { margin: -14px -12px 0; padding: 10px 0; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .filterbar .hscroll { margin: 0; }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .tile { animation: drop .25s ease-out both; }
   @keyframes drop { from { transform: translateY(-6px); opacity: .3; } }
@@ -348,7 +410,7 @@ nav.tabs .sh { display: none; }
     <div class="top">
       <h1>CSW24 Word Study</h1>
       <form class="search" id="form" autocomplete="off">
-        <input id="q" placeholder="Word, rack with ? or pattern" spellcheck="false" aria-label="Word, rack or pattern">
+        <input id="q" placeholder="Word, letters, ?AE or QU*" spellcheck="false" aria-label="Word, rack or pattern">
         <button class="btn primary" type="submit">Go</button>
         <button class="btn" type="button" id="randBtn" title="Random word">Random</button>
       </form>
@@ -847,6 +909,11 @@ function rowHTML(w, mask, rank, stars = new Set(getStars())) {
 
 // ---------- views ----------
 const VIEWS = {};
+// phones get their own layouts for Word, Search, Lists, Practice and Settings; crossing the breakpoint redraws the page
+const phoneMQ = matchMedia("(max-width: 620px)"), phone = () => phoneMQ.matches;
+phoneMQ.addEventListener?.("change", () => route());
+// bottom sheets (phone): a scrim and a panel that slides up
+const sheetHTML = (id, body) => `<div class="sheetwrap" id="${id}" hidden><div class="scrim"></div><div class="sheet"><div class="grab"></div>${body}</div></div>`;
 
 VIEWS.w = (arg) => {
   const w = (arg || store.get("hist", [])[0] || "QI").toUpperCase().replace(/[^A-Z]/g, "");
@@ -890,15 +957,50 @@ VIEWS.w = (arg) => {
       ${plus.length ? `<p class="small" style="margin:0 0 6px">Letters: <b style="color:var(--accent);letter-spacing:.08em">${plus.map(g => g[0]).join("")}</b></p>${groupsHTML(plus)}` : `<p class="empty">Nothing.</p>`}</div>
     <div class="card"><h2 class="lbl">Drop one letter (${minusN})</h2>${minus.length ? groupsHTML(minus) : `<p class="empty">Nothing.</p>`}</div>
   </div>`;
-  if (valid) html += `${SET.online ? `<div class="card online" id="online"><h2 class="lbl">Pronunciation, examples &amp; origin</h2><p class="small">Looking up ${esc(w.toLowerCase())} online…</p></div>` : ""}
-    <div class="card"><h2 class="lbl">Your memory hook</h2>
+  const onlineCard = SET.online ? `<div class="card online" id="online"><h2 class="lbl">Pronunciation, examples &amp; origin</h2><p class="small">Looking up ${esc(w.toLowerCase())} online…</p></div>` : "";
+  const noteCard = `<div class="card"><h2 class="lbl">Your memory hook</h2>
       <textarea id="note" placeholder="A sentence, picture or trick that helps you remember ${esc(w)}…">${esc(getNotes()[w] || "")}</textarea>
       <p class="small" style="margin:6px 0 0">Saved in this browser as you type.</p></div>`;
+  if (valid) html += `${onlineCard}
+    ${noteCard}`;
+  // phone: tiles, hooks, badges and definition in a big header; Anagrams / +1 / −1 / Facts as tabs underneath
+  if (phone()) {
+    const wt = store.get("wtab", "ana");
+    const hk = (s, side) => s ? `<div class="hk ${side}">${[...s].map(h => { const x = side === "f" ? h.toUpperCase() + w : w + h.toUpperCase(); return `<button type="button" data-go="${x}" title="${x}">${h}${(side === "f" ? e.fhNew : e.bhNew).includes(h) ? "<sup>+</sup>" : ""}</button>`; }).join("")}</div>` : `<div class="hk none ${side}">none</div>`;
+    const panes = {
+      ana: ana.length ? `<div class="bigchips">${ana.map(x => `<a href="#w/${x}">${x}${DICT.get(x).n ? "<sup>+</sup>" : ""}<small>›</small></a>`).join("")}</div>` : `<p class="empty">No other anagrams.</p>`,
+      plus: `<div class="card">${plus.length ? `<p class="small" style="margin:0 0 6px">Letters: <b style="color:var(--accent);letter-spacing:.08em">${plus.map(g => g[0]).join("")}</b>${w.length === 6 ? " · 7-letter bingos" : ""}</p>${groupsHTML(plus)}` : `<p class="empty">Nothing.</p>`}</div>`,
+      minus: `<div class="card">${minus.length ? groupsHTML(minus) : `<p class="empty">Nothing.</p>`}</div>`,
+      facts: valid ? `<div class="card"><div class="stats">
+          <div class="stat"><b>${alpha(w)}</b><span>alphagram</span></div>
+          <div class="stat"><b>#${e.pl.toLocaleString()}</b><span>playability</span></div>
+          <div class="stat"><b>${vowels(w)} of ${w.length}</b><span>vowels</span></div>
+          ${qs ? `<div class="stat"><b>${qs[0]}✓ ${qs[1]}✗</b><span>in quizzes</span></div>` : ""}
+        </div>${inGroups.length ? `<div class="badges">${inGroups.map(g => `<a class="badge plain" href="#lists/${g.id}">${esc(g.name)}</a>`).join("")}</div>` : ""}</div>${onlineCard}` : `<div class="card"><p class="empty">${esc(w)} is not a valid CSW24 word.</p></div>`,
+    };
+    html = `<div class="wtop"><div class="hero">
+        ${valid ? `<button type="button" class="hstar ${starred ? "on" : ""}" id="starBtn" aria-label="Star ${w}">${starred ? "★" : "☆"}</button>` : ""}
+        ${tilesHTML(w)}
+        ${valid ? `<div class="hooksline">${hk(e.fh, "f")}<span>hooks</span>${hk(e.bh, "b")}</div>` : ""}
+        <div class="badges">${valid ? `<span class="badge ok">✓ Valid</span>` : `<span class="badge bad">✗ Phony</span>`}${e?.n ? `<span class="badge">New</span>` : ""}<span class="badge">${score(w)} pts</span>${valid ? `<span class="badge">#${e.p.toLocaleString()} of ${w.length}s</span>` : ""}</div>
+        <p class="hdef">${valid ? defHTML(e.d) : "Not in the lexicon"}</p></div>
+      <nav class="segtabs">${[["ana", "Anagrams", ana.length], ["plus", "+1", plusN], ["minus", "−1", minusN], ["facts", "Facts"]].map(([k, n, c]) => `<button type="button" class="${k === wt ? "on" : ""}" data-wtab="${k}">${n}${c !== undefined ? `<em>${c}</em>` : ""}</button>`).join("")}</nav></div>
+      ${Object.entries(panes).map(([k, h]) => `<div class="wpane" data-pane="${k}" ${k === wt ? "" : "hidden"}>${h}</div>`).join("")}
+      ${valid ? noteCard : ""}`;
+  }
   $("#view").innerHTML = html;
+  // a long word reaches the star in the corner, so the tiles drop below it
+  const hs = $("#view .hstar"), ht = $("#view .hero .tiles");
+  if (hs && ht?.lastElementChild && hs.getBoundingClientRect().left < ht.lastElementChild.getBoundingClientRect().right) $("#view .hero").classList.add("long");
+  $("#view").querySelectorAll("[data-wtab]").forEach(b => b.onclick = () => {
+    store.set("wtab", b.dataset.wtab);
+    $("#view").querySelectorAll("[data-wtab]").forEach(x => x.classList.toggle("on", x === b));
+    $("#view").querySelectorAll("[data-pane]").forEach(p => p.hidden = p.dataset.pane !== b.dataset.wtab);
+  });
   if (!valid) return;
   if (SET.online) fetchOnline(w);
   $("#note").addEventListener("input", ev => { const n = getNotes(); if (ev.target.value.trim()) n[w] = ev.target.value; else delete n[w]; store.set("notes", n); });
-  $("#starBtn").addEventListener("click", ev => { const on = toggleStar(w); ev.target.classList.toggle("on", on); ev.target.textContent = on ? "★ Starred" : "☆ Star"; });
+  $("#starBtn").addEventListener("click", ev => { const b = ev.currentTarget, on = toggleStar(w); b.classList.toggle("on", on); b.textContent = b.classList.contains("hstar") ? (on ? "★" : "☆") : on ? "★ Starred" : "☆ Star"; });
 };
 
 async function fetchOnline(w) {
@@ -998,9 +1100,39 @@ function runSearch(s) {
   return { words: out, masks };
 }
 
+// the three search sections' fields, shared by the folding form and the phone's sheets (which get +/− length steppers)
+function searchSecs(s, ph) {
+  const f = (id, label, p, hint = "", cls = "") => `<div class="field"><label for="s_${id}">${label}</label><input id="s_${id}" class="${cls}" value="${esc(s[id])}" placeholder="${p}" spellcheck="false">${hint ? `<span class="hint">${hint}</span>` : ""}</div>`;
+  const step = (id, label) => `<div class="field"><span class="flabel">${label}</span><div class="stepper"><button type="button" data-step="${id}" data-d="-1" aria-label="Fewer">−</button><input id="s_${id}" value="${esc(s[id])}" placeholder="any" inputmode="numeric" aria-label="${label}"><button type="button" data-step="${id}" data-d="1" aria-label="More">+</button></div></div>`;
+  return {
+    group: `<div class="form">
+        <div class="field wide"><label for="s_group">Word group</label><select id="s_group"><option value="">Any word</option>${groupOptions(s.group)}</select>
+          <span class="hint" id="groupHint">${esc(G(s.group)?.blurb || "Vowel dumps, JQXZ, Q without U, new words and more. Combines with everything below.")}</span></div>
+        ${f("def", "Definition mentions", "e.g. fish, plant, Hindu", "", "lc")}
+      </div>`,
+    letters: `<div class="form">
+        ${f("pattern", "Pattern", "e.g. Q*, .A.E, *[JX]*", ". or ? one letter · * any run · [AEIOU] one of · [^S] not")}
+        ${f("rack", "Rack", "e.g. AEINRT?", "? is a blank")}
+        <div class="field"><label for="s_mode">Rack mode</label><select id="s_mode">
+          <option value="exact" ${s.mode === "exact" ? "selected" : ""}>Anagram: use every tile</option>
+          <option value="build" ${s.mode === "build" ? "selected" : ""}>Build: any words from these tiles</option>
+          <option value="super" ${s.mode === "super" ? "selected" : ""}>Contains all these letters</option></select></div>
+      </div>`,
+    narrow: `<div class="form">
+        ${ph ? step("min", "Shortest") + step("max", "Longest") : `<div class="field"><span class="flabel">Length</span><div class="pair"><input id="s_min" value="${esc(s.min)}" placeholder="min" inputmode="numeric" aria-label="Minimum length"><input id="s_max" value="${esc(s.max)}" placeholder="max" inputmode="numeric" aria-label="Maximum length"></div></div>`}
+        ${f("starts", "Starts with", "e.g. UN")}
+        ${f("ends", "Ends with", "e.g. ZA")}
+        ${f("contains", "Contains in a row", "e.g. QI")}
+        ${f("incl", "Must use letters", "e.g. VV")}
+        ${f("excl", "Without letters", "e.g. AEIOU")}
+        <div class="field"><label for="s_top">Probability</label><select id="s_top">${[["", "All words"], ["500", "Top 500 of each length"], ["1000", "Top 1,000 of each length"], ["3000", "Top 3,000 of each length"], ["6000", "Top 6,000 of each length"], ["10000", "Top 10,000 of each length"]].map(([v, t]) => `<option value="${v}" ${String(s.top) === v ? "selected" : ""}>${t}</option>`).join("")}</select><span class="hint">Most likely words to draw</span></div>
+      </div>`,
+  };
+}
+const SEARCH_SECS = { group: ["Group and meaning", ["group", "def"]], letters: ["Letters", ["pattern", "rack", "mode"]], narrow: ["Narrow down", ["min", "max", "starts", "ends", "contains", "incl", "excl", "top"]] };
 VIEWS.search = () => {
-  const s = searchState;
-  const f = (id, label, ph, hint = "", cls = "") => `<div class="field"><label for="s_${id}">${label}</label><input id="s_${id}" class="${cls}" value="${esc(s[id])}" placeholder="${ph}" spellcheck="false">${hint ? `<span class="hint">${hint}</span>` : ""}</div>`;
+  if (phone()) return searchPhone();
+  const s = searchState, secs = searchSecs(s);
   // each section folds; it starts open if it was left open or has something filled in
   // searching from the top bar folds every section so the results show straight away
   const fold = searchFromBar; searchFromBar = false;
@@ -1008,34 +1140,16 @@ VIEWS.search = () => {
   const acc = (key, title) => `<details class="fs acc" data-acc="${key}" ${!fold && (opened[key] || accSummary(key)) ? "open" : ""}><summary class="lbl">${title}<span class="accn" id="accn_${key}">${esc(accSummary(key))}</span></summary>`;
   $("#view").innerHTML = `<div class="card">
     <form id="sform" autocomplete="off">
-      ${acc("group", "Group and meaning")}<div class="form">
-        <div class="field wide"><label for="s_group">Word group</label><select id="s_group"><option value="">Any word</option>${groupOptions(s.group)}</select>
-          <span class="hint" id="groupHint">${esc(G(s.group)?.blurb || "Vowel dumps, JQXZ, Q without U, new words and more. Combines with everything below.")}</span></div>
-        ${f("def", "Definition mentions", "e.g. fish, plant, Hindu", "", "lc")}
-      </div></details>
-      ${acc("letters", "Letters")}<div class="form">
-        ${f("pattern", "Pattern", "e.g. Q*, .A.E, *[JX]*", ". or ? one letter · * any run · [AEIOU] one of · [^S] not")}
-        ${f("rack", "Rack", "e.g. AEINRT?", "? is a blank")}
-        <div class="field"><label for="s_mode">Rack mode</label><select id="s_mode">
-          <option value="exact" ${s.mode === "exact" ? "selected" : ""}>Anagram: use every tile</option>
-          <option value="build" ${s.mode === "build" ? "selected" : ""}>Build: any words from these tiles</option>
-          <option value="super" ${s.mode === "super" ? "selected" : ""}>Contains all these letters</option></select></div>
-      </div></details>
-      ${acc("narrow", "Narrow down")}<div class="form">
-        <div class="field"><span class="flabel">Length</span><div class="pair"><input id="s_min" value="${esc(s.min)}" placeholder="min" inputmode="numeric" aria-label="Minimum length"><input id="s_max" value="${esc(s.max)}" placeholder="max" inputmode="numeric" aria-label="Maximum length"></div></div>
-        ${f("starts", "Starts with", "e.g. UN")}
-        ${f("ends", "Ends with", "e.g. ZA")}
-        ${f("contains", "Contains in a row", "e.g. QI")}
-        ${f("incl", "Must use letters", "e.g. VV")}
-        ${f("excl", "Without letters", "e.g. AEIOU")}
-        <div class="field"><label for="s_top">Probability</label><select id="s_top">${[["", "All words"], ["500", "Top 500 of each length"], ["1000", "Top 1,000 of each length"], ["3000", "Top 3,000 of each length"], ["6000", "Top 6,000 of each length"], ["10000", "Top 10,000 of each length"]].map(([v, t]) => `<option value="${v}" ${String(s.top) === v ? "selected" : ""}>${t}</option>`).join("")}</select><span class="hint">Most likely words to draw</span></div>
-      </div></details>
+      ${acc("group", "Group and meaning")}${secs.group}</details>
+      ${acc("letters", "Letters")}${secs.letters}</details>
+      ${acc("narrow", "Narrow down")}${secs.narrow}</details>
       <div class="actions">
         <button class="btn primary" type="submit">Search</button>
         <button class="btn" type="button" id="sClear">Clear all</button>
       </div>
     </form>
   </div>
+  ${typeBar()}
   <div class="card" id="sres"><p class="empty">Pick a group or fill in any options, then press Search. Hooks show either side of each word; red lowercase letters are blanks.</p></div>`;
   const read = () => { for (const k of Object.keys(SEARCH_DEFAULT)) { const el = $("#s_" + k); if (el) searchState[k] = el.value; } store.set("search", searchState); };
   $("#sform").querySelectorAll("details.acc").forEach(d => d.addEventListener("toggle", () => { const o = store.get("searchOpen", { group: true }); o[d.dataset.acc] = d.open; store.set("searchOpen", o); }));
@@ -1043,15 +1157,48 @@ VIEWS.search = () => {
   $("#s_group").onchange = e => { $("#groupHint").textContent = G(e.target.value)?.blurb || "Any word."; read(); doSearch(); };
   $("#sform").addEventListener("submit", ev => { ev.preventDefault(); read(); doSearch(); });
   $("#sClear").onclick = () => { searchState = { ...SEARCH_DEFAULT }; store.set("search", searchState); VIEWS.search(); };
+  bindTypeBar();
   if (Object.entries(searchState).some(([k, v]) => v && v !== SEARCH_DEFAULT[k])) doSearch();
 };
 // short "what's set" text shown beside each folded search section
 let searchFromBar = false;
+// the top bar guesses what kind of search it is: letters (blanks only at the end) are an anagram, ? or . anywhere
+// else is a fixed-position pattern, and * means starts with (QU*), ends with (*ING), contains (*QU*) or has any of (*[JX]*)
+const LETTER_KEYS = ["pattern", "rack", "mode", "starts", "ends", "contains", "from", "to"];
+function barSearch(q) {
+  let m;
+  if (/^[A-Z]+\?*$/.test(q)) return { rack: q, mode: "exact" };
+  if ((m = q.match(/^\*([A-Z]+)\*$/))) return { contains: m[1] };
+  if ((m = q.match(/^([A-Z]*)\*([A-Z]*)$/)) && (m[1] || m[2])) return { starts: m[1], ends: m[2] };
+  return { pattern: q };
+}
+// and back: the letters part of a search, as it would be typed in the top bar
+function barText(s) {
+  const t = s.rack || s.pattern || (s.contains ? `*${s.contains}*` : s.starts || s.ends ? `${s.starts}*${s.ends}` : "");
+  return t.toUpperCase();
+}
+const patLabel = p => { const m = p.toUpperCase().match(/^\*\[([A-Z]+)\]\*$/); return m ? `Has ${[...m[1]].join(" or ")}` : `Pattern ${p.toUpperCase()}`; };
+// Anagram / Build / Contains all / Pattern: the same letters run as another kind of search
+const STYPES = [["exact", "Anagram"], ["build", "Build"], ["super", "Contains all"], ["pattern", "Pattern"]];
+function typeBar() {
+  const s = searchState, l = (s.rack || s.pattern || "").toUpperCase();
+  if (!/^[A-Z?.]+$/.test(l) || (s.rack && s.pattern)) return "";
+  const cur = s.rack ? s.mode : "pattern";
+  return `<div class="seg stype">${STYPES.map(([k, n]) => `<button type="button" class="btn sm ${k === cur ? "on" : ""}" data-stype="${k}">${n}</button>`).join("")}</div>`;
+}
+function bindTypeBar() {
+  $("#q").value = barText(searchState);
+  $("#view").querySelectorAll("[data-stype]").forEach(b => b.onclick = () => {
+    const s = searchState, l = (s.rack || s.pattern).toUpperCase(), k = b.dataset.stype;
+    Object.assign(s, k === "pattern" ? { rack: "", mode: "exact", pattern: l } : { pattern: "", rack: l.replace(/\./g, "?"), mode: k }, { from: "", to: "" });
+    store.set("search", s); searchFromBar = true; VIEWS.search();
+  });
+}
 function accSummary(key) {
   const s = searchState, up = v => String(v || "").toUpperCase();
   const parts = {
     group: [G(s.group)?.name, s.def && `“${s.def}”`],
-    letters: [s.pattern && up(s.pattern), s.rack && `rack ${up(s.rack)}`],
+    letters: [s.pattern && patLabel(s.pattern), s.rack && `rack ${up(s.rack)}`],
     narrow: [(s.min || s.max) && `${s.min || 2}–${s.max || 15} letters`, s.starts && `${up(s.starts)}…`, s.ends && `…${up(s.ends)}`, s.contains && `has ${up(s.contains)}`,
       s.incl && `uses ${up(s.incl)}`, s.excl && `no ${up(s.excl)}`, s.top && `top ${(+s.top).toLocaleString()}`],
   }[key];
@@ -1068,6 +1215,55 @@ function doSearch() {
     const onlyGroup = g && !Object.entries(s).some(([k, v]) => !["mode", "group", "from", "to"].includes(k) && v);
     results(box, r.words, { masks: r.masks, len: onlyGroup ? g.len : 0, range: { from: s.from, to: s.to, save: (from, to) => { searchState.from = from; searchState.to = to; store.set("search", searchState); } } });
   }, 10);
+}
+// phone search: each filter that's set is a chip (× removes it); tapping a chip or a "+" opens that section in a bottom sheet
+function searchPhone() {
+  searchFromBar = false;
+  const s = searchState, up = v => String(v || "").toUpperCase();
+  const chips = [
+    ["group", G(s.group)?.name, ["group"]], ["group", s.def && `“${s.def}”`, ["def"]],
+    ["letters", s.pattern && patLabel(s.pattern), ["pattern"]], ["letters", s.rack && `Rack ${up(s.rack)}${s.mode === "build" ? " · build" : s.mode === "super" ? " · contains" : ""}`, ["rack", "mode"]],
+    ["narrow", (s.min || s.max) && `${s.min || 2}–${s.max || 15} letters`, ["min", "max"]], ["narrow", s.starts && `${up(s.starts)}…`, ["starts"]], ["narrow", s.ends && `…${up(s.ends)}`, ["ends"]],
+    ["narrow", s.contains && `Has ${up(s.contains)}`, ["contains"]], ["narrow", s.incl && `Uses ${up(s.incl)}`, ["incl"]], ["narrow", s.excl && `No ${up(s.excl)}`, ["excl"]], ["narrow", s.top && `Top ${(+s.top).toLocaleString()}`, ["top"]],
+  ].filter(c => c[1]);
+  const secs = searchSecs(s, true);
+  $("#view").innerHTML = `<div class="filterbar"><div class="hscroll">
+      ${chips.map((c, i) => `<span class="pill on" data-sheet="${c[0]}">${esc(c[1])}<button type="button" class="x" data-clear="${i}" aria-label="Remove">×</button></span>`).join("")}
+      ${[["group", "Group"], ["letters", "Letters"], ["narrow", "Narrow down"]].map(([k, n]) => `<button type="button" class="pill add" data-sheet="${k}">+ ${n}</button>`).join("")}
+      ${chips.length > 1 ? `<button type="button" class="pill add" id="sClear">Clear all</button>` : ""}</div></div>
+    ${typeBar()}
+    <div class="card" id="sres"><p class="empty">Tap + Group, + Letters or + Narrow down to start. Hooks show either side of each word; red lowercase letters are blanks.</p></div>
+    ${sheetHTML("ssheet", `<form id="sform" autocomplete="off">${Object.entries(SEARCH_SECS).map(([k, [t]]) => `<div data-sec="${k}"><h3>${t}<button type="button" data-reset="${k}">Reset</button></h3>${secs[k]}</div>`).join("")}
+      <button class="btn primary block" type="submit" id="sGo">Show results</button></form>`)}`;
+  const read = () => { for (const k of Object.keys(SEARCH_DEFAULT)) { const el = $("#s_" + k); if (el) searchState[k] = el.value; } store.set("search", searchState); };
+  // live count on the sheet's button
+  let ct;
+  const count = () => { clearTimeout(ct); ct = setTimeout(() => {
+    if (!Object.entries(searchState).some(([k, v]) => !["mode", "from", "to"].includes(k) && v)) { $("#sGo").textContent = "Show results"; return; }
+    const r = runSearch(searchState);
+    $("#sGo").textContent = r.error ? "Check the pattern" : `Show ${r.words.length.toLocaleString()} word${r.words.length === 1 ? "" : "s"}`;
+  }, 200); };
+  const v = $("#view");
+  v.querySelectorAll("[data-sheet]").forEach(b => b.onclick = ev => {
+    if (ev.target.closest("[data-clear]")) return;
+    v.querySelectorAll("[data-sec]").forEach(d => d.hidden = d.dataset.sec !== b.dataset.sheet);
+    sheet("ssheet", true); count();
+  });
+  v.querySelectorAll("[data-clear]").forEach(b => b.onclick = () => { for (const k of chips[+b.dataset.clear][2]) searchState[k] = SEARCH_DEFAULT[k]; store.set("search", searchState); searchPhone(); });
+  $("#sClear")?.addEventListener("click", () => { searchState = { ...SEARCH_DEFAULT }; store.set("search", searchState); searchPhone(); });
+  v.querySelectorAll("[data-reset]").forEach(b => b.onclick = () => { for (const k of SEARCH_SECS[b.dataset.reset][1]) { const el = $("#s_" + k); if (el) el.value = SEARCH_DEFAULT[k]; } $("#groupHint").textContent = G($("#s_group").value)?.blurb || "Any word."; read(); count(); });
+  v.querySelectorAll("[data-step]").forEach(b => b.onclick = () => {
+    const el = $("#s_" + b.dataset.step), n = (parseInt(el.value) || (b.dataset.step === "min" ? 1 : 16)) + +b.dataset.d;
+    el.value = Math.min(15, Math.max(2, n)); el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  $("#sform").addEventListener("input", () => { read(); count(); });
+  $("#s_group").onchange = e => { $("#groupHint").textContent = G(e.target.value)?.blurb || "Any word."; read(); count(); };
+  // closing the sheet either way applies what's in it
+  const apply = () => { read(); sheet("ssheet", false); searchPhone(); };
+  $("#sform").addEventListener("submit", ev => { ev.preventDefault(); apply(); });
+  $("#ssheet .scrim").onclick = apply;
+  bindTypeBar();
+  if (Object.entries(searchState).some(([k, v]) => !["mode", "from", "to"].includes(k) && v)) doSearch();
 }
 
 // ---------- word lists ----------
@@ -1573,6 +1769,8 @@ function route() {
   document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === t));
   if (t !== "quiz") document.onkeydown = null;
   $("#view").classList.toggle("quizv", t === "quiz" || t === "practice");
+  // a sheet left open on another page is closed
+  document.body.classList.remove("sheet-open");
   VIEWS[t](arg);
   window.scrollTo({ top: 0 });
 }
@@ -1581,10 +1779,13 @@ $("#form").addEventListener("submit", ev => {
   ev.preventDefault();
   const q = $("#q").value.toUpperCase().replace(/[^A-Z?.*\[\]^]/g, "");
   if (!q) return;
-  const go = patch => { searchFromBar = true; searchState = { ...SEARCH_DEFAULT, ...patch }; store.set("search", searchState); location.hash === "#search" ? VIEWS.search() : location.hash = "search"; };
-  if (/[.*\[]/.test(q)) go({ pattern: q });
-  else if (q.includes("?")) go({ rack: q, mode: "exact" });
-  else location.hash = "w/" + q;
+  const tab = location.hash.slice(1).split("/")[0], onSearch = tab === "search";
+  // on the Word page a plain word opens that word; everything else is a search
+  if (/^[A-Z]+$/.test(q) && (!VIEWS[tab] || tab === "w")) { location.hash = "w/" + q; return; }
+  // on the Search page the bar replaces just the letters, keeping the group, length and other filters
+  const keep = onSearch ? Object.fromEntries(Object.entries(searchState).filter(([k]) => !LETTER_KEYS.includes(k))) : {};
+  searchFromBar = true; searchState = { ...SEARCH_DEFAULT, ...keep, ...barSearch(q) }; store.set("search", searchState);
+  onSearch ? VIEWS.search() : location.hash = "search";
 });
 $("#randBtn").addEventListener("click", () => {
   const lo = Math.min(SET.randMin, SET.randMax), hi = Math.max(SET.randMin, SET.randMax);
