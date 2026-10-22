@@ -376,6 +376,7 @@ body.sheet-open { overflow: hidden; }
 .hscroll::-webkit-scrollbar { display: none; }
 .btn.block { width: 100%; min-height: 50px; font-size: 1rem; border-radius: 12px; margin-top: 16px; }
 .thumb { display: flex; flex-direction: column; gap: 10px; }
+.thumb[hidden] { display: none; }
 .thumb .btn.mk { font-size: 1.5rem; line-height: 1; display: flex; align-items: center; justify-content: center; }
 .thumb .mk kbd { font-size: .72rem; }
 .phone-only { display: none; }
@@ -543,7 +544,7 @@ main.wrap:has(> .foc) { max-width: 1400px; }
   body.full .ppills { display: none; }
   body.full .foc > .stage { min-height: calc(100dvh - 118px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
   body.full .fc-card { margin-top: auto; padding: 26px 10px 20px; }
-  body.full .rackbtns { margin-bottom: auto; }
+  body.full .rackbtns, body.full .fc-card.solo { margin-bottom: auto; }
   /* the stats and options icons sit as a pair */
   .fc-top .ib2 { width: 38px; }
   .fc-top #pStatsBtn { margin-right: -4px; }
@@ -1549,6 +1550,7 @@ function buildQuestions(words, mode, n) {
 }
 VIEWS.quiz = () => {
   if (Q && !Q.done) return drawQuestion();
+  document.body.classList.remove("full");
   $("#view").innerHTML = `<div><h3 class="title">Quiz</h3><p class="sub">Words you get wrong go to “Missed in quizzes” so you can drill them again.</p></div>
   <div class="card">
     <div class="fs"><h2 class="lbl">Type</h2><div class="seg">${Object.entries(MODES).map(([k, m]) => `<button type="button" class="btn ${k === quizSetup.mode ? "on" : ""}" data-mode="${k}">${m.name}</button>`).join("")}</div>
@@ -1597,17 +1599,35 @@ function drawQuestion() {
   let prompt = "", input = "";
   Q.found = [];
   const nAna = anagrams(q.w).length;
-  if (mode === "anagram") { prompt = `<div class="slots" id="qslots"></div>${rackHTML("qrack")}<div class="rackbtns"><button type="button" class="btn" id="qShuf" aria-label="Shuffle">${icon(ICON_SHUF)}</button><button type="button" class="btn" id="qBack" aria-label="Take back a letter">${icon(ICON_BACK)}</button></div>`; input = `<input class="qinput" id="qa" placeholder="${nAna > 1 ? `Type each word (${nAna} to find)` : "Type the word"}"><div class="rows" id="found" style="margin-top:8px"></div><p class="small" style="margin:6px 0 0">Correct words are taken as you type. Press Enter to give up and see the answer.</p>`; }
+  if (mode === "anagram") { prompt = `<div class="slots" id="qslots"></div>`; input = `<input class="qinput" id="qa" placeholder="${nAna > 1 ? `Type each word (${nAna} to find)` : "Type the word"}"><div class="rows" id="found" style="margin-top:8px"></div><p class="small" style="margin:6px 0 0">Correct words are taken as you type. Press Enter to give up and see the answer.</p>`; }
   if (mode === "phony") { prompt = `<div class="qprompt">${q.show}</div>`; input = `<div class="row"><button type="button" class="btn primary" data-ans="valid">Valid (V)</button><button type="button" class="btn" data-ans="phony">Phony (P)</button></div>`; }
   if (mode === "hooks") { prompt = `<div class="qprompt">${q.w}</div>`; input = `<div class="pair"><input class="qinput" id="qf" placeholder="front hooks"><input class="qinput" id="qb" placeholder="back hooks"></div><p class="small" style="margin:6px 0 0">Leave blank if none. Press Enter to check.</p>`; }
   if (mode === "def") { prompt = `<div class="qdef">${esc(e.d)}</div><p class="small" style="margin:0">${q.w.length} letters · <a href="#" id="hint">show tiles</a></p><div id="hintBox"></div>`; input = `<input class="qinput" id="qa" placeholder="The word"><p class="small" style="margin:6px 0 0">The right word is taken as you type. Press Enter to give up.</p>`; }
-  $("#view").innerHTML = `<div class="foc"><div class="stage"><div class="row"><b style="font-family:var(--display)">${MODES[mode].name}</b><span class="small">Question ${Q.i + 1} of ${Q.qs.length} · ${Q.right} right</span><button class="btn sm" id="qquit" style="margin-left:auto">End quiz</button></div>
-    <div class="progress"><div style="width:${(Q.i / Q.qs.length) * 100}%"></div></div>
-    <div class="card" style="display:flex;flex-direction:column;gap:14px">
-      ${mode === "anagram" ? `<p class="small" style="margin:0">${nAna > 1 ? `${nAna} words. Find them all.` : "One word."}</p>` : ""}
-      ${prompt}<form id="qform" autocomplete="off">${input}</form>
-      ${mode === "phony" ? "" : `<div class="pbtns" id="qmark"><button type="button" class="btn no" id="qNo" title="Give up: show the answer">✗</button><button type="button" class="btn yes" id="qYes" title="Knew it: show the answer and count it right">✓</button><button type="button" class="btn primary" id="qSkip" title="Skip; counts as known">Next</button></div>`}<div id="qfb"></div>
-    </div></div>${quizRail()}</div>`;
+  const rack = mode === "anagram" ? `${rackHTML("qrack")}<div class="rackbtns"><button type="button" class="btn" id="qShuf" aria-label="Shuffle">${icon(ICON_SHUF)}</button><button type="button" class="btn" id="qBack" aria-label="Take back a letter">${icon(ICON_BACK)}</button></div>` : "";
+  // full screen on a phone while a question is up, like Practice
+  document.body.classList.add("full");
+  $("#view").innerHTML = `<div class="foc"><div class="stage">
+    <div class="fc-top"><button type="button" class="ib2" id="qquit" aria-label="End quiz" title="End quiz">×</button><div class="pbar"><div style="width:${(Q.i / Q.qs.length) * 100}%"></div></div>
+      <span class="n">${Q.i + 1} / ${Q.qs.length}</span><button type="button" class="ib2 phone-only" id="qStatsBtn" aria-label="Stats">${icon('<path d="M5 20V11M12 20V4M19 20v-6"/>')}</button></div>
+    <div class="fc-card qcard ${rack ? "" : "solo"}"><p class="q" style="margin:0 0 12px">${MODES[mode].name}${mode === "anagram" ? ` · ${nAna > 1 ? `${nAna} words, find them all` : "one word"}` : ""}</p>
+      ${prompt}<form id="qform" autocomplete="off">${input}</form><div id="qfb"></div></div>
+    ${rack}
+    <div class="thumb" id="qthumb" ${mode === "phony" ? "hidden" : ""}><div class="acts"><button type="button" class="btn mk" id="qAlt"></button><button type="button" class="btn mk" id="qMain"></button></div></div>
+  </div>${quizRail("prail")}</div>` + sheetHTML("qstats", `<h3>Stats<button type="button" id="qStatsDone">Done</button></h3>${quizRail("")}`);
+  $("#qStatsBtn").onclick = () => sheet("qstats", true);
+  $("#qStatsDone").onclick = $("#qstats .scrim").onclick = () => sheet("qstats", false);
+  // before answering: ✗ | ✓. Once answered, ✓'s place becomes Next (green if right, orange if wrong) and ✗'s switches the mark
+  const key = k => `<kbd>${k}</kbd>`;
+  Q.marks = () => {
+    const v = Q.answered ? Q.ok : null, a = $("#qAlt"), m = $("#qMain");
+    a.className = `btn mk ${v === false ? "yes" : "no"}`; a.innerHTML = `${v === false ? "✓" : "✗"}${key("1")}`;
+    a.setAttribute("aria-label", v === null ? "Didn't know" : v ? "Switch to wrong" : "Switch to right");
+    m.className = `btn mk ${v === null ? "yes" : v ? "yes on" : "no on"}`; m.innerHTML = v === null ? `✓${key("2")}` : `${Q.i + 1 < Q.qs.length ? "Next" : "Finish"}${key("↵")}`;
+    m.setAttribute("aria-label", v === null ? "Knew it" : "Next question");
+  };
+  Q.marks();
+  $("#qAlt").onclick = () => Q.answered ? Q.mark(!Q.ok) : check(undefined, false);
+  $("#qMain").onclick = () => Q.answered ? next() : check(undefined, true);
   $("#qquit").onclick = () => { commitQuiz(); Q.answered = false; Q.done = true; VIEWS.quiz(); };
   $("#hint")?.addEventListener("click", ev => { ev.preventDefault(); $("#hintBox").innerHTML = tilesHTML(alpha(q.w), true); });
   // on a phone, focusing the box pops the keyboard up over the tiles, so only do it where there's a real keyboard
@@ -1634,19 +1654,19 @@ function drawQuestion() {
   });
   $("#qform").addEventListener("submit", ev => { ev.preventDefault(); Q.answered ? next() : check(); });
   $("#view").querySelectorAll("[data-ans]").forEach(b => b.onclick = () => { if (!Q.answered) check(b.dataset.ans); });
-  $("#qNo")?.addEventListener("click", () => { if (!Q.answered) check(); });
-  $("#qYes")?.addEventListener("click", () => { if (!Q.answered) check(undefined, true); });
-  $("#qSkip")?.addEventListener("click", () => { if (!Q.answered) { check(undefined, true); next(); } });
+  // keys (not while typing in a box): V / P answer valid or phony, 1 is the left button, 2 the right
   document.onkeydown = ev => {
-    if (location.hash !== "#quiz" || Q.mode !== "phony" || Q.answered) return;
-    if (/^[vp]$/i.test(ev.key)) check(ev.key.toLowerCase() === "v" ? "valid" : "phony");
+    if (location.hash !== "#quiz" || ev.metaKey || ev.ctrlKey || ev.altKey || ev.target.closest?.("input, textarea, select")) return;
+    if (Q.mode === "phony" && !Q.answered) { if (/^[vp]$/i.test(ev.key)) check(ev.key.toLowerCase() === "v" ? "valid" : "phony"); return; }
+    if (ev.key === "1") $("#qAlt")?.click();
+    else if (ev.key === "2") $("#qMain")?.click();
   };
 }
 // the stats panel beside a quiz question: score so far, a dot per question, and the words missed
-function quizRail() {
+function quizRail(cls) {
   const done = Q.res.length, mins = Math.round((Date.now() - Q.start) / 60000);
   let streak = 0; for (let k = done - 1; k >= 0 && Q.res[k]; k--) streak++;
-  return `<aside class="rail">
+  return `<aside class="rail ${cls}">
     <div><h4>This quiz<em>${mins ? `${mins} min` : "just started"}</em></h4>
       <div class="kpis"><div><b>${Q.right}/${done}</b><span>right so far</span></div><div><b>${done ? Math.round(Q.right / done * 100) + "%" : "–"}</b><span>accuracy</span></div>
         <div><b>${streak}</b><span>streak</span></div><div><b>${Q.qs.length - done}</b><span>to go</span></div></div></div>
@@ -1680,17 +1700,13 @@ function check(ans, force) {
   }
   if (force !== undefined) ok = force;
   Q.answered = true;
-  $("#qmark")?.remove();
-  // the mark is only saved on Next, so ✗ and ✓ can still switch it
-  $("#qfb").innerHTML = `<p class="fb" id="qverdict" style="margin:0 0 6px"></p><div class="words" style="align-items:center">${reveal}</div>
-    ${mode === "anagram" ? "" : `<p class="small" style="margin:8px 0 0">${esc(e.d)}</p>`}
-    <div class="pbtns" style="margin-top:16px"><button type="button" class="btn no" id="qNo2" title="Count it wrong">✗</button><button type="button" class="btn yes" id="qYes2" title="Count it right">✓</button><button class="btn primary" id="qnext">${Q.i + 1 < Q.qs.length ? "Next (Enter)" : "Finish"}</button></div>`;
-  const mark = v => { Q.ok = v; rest(v); $("#qverdict").className = "fb " + (v ? "ok" : "no"); $("#qverdict").textContent = v ? "Correct" : "Not quite"; $("#qNo2").classList.toggle("on", !v); $("#qYes2").classList.toggle("on", v); };
+  // the mark is only saved on Next, so the left button can still switch it
+  $("#qfb").innerHTML = `<p class="fb" id="qverdict" style="margin:12px 0 6px"></p><div class="words" style="align-items:center;justify-content:center">${reveal}</div>
+    ${mode === "anagram" ? "" : `<p class="small" style="margin:8px 0 0">${esc(e.d)}</p>`}`;
+  const mark = Q.mark = v => { Q.ok = v; rest(v); $("#qverdict").className = "fb " + (v ? "ok" : "no"); $("#qverdict").textContent = v ? "Correct" : "Not quite"; Q.marks(); };
   mark(ok);
-  $("#qNo2").onclick = () => mark(false);
-  $("#qYes2").onclick = () => mark(true);
-  $("#qnext").onclick = next;
-  $("#qnext").focus();
+  $("#qthumb").hidden = false;
+  $("#qMain").focus();
 }
 function commitQuiz() {
   if (!Q.answered) return;
@@ -1853,13 +1869,12 @@ function practicePlay(pool, o, opts, wire) {
       <div class="acts"><button type="button" class="btn mk" id="pAlt"></button><button type="button" class="btn mk" id="pMain"></button></div></div></div>
     ${practiceRail(pr, "prail")}</div>` + sh;
   const chips = () => { $("#pchips").innerHTML = P.want.map(x => P.found.includes(x) || P.done ? `<a class="w ${P.found.includes(x) || P.verdict?.ok ? "got" : "miss"}" href="#w/${x}">${x}</a>` : `<span class="w blank">${"•".repeat(x.length)}</span>`).join(""); };
-  const finish = (ok, solved) => {
+  const finish = ok => {
     P.done = true; P.verdict = { letters: P.letters, want: P.want, ok };
     chips();
     $("#preveal").innerHTML = P.want.map(x => quizRow(x, P.found.includes(x) || ok ? "got" : "miss")).join("");
     marks();
     clearTimeout(P.auto);
-    if (solved) P.auto = setTimeout(() => { if (P.done && location.hash === "#practice/go") VIEWS.practice(); }, 900);
   };
   // before marking: ✗ | ✓. After ✓: ✗ | Next (green). After ✗: ✓ | Next (orange).
   const marks = () => {
@@ -1869,7 +1884,7 @@ function practicePlay(pool, o, opts, wire) {
     m.className = `btn mk ${v ? (v.ok ? "yes on" : "no on") : "yes"}`; m.innerHTML = v ? `Next${key("↵")}` : `✓${key("2")}`;
     m.setAttribute("aria-label", v ? "Next card" : "Knew it");
   };
-  const found = x => { P.found.push(x); $("#pleft").textContent = leftText(); chips(); if (P.found.length === P.want.length) finish(true, true); };
+  const found = x => { P.found.push(x); $("#pleft").textContent = leftText(); chips(); if (P.found.length === P.want.length) finish(true); };
   const board = rackBoard($("#pslots"), $("#prack"), P.letters, x => {
     if (P.done) return null;
     const ok = P.want.includes(x) && !P.found.includes(x);
