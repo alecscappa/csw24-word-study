@@ -370,6 +370,9 @@ body.sheet-open { overflow: hidden; }
 .hscroll::-webkit-scrollbar { display: none; }
 .btn.block { width: 100%; min-height: 50px; font-size: 1rem; border-radius: 12px; margin-top: 16px; }
 .thumb { display: flex; flex-direction: column; gap: 10px; }
+.thumb .btn.mk { font-size: 1.5rem; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.thumb .mk kbd { font-size: .72rem; }
+.phone-only { display: none; }
 .thumb kbd { font: .72rem var(--mono); border: 1px solid currentColor; border-radius: 4px; padding: 0 5px; margin-left: 6px; opacity: .6; }
 .fc-top { display: flex; align-items: center; gap: 6px; }
 .fc-top .pbar { height: 8px; border-radius: 4px; }
@@ -530,6 +533,8 @@ main.wrap:has(> .foc) { max-width: 1400px; }
   body.full main.wrap { padding: calc(8px + env(safe-area-inset-top)) 12px calc(190px + env(safe-area-inset-bottom)); }
   .thumb { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--panel); border-top: 1px solid var(--line); padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); }
   .thumb kbd { display: none; }
+  .phone-only { display: grid; }
+  .prail { display: none; }
   .hscroll { margin: 0 -12px; padding: 0 12px; }
   /* word lists: rows scroll sideways; See all wraps them */
   .carow.all .hscroll { flex-wrap: wrap; overflow: visible; }
@@ -1797,19 +1802,22 @@ function practicePlay(pool, o, opts, wire) {
   const src = o.src.startsWith("g:") ? G(o.src.slice(2))?.name : { "my:stars": "Study list", "my:missed": "Missed in quizzes", "my:last": "Last search" }[o.src];
   const pills = [o.len ? `${o.len} letters` : "Any length", src, o.top && `Top ${(+o.top).toLocaleString()}`, o.starOnly && "★ only", (o.from || o.to) && `Ranks ${o.from || 1}–${o.to || "all"}`, `Streak ${P.streak}`, pq && `${pq} to review`].filter(Boolean);
   const top = `<div class="fc-top"><button type="button" class="ib2" id="pExit" aria-label="Leave practice">×</button><div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div>
-      <span class="n" title="racks learnt">${pr.racks.toLocaleString()} / ${pr.racksAll.toLocaleString()}</span><button type="button" class="ib2" id="pOptBtn" aria-label="Options">${icon('<path d="M4 6h16M7 12h10M10 18h4"/>')}</button></div>
+      <span class="n" title="racks learnt">${pr.racks.toLocaleString()} / ${pr.racksAll.toLocaleString()}</span><button type="button" class="ib2 phone-only" id="pStatsBtn" aria-label="Stats">${icon('<path d="M5 20V11M12 20V4M19 20v-6"/>')}</button><button type="button" class="ib2" id="pOptBtn" aria-label="Options">${icon('<path d="M4 6h16M7 12h10M10 18h4"/>')}</button></div>
     <div class="hscroll">${pills.map(p => `<button type="button" class="pill" data-popt>${esc(p)}</button>`).join("")}</div>`;
-  const sh = sheetHTML("psheet", `<h3>Practice options<button type="button" id="pDone">Done</button></h3>${opts.replace('id="pOpts"', 'id="pOpts" open')}`);
+  const sh = sheetHTML("psheet", `<h3>Practice options<button type="button" id="pDone">Done</button></h3>${opts.replace('id="pOpts"', 'id="pOpts" open')}`)
+    + sheetHTML("pstats", `<h3>Stats<button type="button" id="pStatsDone">Done</button></h3>${practiceRail(pr, "")}`);
   const openSheet = on => { pSheetOpen = on; sheet("psheet", on); };
   const wireTop = () => {
     $("#pExit").onclick = () => history.length > 1 ? history.back() : location.hash = "w";
     v.querySelectorAll("#pOptBtn, [data-popt]").forEach(b => b.onclick = () => openSheet(true));
     $("#pDone").onclick = $("#psheet .scrim").onclick = () => openSheet(false);
+    $("#pStatsBtn").onclick = () => sheet("pstats", true);
+    $("#pStatsDone").onclick = $("#pstats .scrim").onclick = () => sheet("pstats", false);
     wire();
     if (pSheetOpen) sheet("psheet", true);
   };
   if (!pool.length) {
-    v.innerHTML = `<div class="foc"><div class="stage">${top}<div class="fc-card"><p class="empty">${esc(poolCache.error || "No words match these options. Tap ☰ to change them.")}</p></div></div>${practiceRail(pr)}</div>` + sh;
+    v.innerHTML = `<div class="foc"><div class="stage">${top}<div class="fc-card"><p class="empty">${esc(poolCache.error || "No words match these options. Tap ☰ to change them.")}</p></div></div>${practiceRail(pr, "prail")}</div>` + sh;
     return wireTop();
   }
   const w = pickPractice(pool);
@@ -1825,17 +1833,24 @@ function practicePlay(pool, o, opts, wire) {
       <button type="button" class="btn ${kbd ? "on" : ""}" id="pKbd" aria-label="Type instead">${icon('<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>')}</button></div>
     <div class="rows" id="preveal"></div>
     <div class="thumb"><input class="qinput" id="pa" placeholder="Type the answer" autocomplete="off" autocapitalize="characters" spellcheck="false" ${kbd ? "" : "hidden"}>
-      <div class="acts"><button type="button" class="btn no" id="pNo">✗ Didn't know${key("1")}</button><button type="button" class="btn yes" id="pYes">✓ Knew it${key("2")}</button></div>
-      <button type="button" class="btn primary" id="pNext">Next${key("↵")}</button></div></div>
-    ${practiceRail(pr)}</div>` + sh;
+      <div class="acts"><button type="button" class="btn mk" id="pAlt"></button><button type="button" class="btn mk" id="pMain"></button></div></div></div>
+    ${practiceRail(pr, "prail")}</div>` + sh;
   const chips = () => { $("#pchips").innerHTML = P.want.map(x => P.found.includes(x) || P.done ? `<a class="w ${P.found.includes(x) || P.verdict?.ok ? "got" : "miss"}" href="#w/${x}">${x}</a>` : `<span class="w blank">${"•".repeat(x.length)}</span>`).join(""); };
   const finish = (ok, solved) => {
     P.done = true; P.verdict = { letters: P.letters, want: P.want, ok };
     chips();
     $("#preveal").innerHTML = P.want.map(x => quizRow(x, P.found.includes(x) || ok ? "got" : "miss")).join("");
-    $("#pNo").classList.toggle("on", !ok); $("#pYes").classList.toggle("on", ok);
+    marks();
     clearTimeout(P.auto);
     if (solved) P.auto = setTimeout(() => { if (P.done && location.hash === "#practice/go") VIEWS.practice(); }, 900);
+  };
+  // before marking: ✗ | ✓. After ✓: ✗ | Next (green). After ✗: ✓ | Next (orange).
+  const marks = () => {
+    const v = P.done && P.verdict, a = $("#pAlt"), m = $("#pMain");
+    a.className = `btn mk ${v && !v.ok ? "yes" : "no"}`; a.innerHTML = `${v && !v.ok ? "✓" : "✗"}${key("1")}`;
+    a.setAttribute("aria-label", v ? (v.ok ? "Switch to didn't know" : "Switch to knew it") : "Didn't know");
+    m.className = `btn mk ${v ? (v.ok ? "yes on" : "no on") : "yes"}`; m.innerHTML = v ? `Next${key("↵")}` : `✓${key("2")}`;
+    m.setAttribute("aria-label", v ? "Next card" : "Knew it");
   };
   const found = x => { P.found.push(x); $("#pleft").textContent = leftText(); chips(); if (P.found.length === P.want.length) finish(true, true); };
   const board = rackBoard($("#pslots"), $("#prack"), P.letters, x => {
@@ -1853,22 +1868,19 @@ function practicePlay(pool, o, opts, wire) {
     ev.target.value = ""; found(x);
   });
   $("#pa").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); P.done ? VIEWS.practice() : finish(false); } });
-  // a keyboard: letters place tiles, Backspace takes one back, Space shuffles, 1 / 2 mark ✗ / ✓, Enter gives up / moves on
+  // a keyboard: letters place tiles, Backspace takes one back, Space shuffles, 1 is the left button, 2 or Enter the right
   document.onkeydown = e => {
     if (pSheetOpen || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.("input, select, textarea") || !$("#prack")) return;
     const k = e.key.toUpperCase();
     if (/^[A-Z]$/.test(k)) board.type(k);
     else if (e.key === "Backspace") board.back();
     else if (e.key === " ") { e.preventDefault(); board.shuffle(); }
-    else if (e.key === "1") $("#pNo").click();
-    else if (e.key === "2") $("#pYes").click();
-    else if (e.key === "Enter") { e.preventDefault(); $("#pNext").click(); }
+    else if (e.key === "1") $("#pAlt").click();
+    else if (e.key === "2" || e.key === "Enter") { e.preventDefault(); $("#pMain").click(); }
   };
-  $("#pNo").onclick = () => finish(false);
-  $("#pYes").onclick = () => finish(true);
-  // Next before marking skips the card and counts it as known
-  $("#pNext").onclick = () => { if (!P.done) P.verdict = { letters: P.letters, want: P.want, ok: true }; VIEWS.practice(); };
-  chips(); wireTop();
+  $("#pAlt").onclick = () => finish(P.done ? !P.verdict.ok : false);
+  $("#pMain").onclick = () => P.done ? VIEWS.practice() : finish(true);
+  marks(); chips(); wireTop();
 }
 const ICON_PLAY = '<svg viewBox="0 0 24 24" class="play" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
 const ICON_SHUF = '<path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>', ICON_BACK = '<path d="M21 5H9l-6 7 6 7h12z"/><path d="M17 9l-6 6M11 9l6 6"/>';
@@ -1954,10 +1966,10 @@ function rackBoard(slotsEl, rackEl, letters, word) {
   };
 }
 // the stats panel beside the card: this session, the last few marks, and the review queue
-function practiceRail(pr) {
+function practiceRail(pr, cls) {
   const q = getPQ(), mins = Math.round((Date.now() - P.start) / 60000), last = P.hist.slice(-20), ok = last.filter(Boolean).length;
   const due = x => x.due <= q.n ? `<em class="due">due now</em>` : `<em>in ${x.due - q.n} card${x.due - q.n === 1 ? "" : "s"}</em>`;
-  return `<aside class="rail">
+  return `<aside class="rail ${cls}">
     <div><h4>This session<em>${mins ? `${mins} min` : "just started"}</em></h4>
       <div class="kpis"><div><b>${P.streak}</b><span>streak</span></div><div><b>${P.seen ? Math.round(P.solved / P.seen * 100) + "%" : "–"}</b><span>known</span></div>
         <div><b>${P.seen}</b><span>racks seen</span></div><div><b>${pr.racks.toLocaleString()}</b><span>of ${pr.racksAll.toLocaleString()} learnt</span></div></div></div>
