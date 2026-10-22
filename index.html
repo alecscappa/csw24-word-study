@@ -530,7 +530,15 @@ main.wrap:has(> .foc) { max-width: 1400px; }
 
   /* practice: full screen once started, buttons at thumb reach */
   body.full header { display: none; }
-  body.full main.wrap { padding: calc(8px + env(safe-area-inset-top)) 12px calc(190px + env(safe-area-inset-bottom)); }
+  body.full main.wrap { padding: calc(8px + env(safe-area-inset-top)) 12px calc(110px + env(safe-area-inset-bottom)); }
+  body.full:has(#pa:not([hidden])) main.wrap { padding-bottom: calc(172px + env(safe-area-inset-bottom)); }
+  /* the card, rack and buttons sit in the middle of the screen; a card with lots of answers grows and pushes
+     the rack down, and the page scrolls (the bottom padding keeps it clear of the ✗ ✓ bar) */
+  body.full .ppills { display: none; }
+  body.full .foc > .stage { min-height: calc(100dvh - 118px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+  body.full .fc-card { margin-top: auto; padding: 26px 10px 20px; }
+  body.full .rackbtns { margin-bottom: auto; }
+  body.full .thumb .btn { min-height: 64px; }
   .thumb { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--panel); border-top: 1px solid var(--line); padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); }
   .thumb kbd { display: none; }
   .phone-only { display: grid; }
@@ -1803,7 +1811,7 @@ function practicePlay(pool, o, opts, wire) {
   const pills = [o.len ? `${o.len} letters` : "Any length", src, o.top && `Top ${(+o.top).toLocaleString()}`, o.starOnly && "★ only", (o.from || o.to) && `Ranks ${o.from || 1}–${o.to || "all"}`, `Streak ${P.streak}`, pq && `${pq} to review`].filter(Boolean);
   const top = `<div class="fc-top"><button type="button" class="ib2" id="pExit" aria-label="Leave practice">×</button><div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div>
       <span class="n" title="racks learnt">${pr.racks.toLocaleString()} / ${pr.racksAll.toLocaleString()}</span><button type="button" class="ib2 phone-only" id="pStatsBtn" aria-label="Stats">${icon('<path d="M5 20V11M12 20V4M19 20v-6"/>')}</button><button type="button" class="ib2" id="pOptBtn" aria-label="Options">${icon('<path d="M4 6h16M7 12h10M10 18h4"/>')}</button></div>
-    <div class="hscroll">${pills.map(p => `<button type="button" class="pill" data-popt>${esc(p)}</button>`).join("")}</div>`;
+    <div class="hscroll ppills">${pills.map(p => `<button type="button" class="pill" data-popt>${esc(p)}</button>`).join("")}</div>`;
   const sh = sheetHTML("psheet", `<h3>Practice options<button type="button" id="pDone">Done</button></h3>${opts.replace('id="pOpts"', 'id="pOpts" open')}`)
     + sheetHTML("pstats", `<h3>Stats<button type="button" id="pStatsDone">Done</button></h3>${practiceRail(pr, "")}`);
   const openSheet = on => { pSheetOpen = on; sheet("psheet", on); };
