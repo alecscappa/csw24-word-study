@@ -379,9 +379,11 @@ body.sheet-open { overflow: hidden; }
 .thumb[hidden] { display: none; }
 .thumb .btn.mk { font-size: 1.5rem; line-height: 1; display: flex; align-items: center; justify-content: center; }
 .thumb .mk kbd { font-size: .72rem; }
-.phone-only { display: none; }
+/* phone-only buttons (the stats button: computers have the stats panel instead) */
+@media (min-width: 621px) { .phone-only { display: none !important; } }
 .thumb kbd { font: .72rem var(--mono); border: 1px solid currentColor; border-radius: 4px; padding: 0 5px; margin-left: 6px; opacity: .6; }
 .fc-top { display: flex; align-items: center; gap: 6px; }
+.fc-top .ib2 { width: 36px; }
 .fc-top .pbar { height: 8px; border-radius: 4px; }
 .fc-top .n { font: .78rem var(--mono); color: var(--muted); }
 .ib2 { width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: none; color: var(--muted); font-size: 1.6rem; line-height: 1; cursor: pointer; border-radius: 12px; flex: none; }
@@ -546,12 +548,10 @@ main.wrap:has(> .foc) { max-width: 1400px; }
   body.full .fc-card { margin-top: auto; padding: 26px 10px 20px; }
   body.full .rackbtns, body.full .fc-card.solo { margin-bottom: auto; }
   /* the stats and options icons sit as a pair */
-  .fc-top .ib2 { width: 38px; }
-  .fc-top #pStatsBtn { margin-right: -4px; }
   body.full .thumb .btn { min-height: 64px; }
   .thumb { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--panel); border-top: 1px solid var(--line); padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); }
   .thumb kbd { display: none; }
-  .phone-only { display: grid; }
+  .fc-top .ib2.phone-only + .ib2 { margin-left: -8px; }
   .prail { display: none; }
   .hscroll { margin: 0 -12px; padding: 0 12px; }
   /* word lists: rows scroll sideways; See all wraps them */
@@ -1599,7 +1599,7 @@ function drawQuestion() {
   let prompt = "", input = "";
   Q.found = [];
   const nAna = anagrams(q.w).length;
-  if (mode === "anagram") { prompt = `<div class="slots" id="qslots"></div>`; input = `<input class="qinput" id="qa" placeholder="${nAna > 1 ? `Type each word (${nAna} to find)` : "Type the word"}"><div class="rows" id="found" style="margin-top:8px"></div><p class="small" style="margin:6px 0 0">Correct words are taken as you type. Press Enter to give up and see the answer.</p>`; }
+  if (mode === "anagram") { prompt = `<div class="slots" id="qslots"></div>`; input = `<div class="rows" id="found" style="margin-top:8px"></div>`; }
   if (mode === "phony") { prompt = `<div class="qprompt">${q.show}</div>`; input = `<div class="row"><button type="button" class="btn primary" data-ans="valid">Valid (V)</button><button type="button" class="btn" data-ans="phony">Phony (P)</button></div>`; }
   if (mode === "hooks") { prompt = `<div class="qprompt">${q.w}</div>`; input = `<div class="pair"><input class="qinput" id="qf" placeholder="front hooks"><input class="qinput" id="qb" placeholder="back hooks"></div><p class="small" style="margin:6px 0 0">Leave blank if none. Press Enter to check.</p>`; }
   if (mode === "def") { prompt = `<div class="qdef">${esc(e.d)}</div><p class="small" style="margin:0">${q.w.length} letters · <a href="#" id="hint">show tiles</a></p><div id="hintBox"></div>`; input = `<input class="qinput" id="qa" placeholder="The word"><p class="small" style="margin:6px 0 0">The right word is taken as you type. Press Enter to give up.</p>`; }
@@ -1641,16 +1641,16 @@ function drawQuestion() {
     if (Q.found.length === want.length) check();
     return true;
   };
+  let board = null;
   if (mode === "anagram") {
-    const board = rackBoard($("#qslots"), $("#qrack"), alpha(q.w), x => Q.answered ? null : takeWord(x));
+    board = rackBoard($("#qslots"), $("#qrack"), alpha(q.w), x => Q.answered ? null : takeWord(x));
     $("#qShuf").onclick = board.shuffle; $("#qBack").onclick = board.back;
   }
   // take a correct answer the moment it is typed; with several anagrams, clear the box after each one
   $("#qa")?.addEventListener("input", ev => {
     if (Q.answered) return;
     const v = ev.target.value.toUpperCase().replace(/[^A-Z]/g, "");
-    if (mode === "anagram") { if (takeWord(v)) ev.target.value = ""; }
-    else if (mode === "def" && (v === q.w || (v.length === q.w.length && DICT.get(v)?.d === e.d))) check();
+    if (mode === "def" && (v === q.w || (v.length === q.w.length && DICT.get(v)?.d === e.d))) check();
   });
   $("#qform").addEventListener("submit", ev => { ev.preventDefault(); Q.answered ? next() : check(); });
   $("#view").querySelectorAll("[data-ans]").forEach(b => b.onclick = () => { if (!Q.answered) check(b.dataset.ans); });
@@ -1658,7 +1658,12 @@ function drawQuestion() {
   document.onkeydown = ev => {
     if (location.hash !== "#quiz" || ev.metaKey || ev.ctrlKey || ev.altKey || ev.target.closest?.("input, textarea, select")) return;
     if (Q.mode === "phony" && !Q.answered) { if (/^[vp]$/i.test(ev.key)) check(ev.key.toLowerCase() === "v" ? "valid" : "phony"); return; }
-    if (ev.key === "1") $("#qAlt")?.click();
+    // anagrams: letters place tiles, Backspace takes one back, Space shuffles, Enter gives up or moves on
+    if (board && /^[a-z]$/i.test(ev.key)) board.type(ev.key.toUpperCase());
+    else if (board && ev.key === "Backspace") board.back();
+    else if (board && ev.key === " ") { ev.preventDefault(); board.shuffle(); }
+    else if (board && ev.key === "Enter" && ev.target === document.body) { ev.preventDefault(); Q.answered ? next() : check(); }
+    else if (ev.key === "1") $("#qAlt")?.click();
     else if (ev.key === "2") $("#qMain")?.click();
   };
 }
@@ -1856,14 +1861,14 @@ function practicePlay(pool, o, opts, wire) {
   const w = pickPractice(pool);
   P.want = anagrams(w); P.found = []; P.done = false; P.letters = alpha(w);
   P.review = !!getPQ().items.find(x => x.a === P.letters);
-  const n = P.letters.length, kbd = store.get("pKbd", false);
+  const n = P.letters.length, kbd = phone() && store.get("pKbd", false);
   const key = k => `<kbd>${k}</kbd>`;
   v.innerHTML = `<div class="foc"><div class="stage">${top}<div class="fc-card"><div class="slots" id="pslots"></div>
       <p class="q"><span id="pleft">${leftText()}</span>${P.review ? ` · <b style="color:var(--warn)">review</b>` : ""}</p><div class="found" id="pchips"></div></div>
     ${rackHTML("prack")}
     <div class="rackbtns"><button type="button" class="btn" id="pShuf" aria-label="Shuffle" title="Shuffle (Space)">${icon(ICON_SHUF)}</button>
       <button type="button" class="btn" id="pBack" aria-label="Take back a letter" title="Take back a letter (Backspace)">${icon(ICON_BACK)}</button>
-      <button type="button" class="btn ${kbd ? "on" : ""}" id="pKbd" aria-label="Type instead">${icon('<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>')}</button></div>
+      <button type="button" class="btn phone-only ${kbd ? "on" : ""}" id="pKbd" aria-label="Type instead">${icon('<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>')}</button></div>
     <div class="rows" id="preveal"></div>
     <div class="thumb"><input class="qinput" id="pa" placeholder="Type the answer" autocomplete="off" autocapitalize="characters" spellcheck="false" ${kbd ? "" : "hidden"}>
       <div class="acts"><button type="button" class="btn mk" id="pAlt"></button><button type="button" class="btn mk" id="pMain"></button></div></div></div>
