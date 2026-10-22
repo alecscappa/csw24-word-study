@@ -60,6 +60,12 @@ a { color: var(--link); }
 ::placeholder { text-transform: none; letter-spacing: normal; opacity: .6; }
 
 header { background: var(--head); color: var(--head-ink); padding: 14px 16px 0; position: sticky; top: 0; z-index: 5; }
+/* installed Chrome app with its title bar hidden (the ^ button): the header runs to the top of the window, leaves
+   a strip for the window buttons, and the window can be dragged by the header. Nothing else uses this mode. */
+@media (display-mode: window-controls-overlay) {
+  header { padding-top: calc(env(titlebar-area-height, 32px) + 4px); -webkit-app-region: drag; app-region: drag; }
+  header input, header button, header a, header select, header label { -webkit-app-region: no-drag; app-region: no-drag; }
+}
 .wrap { max-width: 1100px; margin: 0 auto; }
 .top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .top h1 { font: 800 1.3rem/1 var(--display); margin: 0; letter-spacing: -0.01em; white-space: nowrap; }
