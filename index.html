@@ -220,6 +220,10 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .w.miss { border-color: var(--warn); color: var(--warn); }
 .seg { display: flex; flex-wrap: wrap; gap: 4px; }
 .stype .btn { flex: 1 1 auto; text-align: center; }
+/* Study: the Lists · Practice · Quiz switch */
+.studyseg { display: flex; background: var(--chip); border: 1px solid var(--line); border-radius: 12px; padding: 3px; }
+.studyseg a { flex: 1; text-align: center; padding: 9px 0; border-radius: 9px; font: 600 .92rem var(--display); color: var(--muted); text-decoration: none; }
+.studyseg a.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .15); }
 .pbtns { display: flex; gap: 8px; }
 .pbtns .btn { flex: 1; text-align: center; font-size: 1.05rem; line-height: 1.2; }
 .pbtns .ib { flex: none; width: 3.4em; display: grid; place-items: center; }
@@ -336,8 +340,13 @@ nav.tabs .sh { display: none; }
   .qprompt { text-align: center; }
 }
 
-/* ---------- phone: word hero, search chips + sheets ---------- */
+/* ---------- phone: pill nav, word hero, search chips + sheets, practice, word lists ---------- */
 @media (max-width: 620px) {
+  header { padding-bottom: 10px; }
+  nav.tabs { margin-top: 10px; background: rgb(0 0 0 / .18); border-radius: 99px; padding: 3px; }
+  nav.tabs a { padding: 9px 2px; border-radius: 99px; font-size: clamp(.68rem, 3.3vw, .8rem); opacity: .85; }
+  nav.tabs a.on { background: var(--head-ink); color: var(--head); }
+
   /* shared: pills, sideways rows, bottom sheets */
   .pill { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--panel); font: 600 .86rem var(--display); white-space: nowrap; color: var(--ink); cursor: pointer; flex: none; }
   .pill.on { background: var(--head); border-color: var(--head); color: var(--head-ink); }
@@ -395,6 +404,70 @@ nav.tabs .sh { display: none; }
   /* search: filter chips, one sheet per section */
   .filterbar { margin: -14px -12px 0; padding: 10px 0; background: var(--panel); border-bottom: 1px solid var(--line); }
   .filterbar .hscroll { margin: 0; }
+
+  /* practice: full screen, card + rack, buttons at thumb reach */
+  body.full header { display: none; }
+  body.full main.wrap { padding: calc(8px + env(safe-area-inset-top)) 12px calc(190px + env(safe-area-inset-bottom)); }
+  .fc-top { display: flex; align-items: center; gap: 6px; }
+  .fc-top .pbar { height: 8px; border-radius: 4px; }
+  .fc-top .n { font: .78rem var(--mono); color: var(--muted); }
+  .ib2 { width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: none; color: var(--muted); font-size: 1.6rem; line-height: 1; cursor: pointer; border-radius: 12px; flex: none; }
+  .ib2 svg, .rackbtns svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .fc-card { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 22px 10px 18px; text-align: center; box-shadow: 0 8px 24px -10px rgb(0 0 0 / .25); }
+  .slots, .rack .tiles:not(.mini) { --sz: min(46px, calc((100vw - 60px) / var(--n, 7) - 5px)); }
+  .slots { display: flex; justify-content: center; gap: 5px; min-height: var(--sz); }
+  .slot, .slots .tile { width: var(--sz); height: var(--sz); font-size: calc(var(--sz) * .58); flex: none; }
+  .slot { border-radius: 6px; border: 2px dashed var(--line); }
+  .slots.bad { animation: shake .35s; }
+  .slots.good .tile { outline: 2px solid var(--good); outline-offset: 1px; }
+  @keyframes shake { 25% { transform: translateX(-7px); } 75% { transform: translateX(7px); } }
+  .fc-card .q { font: 600 .82rem var(--mono); color: var(--muted); margin: 14px 0 0; }
+  .found { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 12px; }
+  .found .w.blank { color: var(--muted); border-style: dashed; background: none; letter-spacing: .1em; cursor: default; opacity: .6; }
+  .rack { padding: 14px 6px 12px; border-radius: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--tile-edge) 72%, #000), color-mix(in srgb, var(--tile-edge) 50%, #000)); box-shadow: inset 0 2px 0 rgb(255 255 255 / .2), 0 6px 14px -4px rgb(0 0 0 / .4); }
+  .rack .tiles { justify-content: center; gap: 5px; flex-wrap: nowrap; }
+  .rack .tile, .slots .tile { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; animation: none; }
+  .rack .tile.used { opacity: .28; transform: scale(.92); }
+  .tile.drag { position: fixed; z-index: 30; pointer-events: none; margin: 0; animation: none; scale: 1.12; filter: drop-shadow(0 8px 10px rgb(0 0 0 / .35)); }
+  .tile.ghost { opacity: .25; }
+  .rackbtns { display: flex; gap: 8px; justify-content: center; margin-top: -2px; }
+  .rackbtns .btn { min-width: 56px; min-height: 46px; display: grid; place-items: center; border-radius: 12px; padding: 0 12px; color: var(--muted); }
+  .rackbtns .btn.on { color: var(--bg); }
+  .thumb { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--panel); border-top: 1px solid var(--line); padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; }
+  .thumb .qinput { min-height: 50px; border-radius: 12px; font-size: 1.2rem; text-align: center; }
+  .thumb .qinput[hidden] { display: none; }
+  .thumb .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .thumb .btn { min-height: 54px; border-radius: 14px; font-size: 1rem; text-align: center; }
+  .thumb .no { color: var(--warn); border-color: var(--warn); } .thumb .yes { color: var(--good); border-color: var(--good); }
+  .thumb .no.on { background: var(--warn); color: var(--panel); } .thumb .yes.on { background: var(--good); color: var(--panel); }
+  .sheet #pOpts { border: 0; padding: 0; margin-top: 14px; }
+  .sheet #pOpts > summary { display: none; }
+  .sheet .chips { margin: 0 -16px; padding: 0 16px 2px; }
+
+  /* word lists: continue card, then sideways rows with progress bars */
+  .bigtitle { font: 800 1.9rem/1.1 var(--display); margin: 2px 4px 0; letter-spacing: -.01em; }
+  .cont { background: var(--head); color: var(--head-ink); border-radius: 16px; padding: 16px; display: flex; gap: 14px; align-items: center; cursor: pointer; }
+  .cont .ct { flex: 1; min-width: 0; }
+  .cont small { font: 700 .68rem var(--display); letter-spacing: .1em; text-transform: uppercase; opacity: .75; }
+  .cont b { display: block; font: 700 1.1rem var(--display); margin: 2px 0 8px; }
+  .cont .pbar { background: color-mix(in srgb, var(--head-ink) 25%, transparent); }
+  .cont .pbar div { background: var(--tile); }
+  .cont .small { color: inherit; opacity: .75; margin-top: 6px; }
+  .cont .go { width: 48px; height: 48px; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font-size: 1.1rem; flex: none; border: 0; cursor: pointer; }
+  .carow h4 { display: flex; justify-content: space-between; align-items: center; margin: 8px 4px 10px; font: 700 1.05rem var(--display); }
+  .carow h4 button { border: 0; background: none; font: 600 .84rem var(--display); color: var(--link); cursor: pointer; min-height: 36px; }
+  .carow.all .hscroll { flex-wrap: wrap; overflow: visible; }
+  .carow.all .cc { width: calc(50% - 4px); }
+  .cc { flex: none; width: 150px; min-height: 136px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; align-items: stretch; gap: 8px; text-align: left; cursor: pointer; color: var(--ink); }
+  .cc b { font: 700 .98rem/1.2 var(--display); }
+  .cc .foot { margin-top: auto; display: flex; flex-direction: column; gap: 5px; }
+  .cc i { font: normal .72rem var(--mono); color: var(--muted); }
+  .prog { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+  .prog i { display: block; height: 100%; background: var(--good); }
+  .cc .tiles.mini { gap: 2px; flex-wrap: nowrap; overflow: hidden; }
+  .cc .tiles.mini .tile { width: 24px; height: 24px; font-size: .9rem; }
+  .cc .tiles.mini .tile sub { display: none; }
+
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -418,9 +491,7 @@ nav.tabs .sh { display: none; }
     <nav class="tabs" id="tabs">
       <a href="#w" data-tab="w">Word</a>
       <a href="#search" data-tab="search">Search</a>
-      <a href="#lists" data-tab="lists"><span class="lg">Word lists</span><span class="sh">Lists</span></a>
-      <a href="#practice" data-tab="practice">Practice</a>
-      <a href="#quiz" data-tab="quiz">Quiz</a>
+      <a href="#lists" data-tab="study">Study</a>
       <a href="#mine" data-tab="mine"><span class="lg">My words</span><span class="sh">Mine</span></a>
       <a href="#settings" data-tab="settings" class="end">Settings</a>
     </nav>
@@ -1269,6 +1340,8 @@ function searchPhone() {
 // ---------- word lists ----------
 VIEWS.lists = (id) => {
   const g = G(id);
+  if (g) store.set("lastList", g.id);
+  else if (phone()) return listsPhone();
   if (!g) {
     let html = `<h3 class="title">Word lists</h3>`;
     let open = false;
@@ -1294,6 +1367,42 @@ VIEWS.lists = (id) => {
     results(box, groupWords(g), { len: g.len });
   }, 10);
 };
+// phone lists: a Continue card for the last list opened, then each section scrolls sideways.
+// Bars show how much of each list is learnt in Practice (racks marked known there).
+function listsPhone() {
+  const L = getLearnt();
+  const words = x => x.special === "stems" ? stems(x.n).flatMap(s => s.words) : groupWords(x);
+  const learnt = x => { const ws = words(x); return [ws.filter(w => L.has(alpha(w))).length, ws.length]; };
+  // a sample word for the mini tiles: the first valid example in the blurb, else filled in once the list is built
+  const sample = x => x.special === "stems" ? "" : (x.blurb.match(/\b[A-Z]{2,8}\b/g) || []).find(t => DICT.has(t)) || "";
+  const last = G(store.get("lastList"));
+  let html = `<div class="bigtitle">Word lists</div>`;
+  if (last) html += `<div class="cont" data-list="${last.id}"><div class="ct"><small>Continue</small><b>${esc(last.name)}</b><div class="pbar"><div id="pg_cont" style="width:0"></div></div><div class="small" id="cont_n"></div></div>
+    ${last.special ? "" : `<button type="button" class="go" data-play="${last.id}" aria-label="Practice ${esc(last.name)}">▶</button>`}</div>`;
+  let open = false;
+  for (const x of GROUPS) {
+    if (x.sect) { html += `${open ? "</div></div>" : ""}<div class="carow"><h4>${x.sect}<button type="button" data-all>See all</button></h4><div class="hscroll">`; open = true; continue; }
+    const sw = sample(x);
+    html += `<button type="button" class="cc" data-list="${x.id}"><span id="sm_${x.id}">${sw ? tilesHTML(sw, true) : ""}</span><b>${esc(x.name)}</b>
+      <span class="foot"><i id="cnt_${x.id}">${cache[x.id] ? cache[x.id].length.toLocaleString() + (x.special ? " stems" : " words") : "…"}</i><span class="prog"><i id="pg_${x.id}" style="width:0"></i></span></span></button>`;
+  }
+  $("#view").innerHTML = html + "</div></div>";
+  const v = $("#view");
+  v.querySelectorAll("[data-list]").forEach(b => b.onclick = () => location.hash = "lists/" + b.dataset.list);
+  v.querySelectorAll("[data-all]").forEach(b => b.onclick = () => { const r = b.closest(".carow"); r.classList.toggle("all"); b.textContent = r.classList.contains("all") ? "Show less" : "See all"; });
+  v.querySelector("[data-play]")?.addEventListener("click", ev => { ev.stopPropagation(); saveSettings({ practice: { ...PO_DEFAULT, src: "g:" + last.id, len: last.len || 0 } }); location.hash = "practice/go"; });
+  const fill = x => {
+    const ws = groupWords(x), [n, all] = learnt(x), pct = all ? n / all * 100 : 0;
+    const c = $("#cnt_" + x.id); if (c) c.textContent = ws.length.toLocaleString() + (x.special ? " stems" : " words") + (n ? ` · ${n.toLocaleString()} learnt` : "");
+    const p = $("#pg_" + x.id); if (p) p.style.width = pct + "%";
+    const sm = $("#sm_" + x.id); if (sm && !sm.innerHTML) { const s = x.special ? ws[0] : ws.find(w => w.length === (x.len || 4)) || ws[0]; if (s) sm.innerHTML = tilesHTML(s, true); }
+    if (x === last) { $("#pg_cont").style.width = pct + "%"; $("#cont_n").textContent = n ? `${n.toLocaleString()} of ${all.toLocaleString()} learnt` : "Nothing learnt yet"; }
+  };
+  // fill in counts and bars without blocking the first paint, the continue card first
+  const todo = [last, ...GROUPS.filter(x => x.id && x !== last)].filter(Boolean);
+  const step = () => { const x = todo.shift(); if (!x || location.hash !== "#lists" || !phone()) return; fill(x); setTimeout(step, 0); };
+  setTimeout(step, 30);
+}
 function drawStems(box, g) {
   const data = stems(g.n);
   lastResults = data.flatMap(s => s.words);
@@ -1594,6 +1703,7 @@ VIEWS.practice = () => {
     $("#poReset").onclick = () => { saveSettings({ practice: { ...PO_DEFAULT } }); VIEWS.practice(); };
     confirmBtn($("#poForget"), () => { const racks = new Set(pool.map(alpha)); store.set("plearnt", [...getLearnt()].filter(a => !racks.has(a))); VIEWS.practice(); });
   };
+  if (phone()) return location.hash === "#practice/go" ? practicePhone(pool, o, opts, lenRow, wire) : practiceSetup(pool, o, opts, lenRow, wire);
   if (!pool.length) {
     $("#view").innerHTML = lenRow + opts + `<div class="card"><p class="empty">${esc(poolCache.error || "No words match these options. Try another length or loosen a filter.")}</p></div>`;
     return wire();
@@ -1640,6 +1750,152 @@ VIEWS.practice = () => {
   $("#pNext").onclick = () => { if (!P.done) P.verdict = { letters: P.letters, want: P.want, ok: true }; VIEWS.practice(); };
   wire();
 };
+
+// phone practice: full screen, no header. The rack's tiles can be tapped or dragged into the slots
+// (and dragged along the rack to rearrange); a full row is checked straight away. Typing works too:
+// a hardware keyboard places tiles, and the keyboard button shows a box for the phone's own keyboard.
+let pSheetOpen = false;
+function practicePhone(pool, o, opts, lenRow, wire) {
+  const v = $("#view"), pq = getPQ().items.length, pr = progress(pool);
+  const src = o.src.startsWith("g:") ? G(o.src.slice(2))?.name : { "my:stars": "Study list", "my:missed": "Missed in quizzes", "my:last": "Last search" }[o.src];
+  const pills = [o.len ? `${o.len} letters` : "Any length", src, o.top && `Top ${(+o.top).toLocaleString()}`, o.starOnly && "★ only", (o.from || o.to) && `Ranks ${o.from || 1}–${o.to || "all"}`, `Streak ${P.streak}`, pq && `${pq} to review`].filter(Boolean);
+  const icon = d => `<svg viewBox="0 0 24 24">${d}</svg>`;
+  const top = `<div class="fc-top"><button type="button" class="ib2" id="pExit" aria-label="Leave practice">×</button><div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div>
+      <span class="n" title="racks learnt">${pr.racks.toLocaleString()} / ${pr.racksAll.toLocaleString()}</span><button type="button" class="ib2" id="pOptBtn" aria-label="Options">${icon('<path d="M4 6h16M7 12h10M10 18h4"/>')}</button></div>
+    <div class="hscroll">${pills.map(p => `<button type="button" class="pill" data-popt>${esc(p)}</button>`).join("")}</div>`;
+  const sh = sheetHTML("psheet", `<h3>Practice options<button type="button" id="pDone">Done</button></h3>${lenRow}${opts.replace('id="pOpts"', 'id="pOpts" open')}`);
+  const openSheet = on => { pSheetOpen = on; sheet("psheet", on); };
+  const wireTop = () => {
+    $("#pExit").onclick = () => history.length > 1 ? history.back() : location.hash = "w";
+    v.querySelectorAll("#pOptBtn, [data-popt]").forEach(b => b.onclick = () => openSheet(true));
+    $("#pDone").onclick = $("#psheet .scrim").onclick = () => openSheet(false);
+    wire();
+    if (pSheetOpen) sheet("psheet", true);
+  };
+  if (!pool.length) {
+    v.innerHTML = top + `<div class="fc-card"><p class="empty">${esc(poolCache.error || "No words match these options. Tap ☰ to change them.")}</p></div>` + sh;
+    return wireTop();
+  }
+  const w = pickPractice(pool);
+  P.want = anagrams(w); P.found = []; P.done = false; P.letters = alpha(w);
+  P.review = !!getPQ().items.find(x => x.a === P.letters);
+  const n = P.letters.length, kbd = store.get("pKbd", false);
+  // rack = tiles in the order shown; ans = which rack tiles sit in the slots, in order
+  let rack = [...P.letters].map((c, i) => ({ c, i })), ans = [], busy = false, drag = null;
+  v.innerHTML = top + `<div class="fc-card"><div class="slots" id="pslots" style="--n:${n}"></div>
+      <p class="q"><span id="pleft">${leftText()}</span>${P.review ? ` · <b style="color:var(--warn)">review</b>` : ""}</p><div class="found" id="pchips"></div></div>
+    <div class="rack" id="prack"><div class="tiles" id="prt" style="--n:${n}"></div></div>
+    <div class="rackbtns"><button type="button" class="btn" id="pShuf" aria-label="Shuffle">${icon('<path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>')}</button>
+      <button type="button" class="btn" id="pBack" aria-label="Take back a letter">${icon('<path d="M21 5H9l-6 7 6 7h12z"/><path d="M17 9l-6 6M11 9l6 6"/>')}</button>
+      <button type="button" class="btn ${kbd ? "on" : ""}" id="pKbd" aria-label="Type instead">${icon('<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>')}</button></div>
+    <div class="rows" id="preveal"></div>
+    <div class="thumb"><input class="qinput" id="pa" placeholder="Type the answer" autocomplete="off" autocapitalize="characters" spellcheck="false" ${kbd ? "" : "hidden"}>
+      <div class="acts"><button type="button" class="btn no" id="pNo">✗ Didn't know</button><button type="button" class="btn yes" id="pYes">✓ Knew it</button></div>
+      <button type="button" class="btn primary" id="pNext">Next</button></div>` + sh;
+  const tile = (t, cls = "") => `<div class="tile ${cls}" data-i="${t.i}">${t.c}<sub>${VALUES[t.c]}</sub></div>`;
+  const byI = i => rack.find(t => t.i === i);
+  const draw = () => {
+    if (!$("#pslots")) return;
+    $("#pslots").innerHTML = ans.map(i => tile(byI(i))).join("") + `<div class="slot"></div>`.repeat(n - ans.length);
+    $("#prt").innerHTML = rack.map(t => tile(t, ans.includes(t.i) ? "used" : "")).join("");
+  };
+  const chips = () => { $("#pchips").innerHTML = P.want.map(x => P.found.includes(x) || P.done ? `<a class="w ${P.found.includes(x) || P.verdict?.ok ? "got" : "miss"}" href="#w/${x}">${x}</a>` : `<span class="w blank">${"•".repeat(x.length)}</span>`).join(""); };
+  const finish = (ok, solved) => {
+    P.done = true; P.verdict = { letters: P.letters, want: P.want, ok };
+    chips();
+    $("#preveal").innerHTML = P.want.map(x => quizRow(x, P.found.includes(x) || ok ? "got" : "miss")).join("");
+    $("#pNo").classList.toggle("on", !ok); $("#pYes").classList.toggle("on", ok);
+    clearTimeout(P.auto);
+    if (solved) P.auto = setTimeout(() => { if (P.done && location.hash === "#practice/go") VIEWS.practice(); }, 900);
+  };
+  const found = x => { P.found.push(x); $("#pleft").textContent = leftText(); chips(); if (P.found.length === P.want.length) finish(true, true); };
+  const flash = cls => { const s = $("#pslots"); s.classList.remove("bad", "good"); void s.offsetWidth; s.classList.add(cls); };
+  // a full row of slots is checked at once: a new word stays lit for a moment, anything else shakes; then the tiles go back
+  const check = () => {
+    if (ans.length < n || P.done) return;
+    const x = ans.map(i => byI(i).c).join(""), ok = P.want.includes(x) && !P.found.includes(x);
+    flash(ok ? "good" : "bad"); busy = true;
+    if (ok) found(x);
+    setTimeout(() => { busy = false; ans = []; draw(); }, ok ? 350 : 450);
+  };
+  const place = i => { if (busy) return; ans = ans.includes(i) ? ans.filter(x => x !== i) : [...ans, i]; draw(); check(); };
+  const shuf = () => { rack = shuffle(rack); draw(); };
+  // dragging: a copy of the tile follows the finger; dropping on the slots puts it in at that spot,
+  // on the rack moves it along the rack, anywhere else sends a slot tile back
+  const down = (e, from) => {
+    const el = e.target.closest(".tile"); if (!el || busy) return;
+    e.preventDefault();
+    drag = { i: +el.dataset.i, from, el, x: e.clientX, y: e.clientY };
+    el.setPointerCapture?.(e.pointerId);
+    el.onpointermove = move; el.onpointerup = up; el.onpointercancel = () => { drag?.ghost?.remove(); drag = null; draw(); };
+  };
+  const move = e => {
+    if (!drag) return;
+    if (!drag.ghost) {
+      if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 8) return;
+      const r = drag.el.getBoundingClientRect(), g = drag.ghost = drag.el.cloneNode(true);
+      drag.ox = drag.x - r.left; drag.oy = drag.y - r.top;
+      g.classList.remove("used"); g.classList.add("drag");
+      Object.assign(g.style, { width: r.width + "px", height: r.height + "px", fontSize: getComputedStyle(drag.el).fontSize });
+      document.body.append(g); drag.el.classList.add("ghost");
+    }
+    drag.ghost.style.left = e.clientX - drag.ox + "px"; drag.ghost.style.top = e.clientY - drag.oy + "px";
+  };
+  const up = e => {
+    const d = drag; drag = null; if (!d) return;
+    if (!d.ghost) return place(d.i);
+    d.ghost.remove();
+    const x = e.clientX, y = e.clientY;
+    const over = el => { const r = el.getBoundingClientRect(); return x > r.left - 16 && x < r.right + 16 && y > r.top - 16 && y < r.bottom + 16; };
+    const before = box => [...box.querySelectorAll(".tile")].filter(c => +c.dataset.i !== d.i && (r => r.left + r.width / 2 < x)(c.getBoundingClientRect())).length;
+    if (over($("#pslots"))) { const k = before($("#pslots")); ans = ans.filter(j => j !== d.i); ans.splice(k, 0, d.i); }
+    else if (over($("#prack"))) { const k = before($("#prt")), t = byI(d.i); rack = rack.filter(r => r !== t); rack.splice(k, 0, t); if (d.from === "slot") ans = ans.filter(j => j !== d.i); }
+    else if (d.from === "slot") ans = ans.filter(j => j !== d.i);
+    draw(); check();
+  };
+  $("#pslots").onpointerdown = e => down(e, "slot");
+  $("#prt").onpointerdown = e => down(e, "rack");
+  $("#pShuf").onclick = shuf;
+  $("#pBack").onclick = () => { if (busy || !ans.length) return; ans.pop(); draw(); };
+  $("#pKbd").onclick = () => { const k = !store.get("pKbd", false); store.set("pKbd", k); $("#pKbd").classList.toggle("on", k); $("#pa").hidden = !k; if (k) $("#pa").focus(); };
+  $("#pa").addEventListener("input", ev => {
+    const x = ev.target.value.toUpperCase().replace(/[^A-Z]/g, "");
+    if (P.done || !P.want.includes(x) || P.found.includes(x)) return;
+    ev.target.value = ""; found(x);
+  });
+  $("#pa").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); P.done ? VIEWS.practice() : finish(false); } });
+  // a hardware keyboard: letters place tiles, Backspace takes one back, Space shuffles, Enter gives up / moves on
+  document.onkeydown = e => {
+    if (pSheetOpen || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.("input, select, textarea") || !$("#prack")) return;
+    const k = e.key.toUpperCase();
+    if (/^[A-Z]$/.test(k)) { const t = rack.find(t => t.c === k && !ans.includes(t.i)); if (t) place(t.i); }
+    else if (e.key === "Backspace") $("#pBack").click();
+    else if (e.key === " ") { e.preventDefault(); shuf(); }
+    else if (e.key === "Enter") { e.preventDefault(); P.done ? VIEWS.practice() : finish(false); }
+  };
+  $("#pNo").onclick = () => finish(false);
+  $("#pYes").onclick = () => finish(true);
+  // Next before marking skips the card and counts it as known
+  $("#pNext").onclick = () => { if (!P.done) P.verdict = { letters: P.letters, want: P.want, ok: true }; VIEWS.practice(); };
+  draw(); chips(); wireTop();
+}
+
+// phone practice setup: what to practise; Start (or ▶) goes full screen
+function practiceSetup(pool, o, opts, lenRow, wire) {
+  const pr = progress(pool), last = G(store.get("lastList"));
+  const src = o.src.startsWith("g:") ? G(o.src.slice(2))?.name : { "my:stars": "Study list", "my:missed": "Missed in quizzes", "my:last": "Last search" }[o.src] || "Any word";
+  const quick = [["", "Any word"], ["my:stars", `★ Starred (${getStars().length})`], ["my:last", `Last search (${lastResults.length})`], ["my:missed", "Missed in quizzes"], ...(last && !last.special ? [["g:" + last.id, last.name]] : [])];
+  $("#view").innerHTML = `<div class="cont" id="pGo"><div class="ct"><small>${P.seen ? "Continue" : "Ready to practise"}</small><b>${esc(src)}${o.len ? ` · ${o.len} letters` : ""}</b>
+      <div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div><div class="small">${pr.racks.toLocaleString()} of ${pr.racksAll.toLocaleString()} racks learnt · ${pool.length.toLocaleString()} words</div></div>
+      <button type="button" class="go" aria-label="Start practice">▶</button></div>
+    <div class="card"><h2 class="lbl">Words from</h2><div class="chips">${quick.map(([v, n]) => `<button type="button" class="btn sm ${v === o.src ? "on" : ""}" data-psrc="${v}">${esc(n)}</button>`).join("")}</div></div>
+    <div class="card"><h2 class="lbl">Length</h2>${lenRow}</div>
+    ${opts}
+    <button type="button" class="btn primary block" id="pStart" ${pool.length ? "" : "disabled"}>${pool.length ? "Start practice" : "No words match these options"}</button>`;
+  wire();
+  $("#view").querySelectorAll("[data-psrc]").forEach(b => b.onclick = () => { const v = b.dataset.psrc; saveSettings({ practice: { ...PO_DEFAULT, src: v, len: v.startsWith("g:") ? G(v.slice(2))?.len || 0 : 0 } }); VIEWS.practice(); });
+  $("#pGo").onclick = $("#pStart").onclick = () => { if (pool.length) location.hash = "practice/go"; };
+}
 
 // ---------- my words ----------
 const getStars = () => store.get("stars", []);
@@ -1761,16 +2017,32 @@ VIEWS.settings = () => {
 const sampleWord = () => [$("#q").value, store.get("hist", [])[0], "SCRABBLE"].map(w => (w || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 15)).find(Boolean);
 const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 
+// ---------- study: Lists, Practice and Quiz share one tab, with a switch along the top ----------
+const STUDY = ["lists", "practice", "quiz"];
+for (const k of STUDY) {
+  const f = VIEWS[k];
+  VIEWS[k] = arg => {
+    f(arg);
+    const top = !(k === "lists" && arg) && location.hash !== "#practice/go" && !(k === "quiz" && Q && !Q.done);
+    if (top && !$("#view .studyseg")) $("#view").insertAdjacentHTML("afterbegin", `<nav class="studyseg">${[["lists", "Lists"], ["practice", "Practice"], ["quiz", "Quiz"]].map(([h, n]) => `<a href="#${h}" class="${h === k ? "on" : ""}">${n}</a>`).join("")}</nav>`);
+  };
+}
+
 // ---------- routing ----------
 function route() {
   commitPractice();
   const [tab, arg] = decodeURIComponent(location.hash.slice(1)).split("/");
   const t = VIEWS[tab] ? tab : "w";
-  document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === t));
+  // Lists, Practice and Quiz share the Study tab, which goes back to whichever was used last
+  if (STUDY.includes(t)) store.set("studyLast", t);
+  $('#tabs [data-tab="study"]').href = "#" + store.get("studyLast", "lists");
+  document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === t || (a.dataset.tab === "study" && STUDY.includes(t))));
   if (t !== "quiz") document.onkeydown = null;
   $("#view").classList.toggle("quizv", t === "quiz" || t === "practice");
-  // a sheet left open on another page is closed
+  // phone: Practice is full screen (no header) only once started; a sheet left open elsewhere is closed
+  document.body.classList.toggle("full", t === "practice" && arg === "go");
   document.body.classList.remove("sheet-open");
+  if (t !== "practice") pSheetOpen = false;
   VIEWS[t](arg);
   window.scrollTo({ top: 0 });
 }
