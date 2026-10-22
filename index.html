@@ -220,8 +220,8 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .w.miss { border-color: var(--warn); color: var(--warn); }
 .seg { display: flex; flex-wrap: wrap; gap: 4px; }
 .stype .btn { flex: 1 1 auto; text-align: center; }
-.qcount { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.qcount input { width: 5em; text-align: center; }
+.numpick { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.numpick input { width: 5em; text-align: center; }
 html { scrollbar-width: none; }
 html::-webkit-scrollbar { display: none; }
 /* Study: the Lists · Practice · Quiz switch */
@@ -1050,6 +1050,7 @@ const phoneMQ = matchMedia("(max-width: 620px)"), phone = () => phoneMQ.matches;
 phoneMQ.addEventListener?.("change", () => route());
 // bottom sheets (phone): a scrim and a panel that slides up
 const sheetHTML = (id, body) => `<div class="sheetwrap" id="${id}" hidden><div class="scrim"></div><div class="sheet"><div class="grab"></div>${body}</div></div>`;
+function sheet(id, open) { const s = $("#" + id); if (!s) return; s.hidden = !open; document.body.classList.toggle("sheet-open", open); }
 
 VIEWS.w = (arg) => {
   const w = (arg || store.get("hist", [])[0] || "QI").toUpperCase().replace(/[^A-Z]/g, "");
@@ -1236,6 +1237,17 @@ function runSearch(s) {
   return { words: out, masks };
 }
 
+// probability: type how many of the most likely words to keep, or pick one of the usual amounts
+const TOPS = [50, 100, 250, 500, 1000];
+const topField = (id, v) => `<div class="field"><label for="${id}">Probability: top</label><div class="numpick"><input id="${id}" value="${esc(v || "")}" placeholder="all" inputmode="numeric" aria-label="Only the top this many most likely words">${TOPS.map(n => `<button type="button" class="btn sm ${+v === n ? "on" : ""}" data-top="${id}" data-n="${n}">${n.toLocaleString()}</button>`).join("")}</div></div>`;
+const markTop = el => el.parentNode.querySelectorAll("[data-n]").forEach(b => b.classList.toggle("on", +b.dataset.n === +el.value));
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("[data-top]"); if (!b) return;
+  // tapping the amount that's already picked clears it back to all words
+  const el = $("#" + b.dataset.top); el.value = +el.value === +b.dataset.n ? "" : b.dataset.n; markTop(el);
+  el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true }));
+});
+document.addEventListener("input", ev => { if (ev.target.matches?.("#s_top, #po_top")) markTop(ev.target); });
 // the two search sections' fields (letters come from the top bar), shared by the folding form and the phone's sheets (which get +/− length steppers)
 function searchSecs(s, ph) {
   const f = (id, label, p, hint = "", cls = "") => `<div class="field"><label for="s_${id}">${label}</label><input id="s_${id}" class="${cls}" value="${esc(s[id])}" placeholder="${p}" spellcheck="false">${hint ? `<span class="hint">${hint}</span>` : ""}</div>`;
@@ -1253,7 +1265,7 @@ function searchSecs(s, ph) {
         ${f("contains", "Contains in a row", "e.g. QI")}
         ${f("incl", "Must use letters", "e.g. VV")}
         ${f("excl", "Without letters", "e.g. AEIOU")}
-        <div class="field"><label for="s_top">Probability</label><select id="s_top">${[["", "All words"], ["500", "Top 500 of each length"], ["1000", "Top 1,000 of each length"], ["3000", "Top 3,000 of each length"], ["6000", "Top 6,000 of each length"], ["10000", "Top 10,000 of each length"]].map(([v, t]) => `<option value="${v}" ${String(s.top) === v ? "selected" : ""}>${t}</option>`).join("")}</select><span class="hint">Most likely words to draw</span></div>
+        ${topField("s_top", s.top)}
       </div>`,
   };
 }
@@ -1516,7 +1528,7 @@ VIEWS.quiz = () => {
       <div class="field wide"><label for="qsrc">Words from</label><select id="qsrc">
         <optgroup label="Mine">${quizSources().map(([v, t]) => `<option value="${v}" ${v === quizSetup.source ? "selected" : ""}>${esc(t)}</option>`).join("")}</optgroup>
         ${groupOptions(quizSetup.source.replace("list:", ""), true).replace(/value="/g, 'value="list:')}</select></div>
-      <div class="field"><label for="qcount">Questions</label><div class="qcount"><input id="qcount" value="${SET.qcount}" inputmode="numeric" aria-label="Number of questions">${[10, 20, 50, 100].map(n => `<button type="button" class="btn sm ${n === +SET.qcount ? "on" : ""}" data-qn="${n}">${n}</button>`).join("")}</div></div>
+      <div class="field"><label for="qcount">Questions</label><div class="numpick"><input id="qcount" value="${SET.qcount}" inputmode="numeric" aria-label="Number of questions">${[10, 20, 50, 100].map(n => `<button type="button" class="btn sm ${n === +SET.qcount ? "on" : ""}" data-qn="${n}">${n}</button>`).join("")}</div></div>
       <div class="field"><label for="qlen">Length</label><select id="qlen">${[["", "Any length"], ["main", "The list's main length"], ...range(2, 15).map(n => [String(n), `${n} letters`])].map(([v, t]) => `<option value="${v}" ${String(quizSetup.len ?? (quizSetup.lenOnly ? "main" : "")) === v ? "selected" : ""}>${t}</option>`).join("")}</select></div>
       <div class="field"><span class="flabel">Starred</span><label class="check"><input type="checkbox" id="qstar" ${quizSetup.starOnly ? "checked" : ""}> Only words I've starred</label></div>
     </div></div>
@@ -1740,7 +1752,7 @@ VIEWS.practice = () => {
           <optgroup label="Mine"><option value="my:stars" ${o.src === "my:stars" ? "selected" : ""}>My study list</option><option value="my:missed" ${o.src === "my:missed" ? "selected" : ""}>Missed in quizzes</option><option value="my:last" ${o.src === "my:last" ? "selected" : ""}>Last search results</option></optgroup>
           ${groupOptions(o.src.startsWith("g:") ? o.src.slice(2) : "").replace(/value="/g, 'value="g:')}</select></div>
         <div class="field"><label for="po_len">Length</label><select id="po_len"><option value="0">Any length</option>${range(2, 15).map(n => `<option value="${n}" ${n === +o.len ? "selected" : ""}>${n} letters</option>`).join("")}</select></div>
-        <div class="field"><label for="po_top">Probability</label><select id="po_top">${[["", "All words"], ["500", "Top 500"], ["1000", "Top 1,000"], ["3000", "Top 3,000"], ["10000", "Top 10,000"]].map(([v, t]) => `<option value="${v}" ${String(o.top) === v ? "selected" : ""}>${t}</option>`).join("")}</select></div>
+        ${topField("po_top", o.top)}
         ${tf("starts", "Starts with", "e.g. UN")}${tf("ends", "Ends with", "e.g. ING")}${tf("contains", "Contains in a row", "e.g. QI")}
         <div class="field"><span class="flabel">Starred</span><label class="check"><input type="checkbox" id="po_star" ${o.starOnly ? "checked" : ""}> Only words I've starred</label></div>
         ${tf("incl", "Must use letters", "e.g. Z")}${tf("excl", "Without letters", "e.g. S")}${tf("pattern", "Pattern", "e.g. .A.E*")}
