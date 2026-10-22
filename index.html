@@ -434,6 +434,7 @@ body.sheet-open { overflow: hidden; }
 .cont .pbar { background: color-mix(in srgb, var(--head-ink) 25%, transparent); }
 .cont .pbar div { background: var(--tile); }
 .cont .small { color: inherit; opacity: .75; margin-top: 6px; }
+.cont .go .play { width: 22px; height: 22px; fill: currentColor; display: block; }
 .cont .go { width: 48px; height: 48px; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font-size: 1.1rem; flex: none; border: 0; cursor: pointer; }
 .carow h4 { display: flex; justify-content: space-between; align-items: center; margin: 8px 4px 10px; font: 700 1.05rem var(--display); }
 .carow h4 button { border: 0; background: none; font: 600 .84rem var(--display); color: var(--link); cursor: pointer; min-height: 36px; }
@@ -1171,7 +1172,7 @@ async function fetchOnline(w) {
   const shown = parts.slice(0, 6);
   const syns = [...new Set(parts.flatMap(p => p.syn || []))].map(s => s.toUpperCase()).filter(s => DICT.has(s)).slice(0, 12);
   b.innerHTML = `<h2 class="lbl">Pronunciation, examples &amp; origin</h2>
-    ${phon || audio ? `<div class="row small">${phon ? `<span style="font-size:1rem">${esc(phon)}</span>` : ""}${audio ? `<button class="btn sm" type="button" id="say">▶ Hear it</button>` : ""}</div>` : ""}
+    ${phon || audio ? `<div class="row small">${phon ? `<span style="font-size:1rem">${esc(phon)}</span>` : ""}${audio ? `<button class="btn sm" type="button" id="say">▶\uFE0E Hear it</button>` : ""}</div>` : ""}
     ${shown.length ? `<ol style="margin-top:10px">${shown.map(p => `<li><span class="pos">${esc(p.pos)}</span> ${esc(p.def)}${p.ex ? `<span class="ex">${esc(p.ex)}</span>` : ""}</li>`).join("")}</ol>`
       : `<p class="empty">No online dictionary entry. Many Scrabble words are rare, so lean on the CSW definition and your own memory hook.</p>`}
     ${syns.length ? `<p class="small" style="margin:10px 0 4px">Valid synonyms</p><div class="words">${syns.map(chip).join("")}</div>` : ""}
@@ -1415,6 +1416,12 @@ VIEWS.lists = (id) => {
   $("#view").innerHTML = `<div class="row"><a class="btn sm" href="#lists">← All lists</a><a class="btn sm" href="#" id="toSearch">Open in Search</a></div>
     <div><h3 class="title">${esc(g.name)}</h3><p class="sub">${esc(g.blurb)}</p></div><div class="card" id="lres"><p class="small">Building list…</p></div>`;
   $("#toSearch").hidden = !!g.special;
+  // forget what's been learnt in Practice for this list (asks once more before it clears)
+  const racks = new Set(g.special ? [] : groupWords(g).map(alpha)), L = getLearnt(), nL = [...racks].filter(a => L.has(a)).length;
+  if (nL) {
+    $("#toSearch").insertAdjacentHTML("afterend", `<button type="button" class="btn sm" id="forgetList">Reset learnt (${nL.toLocaleString()})</button>`);
+    confirmBtn($("#forgetList"), () => { store.set("plearnt", [...getLearnt()].filter(a => !racks.has(a))); VIEWS.lists(g.id); });
+  }
   $("#toSearch").onclick = ev => { ev.preventDefault(); searchState = { ...SEARCH_DEFAULT, group: g.id }; store.set("search", searchState); location.hash = "search"; };
   setTimeout(() => {
     const box = $("#lres");
@@ -1433,7 +1440,7 @@ function listsHome() {
   const last = G(store.get("lastList"));
   let html = `<div class="bigtitle">Word lists</div>`;
   if (last) html += `<div class="cont" data-list="${last.id}"><div class="ct"><small>Continue</small><b>${esc(last.name)}</b><div class="pbar"><div id="pg_cont" style="width:0"></div></div><div class="small" id="cont_n"></div></div>
-    ${last.special ? "" : `<button type="button" class="go" data-play="${last.id}" aria-label="Practice ${esc(last.name)}">▶</button>`}</div>`;
+    ${last.special ? "" : `<button type="button" class="go" data-play="${last.id}" aria-label="Practice ${esc(last.name)}">${ICON_PLAY}</button>`}</div>`;
   let open = false;
   for (const x of GROUPS) {
     if (x.sect) { html += `${open ? "</div></div>" : ""}<div class="carow"><h4>${x.sect}<button type="button" data-all>See all</button></h4><div class="hscroll">`; open = true; continue; }
@@ -1629,13 +1636,14 @@ function quizRail() {
 // force: the ✓ button counts it right whatever was typed
 function check(ans, force) {
   const q = Q.qs[Q.i], e = DICT.get(q.w), mode = Q.mode;
-  let ok = false, reveal = "";
+  let ok = false, reveal = "", rest = () => {};
   const letters = s => [...new Set((s || "").toUpperCase().replace(/[^A-Z]/g, ""))].sort().join("");
   if (mode === "anagram") {
     const want = anagrams(q.w);
     ok = want.every(a => Q.found.includes(a));
-    // found words are already listed; add only the missed ones
-    $("#found").insertAdjacentHTML("beforeend", want.filter(w => !Q.found.includes(w)).map(w => quizRow(w, "miss")).join(""));
+    // found words are already listed; add the rest, marked to match ✗ / ✓ (redrawn if the mark is switched)
+    $("#found").insertAdjacentHTML("beforeend", `<div id="qrest"></div>`);
+    rest = v => { $("#qrest").innerHTML = want.filter(w => !Q.found.includes(w)).map(w => quizRow(w, v ? "got" : "miss")).join(""); };
     reveal = !ok && Q.found.length ? `<span class="small">You found ${Q.found.length} of ${want.length}.</span>` : "";
   } else if (mode === "phony") {
     ok = (ans === "phony") === !!q.phony;
@@ -1655,7 +1663,7 @@ function check(ans, force) {
   $("#qfb").innerHTML = `<p class="fb" id="qverdict" style="margin:0 0 6px"></p><div class="words" style="align-items:center">${reveal}</div>
     ${mode === "anagram" ? "" : `<p class="small" style="margin:8px 0 0">${esc(e.d)}</p>`}
     <div class="pbtns" style="margin-top:16px"><button type="button" class="btn no" id="qNo2" title="Count it wrong">✗</button><button type="button" class="btn yes" id="qYes2" title="Count it right">✓</button><button class="btn primary" id="qnext">${Q.i + 1 < Q.qs.length ? "Next (Enter)" : "Finish"}</button></div>`;
-  const mark = v => { Q.ok = v; $("#qverdict").className = "fb " + (v ? "ok" : "no"); $("#qverdict").textContent = v ? "Correct" : "Not quite"; $("#qNo2").classList.toggle("on", !v); $("#qYes2").classList.toggle("on", v); };
+  const mark = v => { Q.ok = v; rest(v); $("#qverdict").className = "fb " + (v ? "ok" : "no"); $("#qverdict").textContent = v ? "Correct" : "Not quite"; $("#qNo2").classList.toggle("on", !v); $("#qYes2").classList.toggle("on", v); };
   mark(ok);
   $("#qNo2").onclick = () => mark(false);
   $("#qYes2").onclick = () => mark(true);
@@ -1862,6 +1870,7 @@ function practicePlay(pool, o, opts, wire) {
   $("#pNext").onclick = () => { if (!P.done) P.verdict = { letters: P.letters, want: P.want, ok: true }; VIEWS.practice(); };
   chips(); wireTop();
 }
+const ICON_PLAY = '<svg viewBox="0 0 24 24" class="play" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
 const ICON_SHUF = '<path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>', ICON_BACK = '<path d="M21 5H9l-6 7 6 7h12z"/><path d="M17 9l-6 6M11 9l6 6"/>';
 const icon = d => `<svg viewBox="0 0 24 24">${d}</svg>`;
 // the wooden rack, in the style picked in Settings
@@ -1888,7 +1897,7 @@ function rackBoard(slotsEl, rackEl, letters, word) {
     if (slots.includes(null)) return;
     const ok = word(slots.map(i => byI(i).c).join(""));
     flash(ok === true ? "good" : ok === false ? "bad" : ""); busy = true;
-    setTimeout(() => { busy = false; slots.fill(null); order = []; draw(); }, ok ? 350 : 450);
+    setTimeout(() => { busy = false; slots.fill(null); order = []; flash(""); draw(); }, ok ? 350 : 450);
   };
   const put = (i, s) => { slots[s] = i; order = [...order.filter(x => x !== i), i]; };
   const unput = i => { const s = slots.indexOf(i); if (s >= 0) slots[s] = null; order = order.filter(x => x !== i); };
@@ -1959,14 +1968,14 @@ function practiceRail(pr) {
   </aside>`;
 }
 
-// phone practice setup: what to practise; Start (or ▶) goes full screen
+// practice setup: what to practise; Start (or the play button) goes full screen
 function practiceSetup(pool, o, opts, wire) {
   const pr = progress(pool), last = G(store.get("lastList"));
   const src = o.src.startsWith("g:") ? G(o.src.slice(2))?.name : { "my:stars": "Study list", "my:missed": "Missed in quizzes", "my:last": "Last search" }[o.src] || "Any word";
   const quick = [["", "Any word"], ["my:stars", `★ Starred (${getStars().length})`], ["my:last", `Last search (${lastResults.length})`], ["my:missed", "Missed in quizzes"], ...(last && !last.special ? [["g:" + last.id, last.name]] : [])];
   $("#view").innerHTML = `<div class="cont" id="pGo"><div class="ct"><small>${P.seen ? "Continue" : "Ready to practise"}</small><b>${esc(src)}${o.len ? ` · ${o.len} letters` : ""}</b>
       <div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div><div class="small">${pr.racks.toLocaleString()} of ${pr.racksAll.toLocaleString()} racks learnt · ${pool.length.toLocaleString()} words</div></div>
-      <button type="button" class="go" aria-label="Start practice">▶</button></div>
+      <button type="button" class="go" aria-label="Start practice">${ICON_PLAY}</button></div>
     <div class="card"><h2 class="lbl">Words from</h2><div class="chips">${quick.map(([v, n]) => `<button type="button" class="btn sm ${v === o.src ? "on" : ""}" data-psrc="${v}">${esc(n)}</button>`).join("")}</div></div>
     ${opts}
     <button type="button" class="btn primary block" id="pStart" ${pool.length ? "" : "disabled"}>${pool.length ? "Start practice" : "No words match these options"}</button>`;
