@@ -536,8 +536,15 @@ main.wrap:has(> .foc) { max-width: 1400px; }
      the rack down, and the page scrolls (the bottom padding keeps it clear of the ✗ ✓ bar) */
   body.full .ppills { display: none; }
   body.full .foc > .stage { min-height: calc(100dvh - 118px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
-  body.full .fc-card { margin-top: auto; padding: 26px 10px 20px; }
-  body.full .rackbtns { margin-bottom: auto; }
+  body.full .fc-card { padding: 26px 10px 20px; }
+  /* two spacers split the free height 3 : 2, so the group sits a little below the middle, nearer the thumbs */
+  body.full .foc > .stage > * { order: 2; }
+  body.full .foc > .stage > .fc-top { order: 0; }
+  body.full .foc > .stage::before { content: ""; order: 1; flex: 3 1 0; }
+  body.full .foc > .stage::after { content: ""; order: 3; flex: 2 1 0; }
+  /* the stats and options icons sit as a pair */
+  .fc-top .ib2 { width: 38px; }
+  .fc-top #pStatsBtn { margin-right: -4px; }
   body.full .thumb .btn { min-height: 64px; }
   .thumb { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--panel); border-top: 1px solid var(--line); padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); }
   .thumb kbd { display: none; }
