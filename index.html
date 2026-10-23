@@ -54,6 +54,8 @@ try {
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 1rem/1.55 var(--body); }
+/* quick taps (✓ then Next) mustn't double-tap zoom the page on a phone; pinch zoom still works */
+html, body, button, a, input, label { touch-action: manipulation; }
 button, input, select, textarea { font: inherit; color: inherit; }
 a { color: var(--link); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -74,6 +76,12 @@ form.search input {
   flex: 1; min-width: 0; padding: 9px 12px; border-radius: 6px; border: 0;
   background: var(--field); color: var(--field-ink); font: 600 1.05rem var(--mono); letter-spacing: .08em; text-transform: uppercase;
 }
+/* the search box's clear button, shown once something is typed */
+.qwrap { position: relative; flex: 1; min-width: 0; display: flex; }
+.qwrap input { padding-right: 36px !important; }
+.qx { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border: 0; border-radius: 50%; background: none; color: var(--field-ink); opacity: .55; font-size: 1.35rem; line-height: 1; cursor: pointer; }
+.qx:hover { opacity: .9; }
+.qwrap input:placeholder-shown + .qx { display: none; }
 nav.tabs { display: flex; gap: 2px; margin-top: 12px; overflow-x: auto; }
 nav.tabs a { color: var(--head-ink); text-decoration: none; font: 600 .9rem var(--display); padding: 8px 14px; border-radius: 6px 6px 0 0; opacity: .72; white-space: nowrap; }
 nav.tabs a:hover { opacity: 1; }
@@ -139,6 +147,7 @@ textarea { width: 100%; min-height: 70px; border: 1px solid var(--line); border-
 /* result rows: front hooks | word | back hooks | definition | probability */
 .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
 .toolbar .count { font: 700 1rem var(--display); margin-right: auto; }
+.tacts { display: flex; gap: 10px; flex-wrap: wrap; }
 .chips { display: flex; gap: 4px; flex-wrap: wrap; }
 select, .field input { border: 1px solid var(--line); background: var(--chip); border-radius: 6px; padding: 7px 9px; min-width: 0; }
 .rows { display: flex; flex-direction: column; }
@@ -154,10 +163,12 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .rows.nodefs .d, .rows.noprob .meta { display: none; }
 .rows.nohooks .fh, .rows.nohooks .bh { visibility: hidden; }
 @media (max-width: 620px) {
-  .r { grid-template-columns: 3.2em max-content minmax(0,1fr) auto; }
+  /* hooks get a wider, smaller column so long hook lists take two lines at most */
+  .r { grid-template-columns: 5em max-content minmax(0,1fr) auto; }
+  .r .fh, .r .bh { font-size: .76rem; }
   .r .st { grid-row: 1; grid-column: -2; font-size: 1.35rem; padding: 4px 6px; }
   .r .d { grid-column: 2 / -1; } .r .meta { display: none; }
-  .rows.ranked .r { grid-template-columns: 2em 2.4em max-content minmax(0,1fr) auto; gap: 6px; }
+  .rows.ranked .r { grid-template-columns: 2em 4.4em max-content minmax(0,1fr) auto; gap: 6px; }
   .rows.ranked .r .d { grid-column: 3 / -1; }
 }
 .more { margin-top: 12px; }
@@ -165,7 +176,7 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .rangebar input { width: 4.5em; border: 1px solid var(--line); background: var(--chip); border-radius: 6px; padding: 4px 7px; font: 600 .85rem var(--mono); }
 .r .rk { font: 400 .74rem var(--mono); color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
 .rows.ranked .r { grid-template-columns: 3em 4.5em max-content 4.5em minmax(0,1fr) auto auto; }
-/* star at the far right of each row: tap to add to / take off the study list */
+/* star at the far right of each row: tap to star or unstar */
 .r .st { border: 0; background: none; cursor: pointer; font-size: 1.15rem; line-height: 1; padding: 2px 4px; color: var(--muted); opacity: .5; align-self: center; }
 .r .st:hover { opacity: 1; color: var(--warn); }
 .r .st.on { color: var(--warn); opacity: 1; }
@@ -213,7 +224,6 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .quizv .btn.on { background: var(--link); border-color: var(--link); color: var(--panel); }
 .quizv :focus-visible { outline-color: var(--link); }
 .w.got { border-color: var(--good); color: var(--good); }
-.r.got, .r.miss { cursor: default; }
 .practice { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
 .pprog { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font: .82rem var(--mono); color: var(--muted); }
 .pprog b { color: var(--ink); font-size: 1rem; }
@@ -226,8 +236,29 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .w.miss { border-color: var(--warn); color: var(--warn); }
 .seg { display: flex; flex-wrap: wrap; gap: 4px; }
 .stype .btn { flex: 1 1 auto; text-align: center; }
-.numpick { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.numpick input { width: 5em; text-align: center; }
+.numpick { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.numpick::-webkit-scrollbar { display: none; }
+.numpick input { width: 5em; text-align: center; flex: none; }
+.numpick .btn { flex: none; }
+/* length chips: any number can be on; none on means any length */
+.lenpick { flex-wrap: wrap; }
+/* pickers: our own dropdown in place of each <select> */
+.pk { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--line); background: var(--chip); border-radius: 6px; padding: 7px 9px; min-width: 0; cursor: pointer; text-align: left; color: var(--ink); }
+.pk:hover { border-color: var(--muted); }
+.pk span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.pk .chev { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; opacity: .6; }
+.field .pk { width: 100%; }
+.pair .pk { flex: 1; width: 50%; }
+.pkpop { position: fixed; z-index: 40; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 32px -8px rgb(0 0 0 / .35); display: flex; flex-direction: column; max-height: 380px; max-width: min(380px, 92vw); padding: 6px; }
+.pklist { overflow-y: auto; position: relative; display: flex; flex-direction: column; }
+.pkopt { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; border: 0; background: none; color: var(--ink); padding: 7px 10px; border-radius: 6px; cursor: pointer; font: .95rem/1.3 var(--body); }
+.pkopt:hover, .pkopt:focus-visible { background: var(--chip); }
+.pkopt.on { font-weight: 600; color: var(--accent); }
+.pkopt.on::after { content: "✓"; }
+.pkopt[hidden], .pksect[hidden] { display: none; }
+.pksect { font: 700 .68rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 10px 10px 4px; }
+.pkfind { margin: 2px 2px 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--chip); min-width: 0; }
+.sheetwrap.pkwrap { z-index: 40; }
 html { scrollbar-width: none; }
 html::-webkit-scrollbar { display: none; }
 /* Study: the Lists · Practice · Quiz switch */
@@ -315,7 +346,16 @@ nav.tabs .sh { display: none; }
   /* results: tidy toolbar, length chips and ranks scroll sideways instead of wrapping */
   .toolbar { gap: 8px; }
   .toolbar .count { flex-basis: 100%; }
-  .toolbar select { flex: 1; }
+  .toolbar .pk { flex: 1; }
+  .tacts { flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px; }
+  .tacts::-webkit-scrollbar { display: none; }
+  .tacts .btn { flex: none; }
+  .pk { padding: 9px 10px; font-size: 16px; border-radius: 10px; }
+  .lenpick { flex-wrap: nowrap; }
+  .pkwrap .pklist { overflow: visible; }
+  .pkwrap .pkopt { min-height: 50px; font-size: 1.02rem; padding: 0 12px; border-radius: 0; border-bottom: 1px solid var(--line); }
+  .pkwrap .pksect { padding: 18px 12px 6px; }
+  .pkwrap .pkfind { position: sticky; top: -8px; z-index: 1; width: 100%; margin: 0 0 6px; font-size: 16px; padding: 10px 12px; border-radius: 10px; }
   .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
   .chips::-webkit-scrollbar, .toolbar + .rangebar::-webkit-scrollbar { display: none; }
   .chips .btn { flex: none; }
@@ -379,6 +419,7 @@ body.sheet-open { overflow: hidden; }
 .thumb[hidden] { display: none; }
 .thumb .btn.mk { font-size: 1.5rem; line-height: 1; display: flex; align-items: center; justify-content: center; }
 .thumb .mk kbd { font-size: .72rem; }
+.thumb .mk .tx { font: 700 1.1rem var(--display); }
 /* phone-only buttons (the stats button: computers have the stats panel instead) */
 @media (min-width: 621px) { .phone-only { display: none !important; } }
 .thumb kbd { font: .72rem var(--mono); border: 1px solid currentColor; border-radius: 4px; padding: 0 5px; margin-left: 6px; opacity: .6; }
@@ -398,6 +439,7 @@ body.sheet-open { overflow: hidden; }
 @keyframes shake { 25% { transform: translateX(-7px); } 75% { transform: translateX(7px); } }
 .fc-card .q { font: 600 .82rem var(--mono); color: var(--muted); margin: 14px 0 0; }
 .found { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 12px; }
+.found > .rows { width: 100%; text-align: left; padding: 0 6px; }
 .found .w.blank { color: var(--muted); border-style: dashed; background: none; letter-spacing: .1em; cursor: default; opacity: .6; }
 .rack { padding: 14px 6px 12px; border-radius: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--tile-edge) 72%, #000), color-mix(in srgb, var(--tile-edge) 50%, #000)); box-shadow: inset 0 2px 0 rgb(255 255 255 / .2), 0 6px 14px -4px rgb(0 0 0 / .4); }
 .rack .tiles { justify-content: center; gap: 5px; flex-wrap: nowrap; }
@@ -524,7 +566,9 @@ main.wrap:has(> .foc) { max-width: 1400px; }
   .segtabs { display: flex; background: var(--panel); border-bottom: 1px solid var(--line); }
   .segtabs button { flex: 1; min-height: 48px; border: 0; background: none; border-bottom: 2.5px solid transparent; font: 600 .86rem var(--display); color: var(--muted); cursor: pointer; }
   .segtabs button.on { color: var(--ink); border-bottom-color: var(--accent); }
-  .segtabs em { font: normal .7rem var(--mono); color: var(--muted); margin-left: 3px; }
+  /* the count sits in its own little pill so "Add one 96" can't be read as one thing */
+  .segtabs em { font: 600 .66rem var(--mono); font-style: normal; color: var(--muted); background: var(--chip); border: 1px solid var(--line); border-radius: 99px; padding: 0 6px; margin-left: 5px; }
+  .segtabs button { font-size: .82rem; }
   .wpane { display: flex; flex-direction: column; gap: 12px; }
   .wpane[hidden] { display: none; }
   .bigchips { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -539,16 +583,24 @@ main.wrap:has(> .foc) { max-width: 1400px; }
 
   /* practice: full screen once started, buttons at thumb reach */
   body.full header { display: none; }
-  body.full main.wrap { padding: calc(8px + env(safe-area-inset-top)) 12px calc(110px + env(safe-area-inset-bottom)); }
-  body.full:has(#pa:not([hidden])) main.wrap { padding-bottom: calc(172px + env(safe-area-inset-bottom)); }
-  /* the card, rack and buttons sit in the middle of the screen; a card with lots of answers grows and pushes
-     the rack down, and the page scrolls (the bottom padding keeps it clear of the ✗ ✓ bar) */
+  body.full main.wrap { padding: calc(8px + env(safe-area-inset-top)) 12px calc(142px + env(safe-area-inset-bottom)); }
+  body.full:has(#pa:not([hidden])) main.wrap { padding-bottom: calc(204px + env(safe-area-inset-bottom)); }
+  /* the card (and the answers once shown) sits at the top; the rack and its buttons sit at the bottom, just above
+     the ✗ ✓ bar, in thumb reach. A card with lots of answers grows and pushes the rack down, and the page scrolls
+     (the bottom padding keeps it clear of the bar) */
   body.full .ppills { display: none; }
-  body.full .foc > .stage { min-height: calc(100dvh - 118px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
-  body.full .fc-card { margin-top: auto; padding: 26px 10px 20px; }
-  body.full .rackbtns, body.full .fc-card.solo { margin-bottom: auto; }
+  body.full .foc > .stage { min-height: calc(100dvh - 150px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+  body.full .fc-card { padding: 22px 10px 18px; }
+  body.full .rack { margin-top: auto; }
   /* the stats and options icons sit as a pair */
-  body.full .thumb .btn { min-height: 64px; }
+  /* big ✗ ✓ / Next buttons and rack buttons, easy to hit with a thumb */
+  body.full .thumb .btn { min-height: 96px; border-radius: 18px; }
+  body.full .thumb .btn.mk { font-size: 2.6rem; }
+  body.full .thumb .mk .tx { font-size: 1.35rem; }
+  body.full .thumb .acts { gap: 10px; }
+  .rackbtns { gap: 10px; }
+  .rackbtns .btn { min-width: 68px; min-height: 54px; }
+  .rackbtns svg { width: 24px; height: 24px; }
   .thumb { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--panel); border-top: 1px solid var(--line); padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); }
   .thumb kbd { display: none; }
   .fc-top .ib2.phone-only + .ib2 { margin-left: -8px; }
@@ -572,7 +624,7 @@ main.wrap:has(> .foc) { max-width: 1400px; }
     <div class="top">
       <h1>CSW24 Word Study</h1>
       <form class="search" id="form" autocomplete="off">
-        <input id="q" placeholder="Word, letters, ?AE or QU*" spellcheck="false" aria-label="Word, rack or pattern">
+        <span class="qwrap"><input id="q" placeholder="Word, letters, ?AE or QU*" spellcheck="false" autocorrect="off" autocapitalize="characters" enterkeyhint="search" aria-label="Word, rack or pattern"><button type="button" class="qx" id="qClear" aria-label="Clear">×</button></span>
         <button class="btn primary" type="submit">Go</button>
         <button class="btn" type="button" id="randBtn" title="Random word">Random</button>
       </form>
@@ -633,6 +685,9 @@ const vowels = w => (w.match(/[AEIOU]/g) || []).length;
 const nOf = (w, ch) => w.split(ch).length - 1;
 const score = w => [...w].reduce((s, c) => s + (VALUES[c] || 0), 0);
 const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+// word lengths picked with the length chips, kept as text like "7,8" ("" = any length)
+const lensOf = v => (Array.isArray(v) ? v : String(v || "").split(",")).map(Number).filter(Boolean).sort((a, b) => a - b);
 const store = {
   get(k, d) { try { return JSON.parse(localStorage.getItem("csw24:" + k)) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem("csw24:" + k, JSON.stringify(v)); } catch {} }
@@ -1003,32 +1058,40 @@ const sorters = {
   play: (a, b) => DICT.get(a).pl - DICT.get(b).pl,
 };
 let lastResults = [];
+// going back to a list, search or My words puts you where you were: the scroll position, plus each results
+// list's length chips and "Show more" count (kept per page and word count, for this visit to the site)
+const scrollMem = {}, resMem = {};
+let curHash = location.hash, pendingScroll = 0;
+function restoreScroll() {
+  if (pendingScroll && document.documentElement.scrollHeight - innerHeight >= pendingScroll - 4) { window.scrollTo(0, pendingScroll); pendingScroll = 0; }
+}
 // Results component: toolbar (count, length chips, sort, toggles, actions) + rows + paging
 function results(el, words, opts = {}) {
   // range = which ranks to show, counted in the current sort order (e.g. 1–100 or 30–50)
-  const st = { len: opts.len || 0, shown: +SET.pageSize, from: +opts.range?.from || 0, to: +opts.range?.to || 0 };
+  const mem = resMem[location.hash + ":" + words.length] ||= {};
   const lens = [...new Set(words.map(w => w.length))].sort((a, b) => a - b);
-  if (st.len && (!lens.includes(st.len) || lens.length < 2)) st.len = 0;
+  const st = { lens: new Set((mem.lens || (opts.len ? [opts.len] : [])).filter(n => lens.includes(n) && lens.length > 1)), shown: mem.shown || +SET.pageSize, from: +opts.range?.from || 0, to: +opts.range?.to || 0 };
+  let first = true;
   function draw() {
-    const full = (st.len ? words.filter(w => w.length === st.len) : [...words]).sort(sorters[SET.sort] || sorters.prob);
+    const full = (st.lens.size ? words.filter(w => st.lens.has(w.length)) : [...words]).sort(sorters[SET.sort] || sorters.prob);
     const ranged = st.from > 1 || st.to > 0;
     const lo = Math.max(1, st.from || 1), hi = st.to ? Math.max(st.to, lo) : full.length;
     const list = ranged ? full.slice(lo - 1, hi) : full;
     const offset = ranged ? lo - 1 : 0;
     lastResults = list;
     const starSet = new Set(getStars()), allStarred = list.length > 0 && list.every(w => starSet.has(w));
-    const total = st.len ? `${full.length.toLocaleString()} ${st.len}-letter words <span class="small">(${words.length.toLocaleString()} in all)</span>` : `${full.length.toLocaleString()} word${full.length === 1 ? "" : "s"}`;
+    const total = st.lens.size ? `${full.length.toLocaleString()} ${[...st.lens].sort((a, b) => a - b).join(", ")}-letter words <span class="small">(${words.length.toLocaleString()} in all)</span>` : `${full.length.toLocaleString()} word${full.length === 1 ? "" : "s"}`;
     el.innerHTML = `
       <div class="toolbar">
-        <span class="count">${ranged ? `Ranks ${lo.toLocaleString()}–${Math.min(hi, full.length).toLocaleString()} <span class="small">of ${total}</span>` : total}</span>
+        <span class="count">${ranged ? `Words ${lo.toLocaleString()}–${Math.min(hi, full.length).toLocaleString()} <span class="small">of ${total}</span>` : total}</span>
         <select id="sortSel" aria-label="Sort by">${Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${k === SET.sort ? "selected" : ""}>Sort: ${v}</option>`).join("")}</select>
         <label class="check small"><input type="checkbox" id="defChk" ${SET.defs ? "checked" : ""}> Definitions</label>
-        <button class="btn sm" id="quizThese">Quiz these</button>
+        <div class="tacts"><button class="btn sm" id="quizThese">Quiz these</button>
         <button class="btn sm" id="practiceThese">Practice these</button>
-        <button class="btn sm" id="starAll">${allStarred ? "Unstar all" : "Star all"}</button>
+        <button class="btn sm" id="starAll">${allStarred ? "Unstar all" : "Star all"}</button></div>
       </div>
       <div class="row rangebar">
-        <span class="small">Show ranks</span>
+        <span class="small">Show words</span>
         <input id="rFrom" inputmode="numeric" placeholder="1" value="${st.from || ""}" aria-label="From rank">
         <span class="small">to</span>
         <input id="rTo" inputmode="numeric" placeholder="all" value="${st.to || ""}" aria-label="To rank">
@@ -1036,10 +1099,14 @@ function results(el, words, opts = {}) {
         <button class="btn sm ${ranged ? "" : "on"}" data-top="0">All</button>
         <span class="small">in ${SORTS[SET.sort] || "Probability"} order</span>
       </div>
-      ${lens.length > 1 ? `<div class="chips" style="margin:10px 0 6px"><button class="btn sm ${st.len ? "" : "on"}" data-len="0">All lengths</button>${lens.map(n => `<button class="btn sm ${st.len === n ? "on" : ""}" data-len="${n}">${n}</button>`).join("")}</div>` : ""}
+      ${lens.length > 1 ? `<div class="chips" style="margin:10px 0 6px"><button class="btn sm ${st.lens.size ? "" : "on"}" data-len="0">All lengths</button>${lens.map(n => `<button class="btn sm ${st.lens.has(n) ? "on" : ""}" data-len="${n}">${n}</button>`).join("")}</div>` : ""}
       ${list.length ? `<div class="rows ${ranged ? "ranked" : ""} ${SET.defs ? "" : "nodefs"} ${SET.prob ? "" : "noprob"} ${SET.hooks ? "" : "nohooks"}">${list.slice(0, st.shown).map((w, i) => rowHTML(w, opts.masks?.get(w), ranged ? offset + i + 1 : 0, starSet)).join("")}</div>` : `<p class="empty" style="margin-top:10px">${ranged && full.length ? `There are only ${full.length.toLocaleString()} words, so rank ${lo.toLocaleString()} is past the end.` : "No words match."}</p>`}
       ${list.length > st.shown ? `<button class="btn more" id="moreBtn">Show ${Math.min(+SET.pageSize, list.length - st.shown).toLocaleString()} more</button>` : ""}`;
-    el.querySelectorAll("[data-len]").forEach(b => b.onclick = () => { st.len = +b.dataset.len; st.shown = +SET.pageSize; draw(); });
+    // length chips: tap several to see them together; All lengths clears them
+    el.querySelectorAll("[data-len]").forEach(b => b.onclick = () => {
+      const n = +b.dataset.len; if (!n) st.lens.clear(); else st.lens.has(n) ? st.lens.delete(n) : st.lens.add(n);
+      st.shown = +SET.pageSize; mem.lens = [...st.lens]; mem.shown = 0; draw();
+    });
     const setRange = (from, to) => {
       from = Math.max(0, parseInt(from) || 0); to = Math.max(0, parseInt(to) || 0);
       if (from && to && to < from) [from, to] = [to, from];
@@ -1052,15 +1119,16 @@ function results(el, words, opts = {}) {
     }
     el.querySelector("#sortSel").onchange = e => { saveSettings({ sort: e.target.value }); draw(); };
     el.querySelector("#defChk").onchange = e => { saveSettings({ defs: e.target.checked }); el.querySelector(".rows")?.classList.toggle("nodefs", !SET.defs); };
-    el.querySelector("#moreBtn")?.addEventListener("click", () => { st.shown += +SET.pageSize; draw(); });
-    el.querySelector("#quizThese").onclick = () => { quizSetup.source = "last"; quizSetup.len = ""; quizSetup.starOnly = false; location.hash = "quiz"; };
-    el.querySelector("#practiceThese").onclick = () => { saveSettings({ practice: { ...PO_DEFAULT, src: "my:last", len: 0 } }); location.hash = "practice"; };
+    el.querySelector("#moreBtn")?.addEventListener("click", () => { st.shown += +SET.pageSize; mem.shown = st.shown; draw(); });
+    el.querySelector("#quizThese").onclick = () => { quizSetup.source = "last"; quizSetup.lens = []; quizSetup.starOnly = false; location.hash = "quiz"; };
+    el.querySelector("#practiceThese").onclick = () => { saveSettings({ practice: { ...PO_DEFAULT, src: "my:last", lens: [] } }); location.hash = "practice"; };
     // Star all / Unstar all for exactly the rows in view (after the length and rank filters)
     el.querySelector("#starAll").onclick = () => { const s = getStars(), inList = new Set(list); store.set("stars", allStarred ? s.filter(w => !inList.has(w)) : [...list.filter(w => !starSet.has(w)), ...s]); draw(); };
+    if (first) { first = false; restoreScroll(); pendingScroll = 0; }
   }
   draw();
 }
-const starBtn = (w, on) => `<button type="button" class="st ${on ? "on" : ""}" data-star="${w}" title="${on ? "Take off" : "Add to"} my study list" aria-label="Star ${w}">${on ? "★" : "☆"}</button>`;
+const starBtn = (w, on) => `<button type="button" class="st ${on ? "on" : ""}" data-star="${w}" title="${on ? "Unstar" : "Star"}" aria-label="Star ${w}">${on ? "★" : "☆"}</button>`;
 function rowHTML(w, mask, rank, stars = new Set(getStars())) {
   const e = DICT.get(w);
   const label = mask ? [...w].map((c, i) => mask[i] ? `<mark>${c.toLowerCase()}</mark>` : c).join("") : w;
@@ -1097,14 +1165,14 @@ VIEWS.w = (arg) => {
       ${valid ? `<span class="badge good">Valid in CSW24</span>` : `<span class="badge bad">Not valid · phony</span>`}
       ${e?.n ? `<span class="badge new">New in CSW24</span>` : ""}
       <span class="badge plain">${score(w)} pts</span>
-      ${qs ? `<span class="badge plain">Quiz ${qs[0]}✓ ${qs[1]}✗</span>` : ""}
+      ${qs ? `<span class="badge plain">Record ${qs[0]}✓ ${qs[1]}✗</span>` : ""}
       ${inGroups.map(g => `<a class="badge plain" href="#lists/${g.id}">${esc(g.name)}</a>`).join("")}
       ${valid ? `<button class="btn sm ${starred ? "on" : ""}" id="starBtn" style="margin-left:auto">${starred ? "★ Starred" : "☆ Star"}</button>` : ""}
     </div>
   </div>`;
   html += valid
     ? `<div class="grid2"><div class="card"><h2 class="lbl">CSW24 definition</h2><p class="def">${defHTML(e.d)}</p></div>
-       <div class="card"><h2 class="lbl">Memory facts</h2><div class="stats">
+       <div class="card"><h2 class="lbl">Facts</h2><div class="stats">
          <div class="stat"><b>${alpha(w)}</b><span>alphagram</span></div>
          <div class="stat"><b>#${e.p.toLocaleString()}</b><span>probability of ${BYLEN[w.length].length.toLocaleString()} ${w.length}s</span></div>
          <div class="stat"><b>#${e.pl.toLocaleString()}</b><span>playability</span></div>
@@ -1119,7 +1187,7 @@ VIEWS.w = (arg) => {
     <div class="card"><h2 class="lbl">Drop one letter (${minusN})</h2>${minus.length ? groupsHTML(minus) : `<p class="empty">Nothing.</p>`}</div>
   </div>`;
   const onlineCard = SET.online ? `<div class="card online" id="online"><h2 class="lbl">Pronunciation, examples &amp; origin</h2><p class="small">Looking up ${esc(w.toLowerCase())} online…</p></div>` : "";
-  const noteCard = `<div class="card"><h2 class="lbl">Your memory hook</h2>
+  const noteCard = `<div class="card"><h2 class="lbl">Your notes</h2>
       <textarea id="note" placeholder="A sentence, picture or trick that helps you remember ${esc(w)}…">${esc(getNotes()[w] || "")}</textarea>
       <p class="small" style="margin:6px 0 0">Saved in this browser as you type.</p></div>`;
   if (valid) html += `${onlineCard}
@@ -1136,7 +1204,7 @@ VIEWS.w = (arg) => {
           <div class="stat"><b>${alpha(w)}</b><span>alphagram</span></div>
           <div class="stat"><b>#${e.pl.toLocaleString()}</b><span>playability</span></div>
           <div class="stat"><b>${vowels(w)} of ${w.length}</b><span>vowels</span></div>
-          ${qs ? `<div class="stat"><b>${qs[0]}✓ ${qs[1]}✗</b><span>in quizzes</span></div>` : ""}
+          ${qs ? `<div class="stat"><b>${qs[0]}✓ ${qs[1]}✗</b><span>your record</span></div>` : ""}
         </div>${inGroups.length ? `<div class="badges">${inGroups.map(g => `<a class="badge plain" href="#lists/${g.id}">${esc(g.name)}</a>`).join("")}</div>` : ""}</div>${onlineCard}` : `<div class="card"><p class="empty">${esc(w)} is not a valid CSW24 word.</p></div>`,
     };
     html = `<div class="wtop"><div class="hero">
@@ -1145,7 +1213,7 @@ VIEWS.w = (arg) => {
         ${valid ? `<div class="hooksline">${hk(e.fh, "f")}<span>hooks</span>${hk(e.bh, "b")}</div>` : ""}
         <div class="badges">${valid ? `<span class="badge ok">✓ Valid</span>` : `<span class="badge bad">✗ Phony</span>`}${e?.n ? `<span class="badge">New</span>` : ""}<span class="badge">${score(w)} pts</span>${valid ? `<span class="badge">#${e.p.toLocaleString()} of ${w.length}s</span>` : ""}</div>
         <p class="hdef">${valid ? defHTML(e.d) : "Not in the lexicon"}</p></div>
-      <nav class="segtabs">${[["ana", "Anagrams", ana.length], ["plus", "+1", plusN], ["minus", "−1", minusN], ["facts", "Facts"]].map(([k, n, c]) => `<button type="button" class="${k === wt ? "on" : ""}" data-wtab="${k}">${n}${c !== undefined ? `<em>${c}</em>` : ""}</button>`).join("")}</nav></div>
+      <nav class="segtabs">${[["ana", "Anagrams", ana.length], ["plus", "Add one", plusN], ["minus", "Drop one", minusN], ["facts", "Facts"]].map(([k, n, c]) => `<button type="button" class="${k === wt ? "on" : ""}" data-wtab="${k}">${n}${c !== undefined ? `<em>${c}</em>` : ""}</button>`).join("")}</nav></div>
       ${Object.entries(panes).map(([k, h]) => `<div class="wpane" data-pane="${k}" ${k === wt ? "" : "hidden"}>${h}</div>`).join("")}
       ${valid ? noteCard : ""}`;
   }
@@ -1197,7 +1265,7 @@ async function fetchOnline(w) {
   b.innerHTML = `<h2 class="lbl">Pronunciation, examples &amp; origin</h2>
     ${phon || audio ? `<div class="row small">${phon ? `<span style="font-size:1rem">${esc(phon)}</span>` : ""}${audio ? `<button class="btn sm" type="button" id="say">▶\uFE0E Hear it</button>` : ""}</div>` : ""}
     ${shown.length ? `<ol style="margin-top:10px">${shown.map(p => `<li><span class="pos">${esc(p.pos)}</span> ${esc(p.def)}${p.ex ? `<span class="ex">${esc(p.ex)}</span>` : ""}</li>`).join("")}</ol>`
-      : `<p class="empty">No online dictionary entry. Many Scrabble words are rare, so lean on the CSW definition and your own memory hook.</p>`}
+      : `<p class="empty">No online dictionary entry. Many Scrabble words are rare, so lean on the CSW definition and your own notes.</p>`}
     ${syns.length ? `<p class="small" style="margin:10px 0 4px">Valid synonyms</p><div class="words">${syns.map(chip).join("")}</div>` : ""}
     ${origin ? `<p class="small" style="margin-top:10px">Origin: ${esc(origin)}</p>` : ""}
     <div class="links">
@@ -1209,9 +1277,24 @@ async function fetchOnline(w) {
 }
 
 // ---------- search ----------
-const SEARCH_DEFAULT = { pattern: "", rack: "", mode: "exact", min: "", max: "", starts: "", ends: "", contains: "", incl: "", excl: "", def: "", group: "", top: "", from: "", to: "" };
+// lens = the lengths picked with the chips; min and max are still understood (Practice uses them) but not shown
+const SEARCH_DEFAULT = { pattern: "", rack: "", mode: "exact", lens: "", min: "", max: "", starts: "", ends: "", contains: "", incl: "", excl: "", def: "", group: "", top: "", from: "", to: "" };
 let searchState = Object.fromEntries(Object.keys(SEARCH_DEFAULT).map(k => [k, store.get("search", {})[k] ?? SEARCH_DEFAULT[k]]));
 if (!G(searchState.group) || G(searchState.group).special) searchState.group = "";
+// a search saved before the length chips: its shortest–longest becomes those lengths
+if (searchState.min || searchState.max) { searchState.lens ||= range(+searchState.min || 2, +searchState.max || 15).join(","); searchState.min = searchState.max = ""; }
+// the length chips (Search, Practice and Quiz): the value sits in a hidden input, so forms read it like any field
+const lenPick = (id, v) => { const on = new Set(lensOf(v));
+  return `<div class="chips lenpick"><input type="hidden" id="${id}" value="${[...on].join(",")}"><button type="button" class="btn sm ${on.size ? "" : "on"}" data-l="0">Any</button>${range(2, 15).map(n => `<button type="button" class="btn sm ${on.has(n) ? "on" : ""}" data-l="${n}">${n}</button>`).join("")}</div>`; };
+const paintLens = box => { const on = new Set(lensOf(box.querySelector("input").value)); box.querySelectorAll("[data-l]").forEach(x => x.classList.toggle("on", +x.dataset.l ? on.has(+x.dataset.l) : !on.size)); };
+document.addEventListener("click", ev => {
+  const b = ev.target.closest(".lenpick [data-l]"); if (!b) return;
+  const box = b.closest(".lenpick"), inp = box.querySelector("input"), n = +b.dataset.l, on = new Set(lensOf(inp.value));
+  if (!n) on.clear(); else on.has(n) ? on.delete(n) : on.add(n);
+  inp.value = lensOf([...on]).join(","); paintLens(box);
+  inp.dispatchEvent(new Event("input", { bubbles: true })); inp.dispatchEvent(new Event("change", { bubbles: true }));
+});
+const lensText = v => { const l = lensOf(v); return l.length ? `${l.join(", ")} letters` : ""; };
 
 function patternRegex(p) {
   if (!/^[A-Z.?*\[\]^]+$/.test(p)) return null;
@@ -1228,7 +1311,7 @@ function runSearch(s) {
   const pat = up(s.pattern), rack = up(s.rack).replace(/[^A-Z?]/g, "");
   const re = pat ? patternRegex(pat) : null;
   if (pat && !re) return { error: "That pattern isn't valid. Use letters, . or ?, *, and [ABC] sets." };
-  const min = +s.min || 0, max = +s.max || 99;
+  const min = +s.min || 0, max = +s.max || 99, lens = new Set(lensOf(s.lens));
   const starts = letters(s.starts), ends = letters(s.ends), contains = letters(s.contains);
   const incl = counts(letters(s.incl)), excl = new Set(letters(s.excl));
   const def = (s.def || "").trim().toLowerCase();
@@ -1240,7 +1323,7 @@ function runSearch(s) {
   const out = [];
   for (const w of pool) {
     const len = w.length;
-    if (len < min || len > max) continue;
+    if (len < min || len > max || (lens.size && !lens.has(len))) continue;
     if (starts && !w.startsWith(starts)) continue;
     if (ends && !w.endsWith(ends)) continue;
     if (contains && !w.includes(contains)) continue;
@@ -1263,37 +1346,36 @@ function runSearch(s) {
 
 // probability: type how many of the most likely words to keep, or pick one of the usual amounts
 const TOPS = [50, 100, 250, 500, 1000];
-const topField = (id, v) => `<div class="field"><label for="${id}">Probability: top</label><div class="numpick"><input id="${id}" value="${esc(v || "")}" placeholder="all" inputmode="numeric" aria-label="Only the top this many most likely words">${TOPS.map(n => `<button type="button" class="btn sm ${+v === n ? "on" : ""}" data-top="${id}" data-n="${n}">${n.toLocaleString()}</button>`).join("")}</div></div>`;
+const topField = (id, v) => `<div class="field wide"><label for="${id}">Probability</label><div class="numpick"><input id="${id}" value="${esc(v || "")}" placeholder="all" inputmode="numeric" aria-label="Only this many of the most likely words">${TOPS.map(n => `<button type="button" class="btn sm ${+v === n ? "on" : ""}" data-top="${id}" data-n="${n}">${n.toLocaleString()}</button>`).join("")}</div></div>`;
 const markTop = el => el.parentNode.querySelectorAll("[data-n]").forEach(b => b.classList.toggle("on", +b.dataset.n === +el.value));
 document.addEventListener("click", ev => {
-  const b = ev.target.closest("[data-top]"); if (!b) return;
+  const b = ev.target.closest("[data-top][data-n]"); if (!b) return;
   // tapping the amount that's already picked clears it back to all words
   const el = $("#" + b.dataset.top); el.value = +el.value === +b.dataset.n ? "" : b.dataset.n; markTop(el);
   el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true }));
 });
 document.addEventListener("input", ev => { if (ev.target.matches?.("#s_top, #po_top")) markTop(ev.target); });
-// the two search sections' fields (letters come from the top bar), shared by the folding form and the phone's sheets (which get +/− length steppers)
-function searchSecs(s, ph) {
-  const f = (id, label, p, hint = "", cls = "") => `<div class="field"><label for="s_${id}">${label}</label><input id="s_${id}" class="${cls}" value="${esc(s[id])}" placeholder="${p}" spellcheck="false">${hint ? `<span class="hint">${hint}</span>` : ""}</div>`;
-  const step = (id, label) => `<div class="field"><span class="flabel">${label}</span><div class="stepper"><button type="button" data-step="${id}" data-d="-1" aria-label="Fewer">−</button><input id="s_${id}" value="${esc(s[id])}" placeholder="any" inputmode="numeric" aria-label="${label}"><button type="button" data-step="${id}" data-d="1" aria-label="More">+</button></div></div>`;
+// the two search sections' fields (letters come from the top bar), shared by the folding form and the phone's sheets
+function searchSecs(s) {
+  const f = (id, label, p, hint = "", cls = "") => `<div class="field"><label for="s_${id}">${label}</label><input id="s_${id}" class="${cls}" value="${esc(s[id])}" placeholder="${p}" spellcheck="false" autocorrect="off" autocapitalize="${cls ? "none" : "characters"}">${hint ? `<span class="hint">${hint}</span>` : ""}</div>`;
   return {
     group: `<div class="form">
-        <div class="field wide"><label for="s_group">Word group</label><select id="s_group"><option value="">Any word</option>${groupOptions(s.group)}</select>
+        <div class="field wide"><label for="s_group">Group</label><select id="s_group"><option value="">Any word</option>${groupOptions(s.group)}</select>
           <span class="hint" id="groupHint">${esc(G(s.group)?.blurb || "")}</span></div>
-        ${f("def", "Definition mentions", "e.g. fish", "", "lc")}
+        <div class="field wide"><span class="flabel">Length</span>${lenPick("s_lens", s.lens)}</div>
       </div>`,
     narrow: `<div class="form">
-        ${ph ? step("min", "Shortest") + step("max", "Longest") : `<div class="field"><span class="flabel">Length</span><div class="pair"><input id="s_min" value="${esc(s.min)}" placeholder="min" inputmode="numeric" aria-label="Minimum length"><input id="s_max" value="${esc(s.max)}" placeholder="max" inputmode="numeric" aria-label="Maximum length"></div></div>`}
+        ${f("def", "Definition contains", "e.g. fish", "", "lc")}
         ${f("starts", "Starts with", "e.g. UN")}
         ${f("ends", "Ends with", "e.g. ZA")}
-        ${f("contains", "Contains in a row", "e.g. QI")}
-        ${f("incl", "Must use letters", "e.g. VV")}
-        ${f("excl", "Without letters", "e.g. AEIOU")}
+        ${f("contains", "Contains", "e.g. QI")}
+        ${f("incl", "Must include", "e.g. VV")}
+        ${f("excl", "Must exclude", "e.g. AEIOU")}
         ${topField("s_top", s.top)}
       </div>`,
   };
 }
-const SEARCH_SECS = { group: ["Group and meaning", ["group", "def"]], narrow: ["Narrow down", ["min", "max", "starts", "ends", "contains", "incl", "excl", "top"]] };
+const SEARCH_SECS = { group: ["Group and length", ["group", "lens"]], narrow: ["Filters", ["def", "starts", "ends", "contains", "incl", "excl", "top"]] };
 VIEWS.search = () => {
   if (phone()) return searchPhone();
   const s = searchState, secs = searchSecs(s);
@@ -1304,8 +1386,8 @@ VIEWS.search = () => {
   const acc = (key, title) => `<details class="fs acc" data-acc="${key}" ${!fold && (opened[key] || accSummary(key)) ? "open" : ""}><summary class="lbl">${title}<span class="accn" id="accn_${key}">${esc(accSummary(key))}</span></summary>`;
   $("#view").innerHTML = `<div class="card">
     <form id="sform" autocomplete="off">
-      ${acc("group", "Group and meaning")}${secs.group}</details>
-      ${acc("narrow", "Narrow down")}${secs.narrow}</details>
+      ${acc("group", "Group and length")}${secs.group}</details>
+      ${acc("narrow", "Filters")}${secs.narrow}</details>
       <div class="actions">
         <button class="btn primary" type="submit">Search</button>
         <button class="btn" type="button" id="sClear">Clear all</button>
@@ -1342,7 +1424,7 @@ function barText(s) {
 }
 const patLabel = p => { const m = p.toUpperCase().match(/^\*\[([A-Z]+)\]\*$/); return m ? `Has ${[...m[1]].join(" or ")}` : `Pattern ${p.toUpperCase()}`; };
 // Anagram / Build / Contains all / Pattern: the same letters run as another kind of search
-const STYPES = [["exact", "Anagram"], ["build", "Build"], ["super", "Contains all"], ["pattern", "Pattern"]];
+const STYPES = [["exact", "Anagram"], ["build", "Subanagram"], ["super", "Superanagram"], ["pattern", "Pattern"]];
 function typeBar() {
   const s = searchState, l = (s.rack || s.pattern || "").toUpperCase();
   if (!/^[A-Z?.]+$/.test(l) || (s.rack && s.pattern)) return "";
@@ -1360,9 +1442,9 @@ function bindTypeBar() {
 function accSummary(key) {
   const s = searchState, up = v => String(v || "").toUpperCase();
   const parts = {
-    group: [G(s.group)?.name, s.def && `“${s.def}”`],
+    group: [G(s.group)?.name, lensText(s.lens)],
     letters: [s.pattern && patLabel(s.pattern), s.rack && `rack ${up(s.rack)}`],
-    narrow: [(s.min || s.max) && `${s.min || 2}–${s.max || 15} letters`, s.starts && `${up(s.starts)}…`, s.ends && `…${up(s.ends)}`, s.contains && `has ${up(s.contains)}`,
+    narrow: [s.def && `“${s.def}”`, s.starts && `${up(s.starts)}…`, s.ends && `…${up(s.ends)}`, s.contains && `has ${up(s.contains)}`,
       s.incl && `uses ${up(s.incl)}`, s.excl && `no ${up(s.excl)}`, s.top && `top ${(+s.top).toLocaleString()}`],
   }[key];
   return parts.filter(Boolean).join(" · ");
@@ -1384,18 +1466,18 @@ function searchPhone() {
   searchFromBar = false;
   const s = searchState, up = v => String(v || "").toUpperCase();
   const chips = [
-    ["group", G(s.group)?.name, ["group"]], ["group", s.def && `“${s.def}”`, ["def"]],
-    ["bar", s.pattern && patLabel(s.pattern), ["pattern"]], ["bar", s.rack && `Rack ${up(s.rack)}${s.mode === "build" ? " · build" : s.mode === "super" ? " · contains" : ""}`, ["rack", "mode"]],
-    ["narrow", (s.min || s.max) && `${s.min || 2}–${s.max || 15} letters`, ["min", "max"]], ["narrow", s.starts && `${up(s.starts)}…`, ["starts"]], ["narrow", s.ends && `…${up(s.ends)}`, ["ends"]],
+    ["group", G(s.group)?.name, ["group"]], ["narrow", s.def && `“${s.def}”`, ["def"]],
+    ["bar", s.pattern && patLabel(s.pattern), ["pattern"]], ["bar", s.rack && `Rack ${up(s.rack)}${s.mode === "build" ? " · subanagram" : s.mode === "super" ? " · superanagram" : ""}`, ["rack", "mode"]],
+    ["group", lensText(s.lens), ["lens"]], ["narrow", s.starts && `${up(s.starts)}…`, ["starts"]], ["narrow", s.ends && `…${up(s.ends)}`, ["ends"]],
     ["narrow", s.contains && `Has ${up(s.contains)}`, ["contains"]], ["narrow", s.incl && `Uses ${up(s.incl)}`, ["incl"]], ["narrow", s.excl && `No ${up(s.excl)}`, ["excl"]], ["narrow", s.top && `Top ${(+s.top).toLocaleString()}`, ["top"]],
   ].filter(c => c[1]);
-  const secs = searchSecs(s, true);
+  const secs = searchSecs(s);
   $("#view").innerHTML = `<div class="filterbar"><div class="hscroll">
       ${chips.map((c, i) => `<span class="pill on" data-sheet="${c[0]}">${esc(c[1])}<button type="button" class="x" data-clear="${i}" aria-label="Remove">×</button></span>`).join("")}
-      ${[["group", "Group"], ["narrow", "Narrow down"]].map(([k, n]) => `<button type="button" class="pill add" data-sheet="${k}">+ ${n}</button>`).join("")}
+      ${[["group", "Group"], ["narrow", "Filters"]].map(([k, n]) => `<button type="button" class="pill add" data-sheet="${k}">+ ${n}</button>`).join("")}
       ${chips.length > 1 ? `<button type="button" class="pill add" id="sClear">Clear all</button>` : ""}</div></div>
     ${typeBar()}
-    <div class="card" id="sres"><p class="empty">Type letters in the search bar, or tap + Group or + Narrow down. Hooks show either side of each word; red lowercase letters are blanks.</p></div>
+    <div class="card" id="sres"><p class="empty">Type letters in the search bar, or tap + Group or + Filters. Hooks show either side of each word; red lowercase letters are blanks.</p></div>
     ${sheetHTML("ssheet", `<form id="sform" autocomplete="off">${Object.entries(SEARCH_SECS).map(([k, [t]]) => `<div data-sec="${k}"><h3>${t}<button type="button" data-reset="${k}">Reset</button></h3>${secs[k]}</div>`).join("")}
       <button class="btn primary block" type="submit" id="sGo">Show results</button></form>`)}`;
   const read = () => { for (const k of Object.keys(SEARCH_DEFAULT)) { const el = $("#s_" + k); if (el) searchState[k] = el.value; } store.set("search", searchState); };
@@ -1416,10 +1498,9 @@ function searchPhone() {
   });
   v.querySelectorAll("[data-clear]").forEach(b => b.onclick = () => { for (const k of chips[+b.dataset.clear][2]) searchState[k] = SEARCH_DEFAULT[k]; store.set("search", searchState); searchPhone(); });
   $("#sClear")?.addEventListener("click", () => { searchState = { ...SEARCH_DEFAULT }; store.set("search", searchState); searchPhone(); });
-  v.querySelectorAll("[data-reset]").forEach(b => b.onclick = () => { for (const k of SEARCH_SECS[b.dataset.reset][1]) { const el = $("#s_" + k); if (el) el.value = SEARCH_DEFAULT[k]; } $("#groupHint").textContent = G($("#s_group").value)?.blurb || ""; read(); count(); });
-  v.querySelectorAll("[data-step]").forEach(b => b.onclick = () => {
-    const el = $("#s_" + b.dataset.step), n = (parseInt(el.value) || (b.dataset.step === "min" ? 1 : 16)) + +b.dataset.d;
-    el.value = Math.min(15, Math.max(2, n)); el.dispatchEvent(new Event("input", { bubbles: true }));
+  v.querySelectorAll("[data-reset]").forEach(b => b.onclick = () => {
+    for (const k of SEARCH_SECS[b.dataset.reset][1]) { const el = $("#s_" + k); if (el) el.value = SEARCH_DEFAULT[k]; }
+    $("#groupHint").textContent = G($("#s_group").value)?.blurb || ""; syncPick($("#s_group")); v.querySelectorAll(".lenpick").forEach(paintLens); markTop($("#s_top")); read(); count();
   });
   $("#sform").addEventListener("input", () => { read(); count(); });
   $("#s_group").onchange = e => { $("#groupHint").textContent = G(e.target.value)?.blurb || ""; read(); count(); };
@@ -1475,7 +1556,7 @@ function listsHome() {
   const v = $("#view");
   v.querySelectorAll("[data-list]").forEach(b => b.onclick = () => location.hash = "lists/" + b.dataset.list);
   v.querySelectorAll("[data-all]").forEach(b => b.onclick = () => { const r = b.closest(".carow"); r.classList.toggle("all"); b.textContent = r.classList.contains("all") ? "Show less" : "See all"; });
-  v.querySelector("[data-play]")?.addEventListener("click", ev => { ev.stopPropagation(); saveSettings({ practice: { ...PO_DEFAULT, src: "g:" + last.id, len: last.len || 0 } }); location.hash = "practice/go"; });
+  v.querySelector("[data-play]")?.addEventListener("click", ev => { ev.stopPropagation(); saveSettings({ practice: { ...PO_DEFAULT, src: "g:" + last.id, lens: last.len ? [last.len] : [] } }); location.hash = "practice/go"; });
   const fill = x => {
     const ws = groupWords(x), [n, all] = learnt(x), pct = all ? n / all * 100 : 0;
     const c = $("#cnt_" + x.id); if (c) c.textContent = ws.length.toLocaleString() + (x.special ? " stems" : " words") + (n ? ` · ${n.toLocaleString()} learnt` : "");
@@ -1502,7 +1583,7 @@ function drawStems(box, g) {
           ${groups.map(([L, ws]) => `<div class="grp"><b>${L}</b><div class="words">${ws.map(chip).join("")}</div></div>`).join("")}</div>`;
       }).join("") + (shown < data.length ? `<button class="btn more" id="moreBtn">Show 25 more</button>` : "");
     $("#moreBtn")?.addEventListener("click", () => { shown += 25; draw(); });
-    $("#quizThese").onclick = () => { lastResults = data.flatMap(s => s.words); quizSetup.source = "last"; quizSetup.mode = "anagram"; location.hash = "quiz"; };
+    $("#quizThese").onclick = () => { lastResults = data.flatMap(s => s.words); quizSetup.source = "last"; quizSetup.mode = "anagram"; quizSetup.lens = []; location.hash = "quiz"; };
   };
   draw();
 }
@@ -1514,19 +1595,26 @@ const MODES = {
   hooks: { name: "Hooks", help: "Type every front hook and back hook letter." },
   def: { name: "Definition", help: "Read the definition, type the word." },
 };
-let quizSetup = { source: "stars", mode: "anagram", ...store.get("quizSetup", {}) };
-let Q = null;
+// a first quiz draws from the two-letter words until something is starred
+let quizSetup = { source: store.get("stars", []).length ? "stars" : "list:twos", mode: "anagram", ...store.get("quizSetup", {}) };
+// lengths used to be one choice ("" any, "main" the list's own length, or a number)
+if (!Array.isArray(quizSetup.lens)) {
+  const len = quizSetup.len ?? (quizSetup.lenOnly ? "main" : ""), g = G(quizSetup.source.replace("list:", ""));
+  quizSetup.lens = len === "main" ? (g?.len ? [g.len] : []) : +len ? [+len] : [];
+  delete quizSetup.len; delete quizSetup.lenOnly;
+}
+// the quiz in progress is kept in storage, so leaving the tab or reloading carries on where it was
+let Q = store.get("quiz", null);
+const saveQ = () => store.set("quiz", Q);
 function quizSources() {
-  return [["stars", `My study list (${getStars().length})`], ["missed", `Missed in quizzes (${store.get("missed", []).length})`], ["last", `Last results (${lastResults.length})`]];
+  return [["stars", `Starred words (${getStars().length})`], ["missed", `Missed words (${store.get("missed", []).length})`], ["last", `Last search results (${lastResults.length})`]];
 }
 function sourceWords(src) {
   const g = G(src.replace("list:", ""));
   let words = src === "stars" ? getStars() : src === "missed" ? store.get("missed", []) : src === "last" ? lastResults
     : !g ? [] : g.special === "stems" ? stems(g.n).flatMap(s => s.words) : groupWords(g);
-  // length: "" any, "main" the list's own length, or a number
-  const len = quizSetup.len ?? (quizSetup.lenOnly ? "main" : "");
-  if (len === "main" && g?.len) words = words.filter(w => w.length === g.len);
-  else if (+len) words = words.filter(w => w.length === +len);
+  const lens = quizSetup.lens || [];
+  if (lens.length) words = words.filter(w => lens.includes(w.length));
   if (quizSetup.starOnly && src !== "stars") { const s = new Set(getStars()); words = words.filter(w => s.has(w)); }
   return words;
 }
@@ -1548,47 +1636,55 @@ function buildQuestions(words, mode, n) {
     return { w, show: w };
   });
 }
+// quiz setup, laid out like Practice: a card to carry on a quiz in progress (× on a question pauses it),
+// the last quiz's score, then what to quiz on and a big Start button
 VIEWS.quiz = () => {
-  if (Q && !Q.done) return drawQuestion();
+  if (Q && !Q.done && !Q.paused) return drawQuestion();
   document.body.classList.remove("full");
-  $("#view").innerHTML = `<div><h3 class="title">Quiz</h3><p class="sub">Words you get wrong go to “Missed in quizzes” so you can drill them again.</p></div>
-  <div class="card">
-    <div class="fs"><h2 class="lbl">Type</h2><div class="seg">${Object.entries(MODES).map(([k, m]) => `<button type="button" class="btn ${k === quizSetup.mode ? "on" : ""}" data-mode="${k}">${m.name}</button>`).join("")}</div>
-      <p class="help" style="margin:8px 0 0">${MODES[quizSetup.mode].help}</p></div>
-    <div class="fs"><h2 class="lbl">Words</h2><div class="form">
-      <div class="field wide"><label for="qsrc">Words from</label><select id="qsrc">
-        <optgroup label="Mine">${quizSources().map(([v, t]) => `<option value="${v}" ${v === quizSetup.source ? "selected" : ""}>${esc(t)}</option>`).join("")}</optgroup>
-        ${groupOptions(quizSetup.source.replace("list:", ""), true).replace(/value="/g, 'value="list:')}</select></div>
-      <div class="field"><label for="qcount">Questions</label><div class="numpick"><input id="qcount" value="${SET.qcount}" inputmode="numeric" aria-label="Number of questions">${[10, 20, 50, 100].map(n => `<button type="button" class="btn sm ${n === +SET.qcount ? "on" : ""}" data-qn="${n}">${n}</button>`).join("")}</div></div>
-      <div class="field"><label for="qlen">Length</label><select id="qlen">${[["", "Any length"], ["main", "The list's main length"], ...range(2, 15).map(n => [String(n), `${n} letters`])].map(([v, t]) => `<option value="${v}" ${String(quizSetup.len ?? (quizSetup.lenOnly ? "main" : "")) === v ? "selected" : ""}>${t}</option>`).join("")}</select></div>
-      <div class="field"><span class="flabel">Starred</span><label class="check"><input type="checkbox" id="qstar" ${quizSetup.starOnly ? "checked" : ""}> Only words I've starred</label></div>
-    </div></div>
-    <div class="actions"><button class="btn primary" id="qstart">Start quiz</button><span class="small" id="qmsg"></span></div>
-  </div>
-  ${Q?.done ? summaryHTML() : ""}`;
-  $("#view").querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { quizSetup.mode = b.dataset.mode; VIEWS.quiz(); });
+  const going = Q && !Q.done;
+  $("#view").innerHTML = `${going ? `<div class="cont" id="qGo"><div class="ct"><small>Quiz in progress</small><b>${MODES[Q.mode].name} · question ${Q.i + 1} of ${Q.qs.length}</b>
+      <div class="pbar"><div style="width:${Q.i / Q.qs.length * 100}%"></div></div><div class="small">${Q.right} right · ${Q.wrong.length} missed</div></div>
+      <button type="button" class="go" aria-label="Carry on with the quiz">${ICON_PLAY}</button></div>
+    <div class="row"><button type="button" class="btn sm" id="qEnd">End this quiz</button></div>` : ""}
+  ${Q?.done ? summaryHTML() : ""}
+  <div class="card"><h2 class="lbl">Type</h2><div class="seg">${Object.entries(MODES).map(([k, m]) => `<button type="button" class="btn ${k === quizSetup.mode ? "on" : ""}" data-mode="${k}">${m.name}</button>`).join("")}</div>
+    <p class="help" style="margin:8px 0 0">${MODES[quizSetup.mode].help} Words you miss go to “Missed words”.</p></div>
+  <div class="card"><div class="form">
+    <div class="field wide"><label for="qsrc">Words from</label><select id="qsrc">
+      <optgroup label="Mine">${quizSources().map(([v, t]) => `<option value="${v}" ${v === quizSetup.source ? "selected" : ""}>${esc(t)}</option>`).join("")}</optgroup>
+      ${groupOptions(quizSetup.source.replace("list:", ""), true).replace(/value="/g, 'value="list:')}</select></div>
+    <div class="field wide"><span class="flabel">Length</span>${lenPick("qlens", quizSetup.lens)}</div>
+    <div class="field wide"><label for="qcount">Questions</label><div class="numpick"><input id="qcount" value="${SET.qcount}" inputmode="numeric" aria-label="Number of questions">${[10, 20, 50, 100].map(n => `<button type="button" class="btn sm ${n === +SET.qcount ? "on" : ""}" data-qn="${n}">${n}</button>`).join("")}</div></div>
+    <div class="field wide"><label class="check"><input type="checkbox" id="qstar" ${quizSetup.starOnly ? "checked" : ""}> Only words I've starred</label></div>
+  </div></div>
+  <button type="button" class="btn primary block" id="qstart">${going ? "Start a new quiz" : "Start quiz"}</button><p class="small" id="qmsg" style="text-align:center;margin:-6px 0 0"></p>`;
+  $("#view").querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { quizSetup.mode = b.dataset.mode; store.set("quizSetup", quizSetup); VIEWS.quiz(); });
   // live count of the words the chosen options give
   const count = () => { const n = new Set(sourceWords(quizSetup.source).filter(w => DICT.has(w))).size; $("#qmsg").textContent = `${n.toLocaleString()} word${n === 1 ? "" : "s"} to draw from`; };
-  $("#qsrc").onchange = e => { quizSetup.source = e.target.value; count(); };
+  // picking a list picks its usual length too
+  $("#qsrc").onchange = e => { quizSetup.source = e.target.value; const g = G(e.target.value.replace("list:", "")); quizSetup.lens = g?.len ? [g.len] : []; store.set("quizSetup", quizSetup); VIEWS.quiz(); };
   // type any number of questions, or pick one of the usual ones
   const setCount = n => { n = Math.min(500, Math.max(1, parseInt(n) || 20)); saveSettings({ qcount: n }); $("#qcount").value = n; $("#view").querySelectorAll("[data-qn]").forEach(b => b.classList.toggle("on", +b.dataset.qn === n)); };
   $("#qcount").onchange = e => setCount(e.target.value);
   $("#view").querySelectorAll("[data-qn]").forEach(b => b.onclick = () => setCount(b.dataset.qn));
-  $("#qlen").onchange = e => { quizSetup.len = e.target.value; delete quizSetup.lenOnly; count(); };
+  $("#qlens").onchange = e => { quizSetup.lens = lensOf(e.target.value); store.set("quizSetup", quizSetup); count(); };
   $("#qstar").onchange = e => { quizSetup.starOnly = e.target.checked; count(); };
   count();
+  const begin = (qs, mode = quizSetup.mode) => { Q = { mode, qs, i: 0, right: 0, wrong: [], answered: false, done: false, start: Date.now(), res: [] }; drawQuestion(); window.scrollTo(0, 0); };
   $("#qstart").onclick = () => {
     store.set("quizSetup", quizSetup);
     const qs = buildQuestions(sourceWords(quizSetup.source), quizSetup.mode, +SET.qcount);
-    if (!qs.length) { $("#qmsg").textContent = "No words in that source yet. Star some words or pick a list."; return; }
-    Q = { mode: quizSetup.mode, qs, i: 0, right: 0, wrong: [], answered: false, done: false, start: Date.now(), res: [] };
-    drawQuestion();
+    if (!qs.length) { $("#qmsg").textContent = "No words there yet. Star some words or pick a list."; return; }
+    begin(qs);
   };
-  $("#retryMissed")?.addEventListener("click", () => { Q = { mode: Q.mode, qs: buildQuestions(Q.wrong, Q.mode, 999), i: 0, right: 0, wrong: [], answered: false, done: false, start: Date.now(), res: [] }; drawQuestion(); });
+  $("#qGo")?.addEventListener("click", () => { Q.paused = false; drawQuestion(); window.scrollTo(0, 0); });
+  $("#qEnd")?.addEventListener("click", () => { commitQuiz(); Q.done = true; Q.answered = false; saveQ(); VIEWS.quiz(); });
+  $("#retryMissed")?.addEventListener("click", () => begin(buildQuestions(Q.wrong, Q.mode, 999), Q.mode));
 };
 function summaryHTML() {
-  return `<div class="card"><h2 class="lbl">Last quiz</h2><p style="margin:0 0 10px"><b style="font:700 1.6rem var(--display)">${Q.right}/${Q.qs.length}</b> correct</p>
-    ${Q.wrong.length ? `<p class="small">Missed:</p><div class="words">${Q.wrong.map(chip).join("")}</div><div class="actions"><button class="btn" id="retryMissed">Retry these ${Q.wrong.length}</button></div>` : `<p class="fb ok">Clean sweep.</p>`}</div>`;
+  const n = Q.res.length;
+  return `<div class="card"><h2 class="lbl">Last quiz${n < Q.qs.length ? ` · ended after ${n} of ${Q.qs.length}` : ""}</h2><p style="margin:0 0 10px"><b style="font:700 1.6rem var(--display)">${Q.right}/${n}</b> correct</p>
+    ${Q.wrong.length ? `<p class="small">Missed:</p><div class="words">${Q.wrong.map(chip).join("")}</div><div class="actions"><button class="btn" id="retryMissed">Retry these ${Q.wrong.length}</button></div>` : n ? `<p class="fb ok">Clean sweep.</p>` : ""}</div>`;
 }
 function record(w, ok) {
   const st = store.get("stats", {}); const s = st[w] || [0, 0]; s[ok ? 0 : 1]++; st[w] = s; store.set("stats", st);
@@ -1597,38 +1693,43 @@ function record(w, ok) {
 function drawQuestion() {
   const q = Q.qs[Q.i], e = DICT.get(q.w), mode = Q.mode;
   let prompt = "", input = "";
-  Q.found = [];
+  // a new question starts empty; the same question drawn again (after leaving the tab or a reload) keeps what was found
+  if (Q.at !== Q.i) { Q.at = Q.i; Q.found = []; Q.answered = false; }
   const nAna = anagrams(q.w).length;
+  const typing = `autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"`;
   if (mode === "anagram") { prompt = `<div class="slots" id="qslots"></div>`; input = `<div class="rows" id="found" style="margin-top:8px"></div>`; }
-  if (mode === "phony") { prompt = `<div class="qprompt">${q.show}</div>`; input = `<div class="row"><button type="button" class="btn primary" data-ans="valid">Valid (V)</button><button type="button" class="btn" data-ans="phony">Phony (P)</button></div>`; }
-  if (mode === "hooks") { prompt = `<div class="qprompt">${q.w}</div>`; input = `<div class="pair"><input class="qinput" id="qf" placeholder="front hooks"><input class="qinput" id="qb" placeholder="back hooks"></div><p class="small" style="margin:6px 0 0">Leave blank if none. Press Enter to check.</p>`; }
-  if (mode === "def") { prompt = `<div class="qdef">${esc(e.d)}</div><p class="small" style="margin:0">${q.w.length} letters · <a href="#" id="hint">show tiles</a></p><div id="hintBox"></div>`; input = `<input class="qinput" id="qa" placeholder="The word"><p class="small" style="margin:6px 0 0">The right word is taken as you type. Press Enter to give up.</p>`; }
+  if (mode === "phony") prompt = `<div class="qprompt">${q.show}</div>`;
+  if (mode === "hooks") { prompt = `<div class="qprompt">${q.w}</div>`; input = `<div class="pair"><input class="qinput" id="qf" placeholder="front hooks" ${typing}><input class="qinput" id="qb" placeholder="back hooks" ${typing}></div><p class="small" style="margin:6px 0 0">Leave blank if none, then press ✓.</p>`; }
+  if (mode === "def") { prompt = `<div class="qdef">${esc(e.d)}</div><p class="small" style="margin:0">${q.w.length} letters · <a href="#" id="hint">show tiles</a></p><div id="hintBox"></div>`; input = `<input class="qinput" id="qa" placeholder="The word" ${typing}><p class="small" style="margin:6px 0 0">The right word is taken as you type.</p>`; }
   const rack = mode === "anagram" ? `${rackHTML("qrack")}<div class="rackbtns"><button type="button" class="btn" id="qShuf" aria-label="Shuffle">${icon(ICON_SHUF)}</button><button type="button" class="btn" id="qBack" aria-label="Take back a letter">${icon(ICON_BACK)}</button></div>` : "";
   // full screen on a phone while a question is up, like Practice
   document.body.classList.add("full");
   $("#view").innerHTML = `<div class="foc"><div class="stage">
-    <div class="fc-top"><button type="button" class="ib2" id="qquit" aria-label="End quiz" title="End quiz">×</button><div class="pbar"><div style="width:${(Q.i / Q.qs.length) * 100}%"></div></div>
+    <div class="fc-top"><button type="button" class="ib2" id="qquit" aria-label="Leave the quiz" title="Leave the quiz (carry on later)">×</button><div class="pbar"><div style="width:${(Q.i / Q.qs.length) * 100}%"></div></div>
       <span class="n">${Q.i + 1} / ${Q.qs.length}</span><button type="button" class="ib2 phone-only" id="qStatsBtn" aria-label="Stats">${icon('<path d="M5 20V11M12 20V4M19 20v-6"/>')}</button></div>
     <div class="fc-card qcard ${rack ? "" : "solo"}"><p class="q" style="margin:0 0 12px">${MODES[mode].name}${mode === "anagram" ? ` · ${nAna > 1 ? `${nAna} words, find them all` : "one word"}` : ""}</p>
       ${prompt}<form id="qform" autocomplete="off">${input}</form><div id="qfb"></div></div>
     ${rack}
-    <div class="thumb" id="qthumb" ${mode === "phony" ? "hidden" : ""}><div class="acts"><button type="button" class="btn mk" id="qAlt"></button><button type="button" class="btn mk" id="qMain"></button></div></div>
+    <div class="thumb" id="qthumb"><div class="acts"><button type="button" class="btn mk" id="qAlt"></button><button type="button" class="btn mk" id="qMain"></button></div></div>
   </div>${quizRail("prail")}</div>` + sheetHTML("qstats", `<h3>Stats<button type="button" id="qStatsDone">Done</button></h3>${quizRail("")}`);
   $("#qStatsBtn").onclick = () => sheet("qstats", true);
   $("#qStatsDone").onclick = $("#qstats .scrim").onclick = () => sheet("qstats", false);
-  // before answering: ✗ | ✓. Once answered, ✓'s place becomes Next (green if right, orange if wrong) and ✗'s switches the mark
-  const key = k => `<kbd>${k}</kbd>`;
+  // before answering: ✗ | ✓ (Phony | Valid in valid-or-phony). Once answered, the right button becomes Next
+  // (green if right, orange if wrong) and the left one switches the mark.
+  // ✓ means "knew it" for anagrams; for hooks and definitions it checks what was typed.
+  const key = k => `<kbd>${k}</kbd>`, tx = t => `<span class="tx">${t}</span>`;
   Q.marks = () => {
-    const v = Q.answered ? Q.ok : null, a = $("#qAlt"), m = $("#qMain");
-    a.className = `btn mk ${v === false ? "yes" : "no"}`; a.innerHTML = `${v === false ? "✓" : "✗"}${key("1")}`;
-    a.setAttribute("aria-label", v === null ? "Didn't know" : v ? "Switch to wrong" : "Switch to right");
-    m.className = `btn mk ${v === null ? "yes" : v ? "yes on" : "no on"}`; m.innerHTML = v === null ? `✓${key("2")}` : `${Q.i + 1 < Q.qs.length ? "Next" : "Finish"}${key("↵")}`;
-    m.setAttribute("aria-label", v === null ? "Knew it" : "Next question");
+    const v = Q.answered ? Q.ok : null, a = $("#qAlt"), m = $("#qMain"), ph = mode === "phony" && v === null;
+    a.className = `btn mk ${v === false ? "yes" : "no"}`; a.innerHTML = ph ? `${tx("Phony")}${key("P")}` : `${v === false ? "✓" : "✗"}${key("1")}`;
+    a.setAttribute("aria-label", ph ? "Phony" : v === null ? "Didn't know" : v ? "Switch to wrong" : "Switch to right");
+    m.className = `btn mk ${v === null ? "yes" : v ? "yes on" : "no on"}`; m.innerHTML = ph ? `${tx("Valid")}${key("V")}` : v === null ? `✓${key("2")}` : `${tx(Q.i + 1 < Q.qs.length ? "Next" : "Finish")}${key("↵")}`;
+    m.setAttribute("aria-label", ph ? "Valid" : v === null ? (mode === "anagram" ? "Knew it" : "Check") : "Next question");
   };
   Q.marks();
-  $("#qAlt").onclick = () => Q.answered ? Q.mark(!Q.ok) : check(undefined, false);
-  $("#qMain").onclick = () => Q.answered ? next() : check(undefined, true);
-  $("#qquit").onclick = () => { commitQuiz(); Q.answered = false; Q.done = true; VIEWS.quiz(); };
+  $("#qAlt").onclick = () => Q.answered ? Q.mark(!Q.ok) : mode === "phony" ? check("phony") : check(undefined, false);
+  $("#qMain").onclick = () => Q.answered ? next() : mode === "phony" ? check("valid") : check(undefined, mode === "anagram" ? true : undefined);
+  // × leaves the quiz without ending it; the setup page then has a card to carry on
+  $("#qquit").onclick = () => { Q.paused = true; saveQ(); VIEWS.quiz(); window.scrollTo(0, 0); };
   $("#hint")?.addEventListener("click", ev => { ev.preventDefault(); $("#hintBox").innerHTML = tilesHTML(alpha(q.w), true); });
   // on a phone, focusing the box pops the keyboard up over the tiles, so only do it where there's a real keyboard
   if (!(mode === "anagram" && phone())) ($("#qa") || $("#qf"))?.focus();
@@ -1636,14 +1737,14 @@ function drawQuestion() {
   const takeWord = v => {
     const want = anagrams(q.w);
     if (Q.answered || !want.includes(v) || Q.found.includes(v)) return false;
-    Q.found.push(v);
+    Q.found.push(v); saveQ();
     $("#found").insertAdjacentHTML("beforeend", quizRow(v, "got"));
     if (Q.found.length === want.length) check();
     return true;
   };
   let board = null;
   if (mode === "anagram") {
-    board = rackBoard($("#qslots"), $("#qrack"), alpha(q.w), x => Q.answered ? null : takeWord(x));
+    board = rackBoard($("#qslots"), $("#qrack"), alpha(q.w), x => { if (Q.answered) return null; const r = takeWord(x); return r && Q.answered ? "keep" : r; });
     $("#qShuf").onclick = board.shuffle; $("#qBack").onclick = board.back;
   }
   // take a correct answer the moment it is typed; with several anagrams, clear the box after each one
@@ -1653,10 +1754,13 @@ function drawQuestion() {
     if (mode === "def" && (v === q.w || (v.length === q.w.length && DICT.get(v)?.d === e.d))) check();
   });
   $("#qform").addEventListener("submit", ev => { ev.preventDefault(); Q.answered ? next() : check(); });
-  $("#view").querySelectorAll("[data-ans]").forEach(b => b.onclick = () => { if (!Q.answered) check(b.dataset.ans); });
+  // drawn again after leaving: put back the words found, and the mark if it was already answered
+  if (mode === "anagram") Q.found.forEach(v => $("#found").insertAdjacentHTML("beforeend", quizRow(v, "got")));
+  if (Q.answered) check(undefined, Q.ok);
+  saveQ();
   // keys (not while typing in a box): V / P answer valid or phony, 1 is the left button, 2 the right
   document.onkeydown = ev => {
-    if (location.hash !== "#quiz" || ev.metaKey || ev.ctrlKey || ev.altKey || ev.target.closest?.("input, textarea, select")) return;
+    if (location.hash !== "#quiz" || pkOpen || ev.metaKey || ev.ctrlKey || ev.altKey || ev.target.closest?.("input, textarea, select")) return;
     if (Q.mode === "phony" && !Q.answered) { if (/^[vp]$/i.test(ev.key)) check(ev.key.toLowerCase() === "v" ? "valid" : "phony"); return; }
     // anagrams: letters place tiles, Backspace takes one back, Space shuffles, Enter gives up or moves on
     if (board && /^[a-z]$/i.test(ev.key)) board.type(ev.key.toUpperCase());
@@ -1708,7 +1812,7 @@ function check(ans, force) {
   // the mark is only saved on Next, so the left button can still switch it
   $("#qfb").innerHTML = `<p class="fb" id="qverdict" style="margin:12px 0 6px"></p><div class="words" style="align-items:center;justify-content:center">${reveal}</div>
     ${mode === "anagram" ? "" : `<p class="small" style="margin:8px 0 0">${esc(e.d)}</p>`}`;
-  const mark = Q.mark = v => { Q.ok = v; rest(v); $("#qverdict").className = "fb " + (v ? "ok" : "no"); $("#qverdict").textContent = v ? "Correct" : "Not quite"; Q.marks(); };
+  const mark = Q.mark = v => { Q.ok = v; rest(v); $("#qverdict").className = "fb " + (v ? "ok" : "no"); $("#qverdict").textContent = v ? "Correct" : "Not quite"; Q.marks(); saveQ(); };
   mark(ok);
   $("#qthumb").hidden = false;
   $("#qMain").focus();
@@ -1720,24 +1824,38 @@ function commitQuiz() {
   Q.res.push(Q.ok);
   record(w, Q.ok);
 }
-// a result row for the quiz: not clickable, so the quiz isn't left mid-question
-const quizRow = (w, cls) => rowHTML(w).replace('class="r" data-go=', `class="r ${cls}" data-w=`).replace('<span class="wl">', `<span class="wl">${cls === "got" ? "✓ " : "✗ "}`);
+// a result row for the quiz and practice, marked ✓ or ✗; it opens the word page (the question waits as it was)
+const quizRow = (w, cls) => rowHTML(w).replace('class="r"', `class="r ${cls}"`).replace('<span class="wl">', `<span class="wl">${cls === "got" ? "✓ " : "✗ "}`);
 function next() {
   commitQuiz();
   Q.i++; Q.answered = false;
-  if (Q.i >= Q.qs.length) { Q.done = true; document.onkeydown = null; VIEWS.quiz(); } else drawQuestion();
+  if (Q.i >= Q.qs.length) { Q.done = true; document.onkeydown = null; saveQ(); VIEWS.quiz(); window.scrollTo(0, 0); } else drawQuestion();
 }
 
 // ---------- practice: endless anagram cards, no setup ----------
-let P = null;
+// this practice session (streak, marks) and the card on screen are kept in storage, so leaving the tab or
+// reloading comes back to the same card with the words already found
+let P = store.get("psess", null);
+const saveP = () => store.set("psess", { key: P.key, streak: P.streak, solved: P.solved, seen: P.seen, start: P.start, hist: P.hist.slice(-20) });
+// ok: the card's mark once it's marked (null before)
+const saveCard = () => store.set("pcur", { key: P.key, letters: P.letters, found: P.found, ok: P.verdict ? P.verdict.ok : null });
 // practice options: where words come from + the same filters as Search
-const PO_DEFAULT = { src: "", len: 7, top: "", starts: "", ends: "", contains: "", incl: "", excl: "", pattern: "", from: "", to: "" };
+const PO_DEFAULT = { src: "", lens: [7], top: "", starts: "", ends: "", contains: "", incl: "", excl: "", pattern: "", from: "", to: "" };
+// the saved options, with a single length from before the length chips turned into a list
+function practiceOpts() {
+  const sp = SET.practice || {}, o = { ...PO_DEFAULT, ...sp };
+  if (!Array.isArray(sp.lens)) o.lens = "len" in sp ? (+sp.len ? [+sp.len] : []) : PO_DEFAULT.lens;
+  // the old "top N" box is now the Top buttons of the Probability field
+  if (o.top) { if (!o.from && !o.to) o.to = o.top; o.top = ""; }
+  delete o.len;
+  return o;
+}
 let poolCache = { key: "", pool: [] };
 function practicePool(o) {
   const key = JSON.stringify(o) + (o.src.startsWith("my:") || o.starOnly ? getStars().length + ":" + store.get("missed", []).length + ":" + lastResults.length : "");
   if (poolCache.key === key) return poolCache.pool;
   const g = o.src.startsWith("g:") ? o.src.slice(2) : "";
-  const r = runSearch({ ...SEARCH_DEFAULT, group: g, min: o.len || "", max: o.len || "", top: o.top, starts: o.starts, ends: o.ends, contains: o.contains, incl: o.incl, excl: o.excl, pattern: o.pattern });
+  const r = runSearch({ ...SEARCH_DEFAULT, group: g, lens: o.lens.join(","), top: o.top, starts: o.starts, ends: o.ends, contains: o.contains, incl: o.incl, excl: o.excl, pattern: o.pattern });
   let pool = r.words || [];
   const mine = { "my:stars": getStars(), "my:missed": store.get("missed", []), "my:last": lastResults }[o.src];
   if (mine) { const set = new Set(mine); pool = pool.filter(w => set.has(w)); }
@@ -1780,56 +1898,66 @@ function pickPractice(pool) {
   recent.unshift(alpha(w)); recent.length = Math.min(recent.length, Math.min(20, Math.floor(pool.length / 2)));
   return w;
 }
-// a practice mark is saved when moving on (Next, the next card, or leaving the tab)
+// a practice mark is saved only on Next (or when the options change under a marked card). Until then the marked
+// card stays as it is, so opening a word from it and coming back finds it unchanged.
 function commitPractice() {
-  const v = P?.verdict; if (!v) return;
-  P.verdict = null; clearTimeout(P.auto); P.seen++; P.hist.push(v.ok);
-  schedule(v.letters, v.ok); setLearnt(v.letters, v.ok);
-  if (v.ok) { P.streak++; P.solved++; } else P.streak = 0;
-  for (const x of v.want) record(x, v.ok);
+  const c = store.get("pcur"); if (typeof c?.ok !== "boolean") return;
+  store.set("pcur", null);
+  if (!P) return;
+  P.verdict = null; P.seen++; P.hist.push(c.ok);
+  schedule(c.letters, c.ok); setLearnt(c.letters, c.ok);
+  if (c.ok) { P.streak++; P.solved++; } else P.streak = 0;
+  for (const x of anagrams(c.letters)) record(x, c.ok);
+  saveP();
 }
 VIEWS.practice = () => {
-  commitPractice();
-  const o = { ...PO_DEFAULT, ...(SET.practice || {}) };
+  const o = practiceOpts();
   const pool = practicePool(o);
   const key = JSON.stringify(o);
-  if (!P || P.key !== key) P = { key, streak: 0, solved: 0, seen: 0, start: Date.now(), hist: [] };
+  if (store.get("pcur")?.key !== key) commitPractice();
+  if (!P || P.key !== key) { P = { key, streak: 0, solved: 0, seen: 0, start: Date.now(), hist: [] }; saveP(); }
   const open = store.get("pOpen", false);
-  const tf = (id, label, ph) => `<div class="field"><label for="po_${id}">${label}</label><input id="po_${id}" value="${esc(o[id])}" placeholder="${ph}" spellcheck="false"></div>`;
-  const opts = `
-    <details class="card" id="pOpts" ${open ? "open" : ""}><summary class="lbl" style="cursor:pointer;margin:0">Options · ${pool.length.toLocaleString()} words in play</summary>
-      <div class="form" style="margin-top:12px">
+  const tf = (id, label, ph) => `<div class="field"><label for="po_${id}">${label}</label><input id="po_${id}" value="${esc(o[id])}" placeholder="${ph}" spellcheck="false" autocorrect="off" autocapitalize="characters"></div>`;
+  // main: where the words come from and their lengths (always in view); more: the rest, folded on the setup page
+  const main = `<div class="form">
         <div class="field wide"><label for="po_src">Words from</label><select id="po_src"><option value="">Any word</option>
-          <optgroup label="Mine"><option value="my:stars" ${o.src === "my:stars" ? "selected" : ""}>My study list</option><option value="my:missed" ${o.src === "my:missed" ? "selected" : ""}>Missed in quizzes</option><option value="my:last" ${o.src === "my:last" ? "selected" : ""}>Last search results</option></optgroup>
+          <optgroup label="Mine"><option value="my:stars" ${o.src === "my:stars" ? "selected" : ""}>Starred words (${getStars().length})</option><option value="my:missed" ${o.src === "my:missed" ? "selected" : ""}>Missed words (${store.get("missed", []).length})</option><option value="my:last" ${o.src === "my:last" ? "selected" : ""}>Last search results (${lastResults.length})</option></optgroup>
           ${groupOptions(o.src.startsWith("g:") ? o.src.slice(2) : "").replace(/value="/g, 'value="g:')}</select></div>
-        <div class="field"><label for="po_len">Length</label><select id="po_len"><option value="0">Any length</option>${range(2, 15).map(n => `<option value="${n}" ${n === +o.len ? "selected" : ""}>${n} letters</option>`).join("")}</select></div>
-        ${topField("po_top", o.top)}
-        ${tf("starts", "Starts with", "e.g. UN")}${tf("ends", "Ends with", "e.g. ING")}${tf("contains", "Contains in a row", "e.g. QI")}
+        <div class="field wide"><span class="flabel">Length</span>${lenPick("po_lens", o.lens)}</div>
+      </div>`;
+  const more = `
+    <details class="card" id="pOpts" ${open ? "open" : ""}><summary class="lbl" style="cursor:pointer;margin:0">More options · ${pool.length.toLocaleString()} words in play</summary>
+      <div class="form" style="margin-top:12px">
+        ${tf("starts", "Starts with", "e.g. UN")}${tf("ends", "Ends with", "e.g. ING")}${tf("contains", "Contains", "e.g. QI")}
         <div class="field"><span class="flabel">Starred</span><label class="check"><input type="checkbox" id="po_star" ${o.starOnly ? "checked" : ""}> Only words I've starred</label></div>
-        ${tf("incl", "Must use letters", "e.g. Z")}${tf("excl", "Without letters", "e.g. S")}${tf("pattern", "Pattern", "e.g. .A.E*")}
+        ${tf("incl", "Must include", "e.g. Z")}${tf("excl", "Must exclude", "e.g. S")}${tf("pattern", "Pattern", "e.g. .A.E*")}
       </div>
-      <div class="row rangebar" style="margin-top:16px">
-        <span class="small">Ranks</span>
-        <input id="po_from" value="${esc(o.from)}" placeholder="1" inputmode="numeric" aria-label="From rank">
-        <span class="small">to</span>
-        <input id="po_to" value="${esc(o.to)}" placeholder="all" inputmode="numeric" aria-label="To rank">
-        ${[30, 50, 100, 500].map(n => `<button type="button" class="btn sm ${!(+o.from > 1) && +o.to === n ? "on" : ""}" data-prange="${n}">Top ${n}</button>`).join("")}<button type="button" class="btn sm ${o.from || o.to ? "" : "on"}" data-prange="0">All</button>
+      <div class="field" style="margin-top:14px"><span class="flabel">Probability</span>
+        <div class="numpick">${[30, 50, 100, 500].map(n => `<button type="button" class="btn sm ${!(+o.from > 1) && +o.to === n ? "on" : ""}" data-prange="${n}">Top ${n}</button>`).join("")}<button type="button" class="btn sm ${o.from || o.to ? "" : "on"}" data-prange="0">All</button></div>
+        <div class="row rangebar" style="margin-top:6px"><span class="small">or the most likely from</span>
+          <input id="po_from" value="${esc(o.from)}" placeholder="1" inputmode="numeric" aria-label="From">
+          <span class="small">to</span>
+          <input id="po_to" value="${esc(o.to)}" placeholder="all" inputmode="numeric" aria-label="To"></div></div>
+      <div class="row" style="margin-top:16px">
         <span style="margin-left:auto"></span><button class="btn sm" id="poApply">Apply</button><button class="btn sm" id="poReset">Reset options</button><button class="btn sm" id="poForget">Reset learnt for these words</button>
       </div>
 
     </details>`;
   const wire = () => {
-    $("#pOpts").addEventListener("toggle", e => store.set("pOpen", e.target.open));
+    // only the setup page's folding box remembers being open (the copy in the sheet is always open)
+    if (!$("#pOpts").closest(".sheet")) $("#pOpts").addEventListener("toggle", e => store.set("pOpen", e.target.open));
     $("#po_star").onchange = e => { saveSettings({ practice: { ...o, starOnly: e.target.checked } }); VIEWS.practice(); };
-    const read = () => { const n = { ...o }; for (const k of ["src", "len", "top", "starts", "ends", "contains", "incl", "excl", "pattern", "from", "to"]) n[k] = $("#po_" + k).value.trim(); n.len = +n.len || 0; saveSettings({ practice: n }); VIEWS.practice(); };
-    $("#po_src").onchange = () => { const v = $("#po_src").value; if (v) $("#po_len").value = v.startsWith("g:") ? G(v.slice(2))?.len || 0 : 0; read(); }; $("#po_top").onchange = $("#po_len").onchange = read; $("#poApply").onclick = read;
+    const read = () => { const n = { ...o }; for (const k of ["src", "starts", "ends", "contains", "incl", "excl", "pattern", "from", "to"]) n[k] = $("#po_" + k).value.trim(); n.lens = lensOf($("#po_lens").value); saveSettings({ practice: n }); VIEWS.practice(); };
+    // picking a list picks its usual length too
+    $("#po_src").onchange = () => { const v = $("#po_src").value; if (v) $("#po_lens").value = v.startsWith("g:") ? G(v.slice(2))?.len || "" : ""; read(); }; $("#po_lens").onchange = read; $("#poApply").onclick = read;
     $("#pOpts").querySelectorAll("input").forEach(i => i.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); read(); } });
     $("#view").querySelectorAll("[data-prange]").forEach(b => b.onclick = () => { $("#po_from").value = ""; $("#po_to").value = +b.dataset.prange || ""; read(); });
     $("#poReset").onclick = () => { saveSettings({ practice: { ...PO_DEFAULT } }); VIEWS.practice(); };
     confirmBtn($("#poForget"), () => { const racks = new Set(pool.map(alpha)); store.set("plearnt", [...getLearnt()].filter(a => !racks.has(a))); VIEWS.practice(); });
   };
-  return location.hash === "#practice/go" ? practicePlay(pool, o, opts, wire) : practiceSetup(pool, o, opts, wire);
+  return location.hash === "#practice/go" ? practicePlay(pool, o, main + more, wire) : practiceSetup(pool, o, main, more, wire);
 };
+const lensLabel = o => o.lens.length ? `${o.lens.join(", ")} letters` : "Any length";
 
 // practice card (full screen on a phone). The rack's tiles can be tapped into the next empty slot or dragged
 // into any slot (and along the rack to rearrange); a full row is checked straight away. Typing works too:
@@ -1837,8 +1965,8 @@ VIEWS.practice = () => {
 let pSheetOpen = false;
 function practicePlay(pool, o, opts, wire) {
   const v = $("#view"), pq = getPQ().items.length, pr = progress(pool);
-  const src = o.src.startsWith("g:") ? G(o.src.slice(2))?.name : { "my:stars": "Study list", "my:missed": "Missed in quizzes", "my:last": "Last search" }[o.src];
-  const pills = [o.len ? `${o.len} letters` : "Any length", src, o.top && `Top ${(+o.top).toLocaleString()}`, o.starOnly && "★ only", (o.from || o.to) && `Ranks ${o.from || 1}–${o.to || "all"}`, `Streak ${P.streak}`, pq && `${pq} to review`].filter(Boolean);
+  const src = o.src.startsWith("g:") ? G(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src];
+  const pills = [lensLabel(o), src, o.starOnly && "★ only", (o.from || o.to) && (+o.from > 1 ? `Most likely ${o.from}–${o.to || "all"}` : `Top ${o.to}`), `Streak ${P.streak}`, pq && `${pq} to review`].filter(Boolean);
   const top = `<div class="fc-top"><button type="button" class="ib2" id="pExit" aria-label="Leave practice">×</button><div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div>
       <span class="n" title="racks learnt">${pr.racks.toLocaleString()} / ${pr.racksAll.toLocaleString()}</span><button type="button" class="ib2 phone-only" id="pStatsBtn" aria-label="Stats">${icon('<path d="M5 20V11M12 20V4M19 20v-6"/>')}</button><button type="button" class="ib2" id="pOptBtn" aria-label="Options">${icon('<path d="M4 6h16M7 12h10M10 18h4"/>')}</button></div>
     <div class="hscroll ppills">${pills.map(p => `<button type="button" class="pill" data-popt>${esc(p)}</button>`).join("")}</div>`;
@@ -1846,7 +1974,8 @@ function practicePlay(pool, o, opts, wire) {
     + sheetHTML("pstats", `<h3>Stats<button type="button" id="pStatsDone">Done</button></h3>${practiceRail(pr, "")}`);
   const openSheet = on => { pSheetOpen = on; sheet("psheet", on); };
   const wireTop = () => {
-    $("#pExit").onclick = () => history.length > 1 ? history.back() : location.hash = "w";
+    // × leaves to the Practice page (tabs and all); the card is kept and its Continue card brings it back
+    $("#pExit").onclick = () => location.replace("#practice");
     v.querySelectorAll("#pOptBtn, [data-popt]").forEach(b => b.onclick = () => openSheet(true));
     $("#pDone").onclick = $("#psheet .scrim").onclick = () => openSheet(false);
     $("#pStatsBtn").onclick = () => sheet("pstats", true);
@@ -1858,8 +1987,12 @@ function practicePlay(pool, o, opts, wire) {
     v.innerHTML = `<div class="foc"><div class="stage">${top}<div class="fc-card"><p class="empty">${esc(poolCache.error || "No words match these options. Tap ☰ to change them.")}</p></div></div>${practiceRail(pr, "prail")}</div>` + sh;
     return wireTop();
   }
-  const w = pickPractice(pool);
-  P.want = anagrams(w); P.found = []; P.done = false; P.letters = alpha(w);
+  // the card left last time (same options) comes back with its found words, and its mark if it was marked;
+  // otherwise deal a new one
+  const cur = store.get("pcur");
+  P.done = false; P.verdict = null;
+  if (cur?.key === P.key && ANA.has(cur.letters)) { P.letters = cur.letters; P.want = anagrams(cur.letters); P.found = cur.found.filter(x => P.want.includes(x)); }
+  else { const w = pickPractice(pool); P.letters = alpha(w); P.want = anagrams(w); P.found = []; saveCard(); }
   P.review = !!getPQ().items.find(x => x.a === P.letters);
   const n = P.letters.length, kbd = phone() && store.get("pKbd", false);
   const key = k => `<kbd>${k}</kbd>`;
@@ -1869,32 +2002,33 @@ function practicePlay(pool, o, opts, wire) {
     <div class="rackbtns"><button type="button" class="btn" id="pShuf" aria-label="Shuffle" title="Shuffle (Space)">${icon(ICON_SHUF)}</button>
       <button type="button" class="btn" id="pBack" aria-label="Take back a letter" title="Take back a letter (Backspace)">${icon(ICON_BACK)}</button>
       <button type="button" class="btn phone-only ${kbd ? "on" : ""}" id="pKbd" aria-label="Type instead">${icon('<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>')}</button></div>
-    <div class="rows" id="preveal"></div>
-    <div class="thumb"><input class="qinput" id="pa" placeholder="Type the answer" autocomplete="off" autocapitalize="characters" spellcheck="false" ${kbd ? "" : "hidden"}>
+    <div class="thumb"><input class="qinput" id="pa" placeholder="Type the answer" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" ${kbd ? "" : "hidden"}>
       <div class="acts"><button type="button" class="btn mk" id="pAlt"></button><button type="button" class="btn mk" id="pMain"></button></div></div></div>
     ${practiceRail(pr, "prail")}</div>` + sh;
-  const chips = () => { $("#pchips").innerHTML = P.want.map(x => P.found.includes(x) || P.done ? `<a class="w ${P.found.includes(x) || P.verdict?.ok ? "got" : "miss"}" href="#w/${x}">${x}</a>` : `<span class="w blank">${"•".repeat(x.length)}</span>`).join(""); };
+  // while playing: a chip per word (dots until found). Once marked: the words with hooks and definitions, in the
+  // card at the top (each opens its word page; coming back finds this card as it was)
+  const chips = () => { $("#pchips").innerHTML = P.done
+    ? `<div class="rows">${P.want.map(x => quizRow(x, P.found.includes(x) || P.verdict.ok ? "got" : "miss")).join("")}</div>`
+    : P.want.map(x => P.found.includes(x) ? `<a class="w got" href="#w/${x}">${x}</a>` : `<span class="w blank">${"•".repeat(x.length)}</span>`).join(""); };
   const finish = ok => {
     P.done = true; P.verdict = { letters: P.letters, want: P.want, ok };
-    chips();
-    $("#preveal").innerHTML = P.want.map(x => quizRow(x, P.found.includes(x) || ok ? "got" : "miss")).join("");
-    marks();
-    clearTimeout(P.auto);
+    saveCard(); chips(); marks();
   };
   // before marking: ✗ | ✓. After ✓: ✗ | Next (green). After ✗: ✓ | Next (orange).
   const marks = () => {
     const v = P.done && P.verdict, a = $("#pAlt"), m = $("#pMain");
     a.className = `btn mk ${v && !v.ok ? "yes" : "no"}`; a.innerHTML = `${v && !v.ok ? "✓" : "✗"}${key("1")}`;
     a.setAttribute("aria-label", v ? (v.ok ? "Switch to didn't know" : "Switch to knew it") : "Didn't know");
-    m.className = `btn mk ${v ? (v.ok ? "yes on" : "no on") : "yes"}`; m.innerHTML = v ? `Next${key("↵")}` : `✓${key("2")}`;
+    m.className = `btn mk ${v ? (v.ok ? "yes on" : "no on") : "yes"}`; m.innerHTML = v ? `<span class="tx">Next</span>${key("↵")}` : `✓${key("2")}`;
     m.setAttribute("aria-label", v ? "Next card" : "Knew it");
   };
-  const found = x => { P.found.push(x); $("#pleft").textContent = leftText(); chips(); if (P.found.length === P.want.length) finish(true); };
+  const found = x => { P.found.push(x); saveCard(); $("#pleft").textContent = leftText(); chips(); if (P.found.length === P.want.length) finish(true); };
+  // the word that finishes the card stays in the slots
   const board = rackBoard($("#pslots"), $("#prack"), P.letters, x => {
     if (P.done) return null;
     const ok = P.want.includes(x) && !P.found.includes(x);
     if (ok) found(x);
-    return ok;
+    return ok && P.done ? "keep" : ok;
   });
   $("#pShuf").onclick = board.shuffle;
   $("#pBack").onclick = board.back;
@@ -1904,10 +2038,11 @@ function practicePlay(pool, o, opts, wire) {
     if (P.done || !P.want.includes(x) || P.found.includes(x)) return;
     ev.target.value = ""; found(x);
   });
-  $("#pa").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); P.done ? VIEWS.practice() : finish(false); } });
+  const nextCard = () => { commitPractice(); VIEWS.practice(); };
+  $("#pa").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); P.done ? nextCard() : finish(false); } });
   // a keyboard: letters place tiles, Backspace takes one back, Space shuffles, 1 is the left button, 2 or Enter the right
   document.onkeydown = e => {
-    if (pSheetOpen || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.("input, select, textarea") || !$("#prack")) return;
+    if (pSheetOpen || pkOpen || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.("input, select, textarea") || !$("#prack")) return;
     const k = e.key.toUpperCase();
     if (/^[A-Z]$/.test(k)) board.type(k);
     else if (e.key === "Backspace") board.back();
@@ -1916,8 +2051,11 @@ function practicePlay(pool, o, opts, wire) {
     else if (e.key === "2" || e.key === "Enter") { e.preventDefault(); $("#pMain").click(); }
   };
   $("#pAlt").onclick = () => finish(P.done ? !P.verdict.ok : false);
-  $("#pMain").onclick = () => P.done ? VIEWS.practice() : finish(true);
+  $("#pMain").onclick = () => P.done ? nextCard() : finish(true);
   marks(); chips(); wireTop();
+  // a card that was marked (or fully found) before leaving comes back marked
+  if (typeof cur?.ok === "boolean" && cur.key === P.key && cur.letters === P.letters) finish(cur.ok);
+  else if (P.found.length === P.want.length) finish(true);
 }
 const ICON_PLAY = '<svg viewBox="0 0 24 24" class="play" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
 const ICON_SHUF = '<path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>', ICON_BACK = '<path d="M21 5H9l-6 7 6 7h12z"/><path d="M17 9l-6 6M11 9l6 6"/>';
@@ -1941,12 +2079,13 @@ function rackBoard(slotsEl, rackEl, letters, word) {
     rt.innerHTML = rack.map(t => tile(t, slots.includes(t.i) ? "used" : "")).join("");
   };
   const flash = cls => { slotsEl.classList.remove("bad", "good"); void slotsEl.offsetWidth; if (cls) slotsEl.classList.add(cls); };
-  // a full row is checked at once: a right word stays lit for a moment, anything else shakes; then the tiles go back
+  // a full row is checked at once: a right word stays lit for a moment, anything else shakes; then the tiles go back.
+  // "keep" (the last word, which finishes the card) stays lit in the slots and the board stops taking tiles.
   const check = () => {
     if (slots.includes(null)) return;
     const ok = word(slots.map(i => byI(i).c).join(""));
-    flash(ok === true ? "good" : ok === false ? "bad" : ""); busy = true;
-    setTimeout(() => { busy = false; slots.fill(null); order = []; flash(""); draw(); }, ok ? 350 : 450);
+    flash(ok === true || ok === "keep" ? "good" : ok === false ? "bad" : ""); busy = true;
+    if (ok !== "keep") setTimeout(() => { busy = false; slots.fill(null); order = []; flash(""); draw(); }, ok ? 350 : 450);
   };
   const put = (i, s) => { slots[s] = i; order = [...order.filter(x => x !== i), i]; };
   const unput = i => { const s = slots.indexOf(i); if (s >= 0) slots[s] = null; order = order.filter(x => x !== i); };
@@ -2018,18 +2157,16 @@ function practiceRail(pr, cls) {
 }
 
 // practice setup: what to practise; Start (or the play button) goes full screen
-function practiceSetup(pool, o, opts, wire) {
-  const pr = progress(pool), last = G(store.get("lastList"));
-  const src = o.src.startsWith("g:") ? G(o.src.slice(2))?.name : { "my:stars": "Study list", "my:missed": "Missed in quizzes", "my:last": "Last search" }[o.src] || "Any word";
-  const quick = [["", "Any word"], ["my:stars", `★ Starred (${getStars().length})`], ["my:last", `Last search (${lastResults.length})`], ["my:missed", "Missed in quizzes"], ...(last && !last.special ? [["g:" + last.id, last.name]] : [])];
-  $("#view").innerHTML = `<div class="cont" id="pGo"><div class="ct"><small>${P.seen ? "Continue" : "Ready to practise"}</small><b>${esc(src)}${o.len ? ` · ${o.len} letters` : ""}</b>
+function practiceSetup(pool, o, main, more, wire) {
+  const pr = progress(pool), going = P.seen || store.get("pcur")?.key === P.key;
+  const src = o.src.startsWith("g:") ? G(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src] || "Any word";
+  $("#view").innerHTML = `<div class="cont" id="pGo"><div class="ct"><small>${going ? "Continue" : "Ready to practise"}</small><b>${esc(src)} · ${lensLabel(o).toLowerCase()}</b>
       <div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div><div class="small">${pr.racks.toLocaleString()} of ${pr.racksAll.toLocaleString()} racks learnt · ${pool.length.toLocaleString()} words</div></div>
-      <button type="button" class="go" aria-label="Start practice">${ICON_PLAY}</button></div>
-    <div class="card"><h2 class="lbl">Words from</h2><div class="chips">${quick.map(([v, n]) => `<button type="button" class="btn sm ${v === o.src ? "on" : ""}" data-psrc="${v}">${esc(n)}</button>`).join("")}</div></div>
-    ${opts}
-    <button type="button" class="btn primary block" id="pStart" ${pool.length ? "" : "disabled"}>${pool.length ? "Start practice" : "No words match these options"}</button>`;
+      <button type="button" class="go" aria-label="${going ? "Carry on practising" : "Start practice"}">${ICON_PLAY}</button></div>
+    <div class="card">${main}</div>
+    ${more}
+    <button type="button" class="btn primary block" id="pStart" ${pool.length ? "" : "disabled"}>${pool.length ? (going ? "Carry on" : "Start practice") : "No words match these options"}</button>`;
   wire();
-  $("#view").querySelectorAll("[data-psrc]").forEach(b => b.onclick = () => { const v = b.dataset.psrc; saveSettings({ practice: { ...PO_DEFAULT, src: v, len: v.startsWith("g:") ? G(v.slice(2))?.len || 0 : 0 } }); VIEWS.practice(); });
   $("#pGo").onclick = $("#pStart").onclick = () => { if (pool.length) location.hash = "practice/go"; };
 }
 
@@ -2042,20 +2179,20 @@ function addHistory(w) { const h = store.get("hist", []).filter(x => x !== w); h
 VIEWS.mine = (tab) => {
   tab ||= "stars";
   const notes = getNotes();
-  const tabs = { stars: ["Study list", getStars()], missed: ["Missed in quizzes", store.get("missed", [])], notes: ["With memory hooks", Object.keys(notes)], hist: ["Recently viewed", store.get("hist", [])] };
+  const tabs = { stars: ["Starred", getStars()], missed: ["Missed", store.get("missed", [])], notes: ["With notes", Object.keys(notes)], hist: ["Recently viewed", store.get("hist", [])] };
   $("#view").innerHTML = `<div><h3 class="title">My words</h3><p class="sub">Saved in this browser.</p></div>
     <div class="seg">${Object.entries(tabs).map(([k, [n, l]]) => `<a class="btn ${k === tab ? "on" : ""}" href="#mine/${k}">${n} (${l.length})</a>`).join("")}</div>
-    ${tab === "stars" ? `<div class="row"><button class="btn sm" id="copyList">Copy list</button><button class="btn sm" id="clearStars">Clear study list</button><span class="small" id="msg"></span></div>` : ""}
-    ${tab === "missed" ? `<div class="row"><button class="btn sm" id="clearMissed">Clear missed</button></div>` : ""}
+    ${tab === "stars" && tabs.stars[1].length ? `<div class="row"><button class="btn sm" id="copyList">Copy list</button><button class="btn sm" id="clearStars">Clear starred</button><span class="small" id="msg"></span></div>` : ""}
+    ${tab === "missed" && tabs.missed[1].length ? `<div class="row"><button class="btn sm" id="clearMissed">Clear missed</button></div>` : ""}
     <div class="card" id="mres"></div>`;
   const words = tabs[tab][1].filter(w => DICT.has(w));
   if (tab === "notes") {
-    $("#mres").innerHTML = words.length ? `<div class="rows">${words.map(w => `<div class="r" data-go="${w}"><span class="fh"></span><span class="wl">${w}</span><span class="bh"></span><span class="d">${esc(notes[w])}</span><span></span></div>`).join("")}</div>` : `<p class="empty">Write a memory hook on any word page and it shows up here.</p>`;
+    $("#mres").innerHTML = words.length ? `<div class="rows">${words.map(w => `<div class="r" data-go="${w}"><span class="fh"></span><span class="wl">${w}</span><span class="bh"></span><span class="d">${esc(notes[w])}</span><span></span></div>`).join("")}</div>` : `<p class="empty">Write notes on any word page and it shows up here.</p>`;
   } else if (words.length) results($("#mres"), words);
   else $("#mres").innerHTML = `<p class="empty">${tab === "stars" ? "Press ☆ Star on a word, or Star all on any list." : "Nothing here yet."}</p>`;
   $("#copyList")?.addEventListener("click", () => navigator.clipboard?.writeText(getStars().join("\n")).then(() => $("#msg").textContent = "Copied").catch(() => $("#msg").textContent = "Copy blocked by the browser"));
   confirmBtn($("#clearStars"), () => { store.set("stars", []); VIEWS.mine("stars"); });
-  $("#clearMissed")?.addEventListener("click", () => { store.set("missed", []); VIEWS.mine("missed"); });
+  confirmBtn($("#clearMissed"), () => { store.set("missed", []); VIEWS.mine("missed"); });
 };
 // two-press confirmation for destructive buttons
 function confirmBtn(el, fn) {
@@ -2122,7 +2259,7 @@ VIEWS.settings = () => {
     <div class="fs"><h2 class="lbl">Lexicon</h2>${LEX.html()}</div>
   </div>
   <div class="card">
-    <div class="fs"><h2 class="lbl">Your data</h2><p class="small" style="margin:0 0 10px">Study list ${getStars().length} · memory hooks ${Object.keys(getNotes()).length} · quiz records ${Object.keys(store.get("stats", {})).length}</p>
+    <div class="fs"><h2 class="lbl">Your data</h2><p class="small" style="margin:0 0 10px">Starred ${getStars().length} · notes ${Object.keys(getNotes()).length} · quiz records ${Object.keys(store.get("stats", {})).length}</p>
       <div class="row"><button class="btn sm" id="clrHist">Clear history</button><button class="btn sm" id="clrStats">Clear quiz records</button><button class="btn sm" id="clrReview">Clear practice review (${getPQ().items.length})</button><button class="btn sm" id="resetSet">Reset settings</button></div></div>
   </div>`;
   const v = $("#view");
@@ -2154,7 +2291,6 @@ VIEWS.settings = () => {
 };
 // the tile-colour preview shows the word in the search bar, else the last word viewed
 const sampleWord = () => [$("#q").value, store.get("hist", [])[0], "SCRABBLE"].map(w => (w || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 15)).find(Boolean);
-const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 
 // ---------- study: Lists, Practice and Quiz share one tab, with a switch along the top ----------
 const STUDY = ["lists", "practice", "quiz"];
@@ -2162,18 +2298,101 @@ for (const k of STUDY) {
   const f = VIEWS[k];
   VIEWS[k] = arg => {
     f(arg);
-    const top = !(k === "lists" && arg) && location.hash !== "#practice/go" && !(k === "quiz" && Q && !Q.done);
+    const top = !(k === "lists" && arg) && location.hash !== "#practice/go" && !(k === "quiz" && Q && !Q.done && !Q.paused);
     if (top && !$("#view .studyseg")) $("#view").insertAdjacentHTML("afterbegin", `<nav class="studyseg">${[["lists", "Lists"], ["practice", "Practice"], ["quiz", "Quiz"]].map(([h, n]) => `<a href="#${h}" class="${h === k ? "on" : ""}">${n}</a>`).join("")}</nav>`);
   };
 }
 
+// ---------- pickers: our own dropdown in place of every <select> ----------
+// Each select is hidden and a button showing its choice goes after it. The button opens the options as a bottom
+// sheet on a phone or a menu under the button on a computer (long lists get a filter box). Choosing sets the
+// select and fires input and change on it, so the page's own handlers work as before.
+let pkOpen = null;
+const pkLabel = sel => sel.selectedOptions[0]?.textContent || "";
+const syncPick = sel => { const b = sel?.nextElementSibling; if (b?.classList.contains("pk")) b.firstElementChild.textContent = pkLabel(sel); };
+function enhanceSelects() {
+  document.querySelectorAll("select:not([data-pk])").forEach(sel => {
+    sel.dataset.pk = "1"; sel.hidden = true;
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "pk"; b.setAttribute("aria-haspopup", "listbox");
+    b.setAttribute("aria-label", sel.labels?.[0]?.textContent || sel.getAttribute("aria-label") || "");
+    b.innerHTML = `<span>${esc(pkLabel(sel))}</span><svg viewBox="0 0 24 24" class="chev" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>`;
+    b.onclick = () => pkOpen?.sel === sel ? closePicker() : openPicker(sel, b);
+    sel.after(b);
+    sel.addEventListener("change", () => syncPick(sel));
+    // tapping the field's label opens it too
+    sel.labels?.forEach(l => l.addEventListener("click", ev => { ev.preventDefault(); b.focus(); }));
+  });
+}
+function closePicker() {
+  if (!pkOpen) return;
+  pkOpen.el.remove(); pkOpen = null;
+  document.body.classList.toggle("sheet-open", !!document.querySelector(".sheetwrap:not([hidden])"));
+}
+function openPicker(sel, btn) {
+  closePicker();
+  const opt = o => `<button type="button" class="pkopt ${o.value === sel.value ? "on" : ""}" role="option" data-v="${esc(o.value)}">${esc(o.textContent)}</button>`;
+  const list = [...sel.children].map(n => n.tagName === "OPTGROUP" ? `<div class="pksect">${esc(n.label)}</div>${[...n.children].map(opt).join("")}` : opt(n)).join("");
+  const many = sel.options.length > 14;
+  const body = `${many ? `<input class="pkfind" placeholder="Filter" aria-label="Filter" autocomplete="off" spellcheck="false">` : ""}<div class="pklist" role="listbox">${list}</div>`;
+  const el = document.createElement("div");
+  if (phone()) {
+    el.className = "sheetwrap pkwrap";
+    el.innerHTML = `<div class="scrim"></div><div class="sheet"><div class="grab"></div><h3>${esc(btn.getAttribute("aria-label"))}<button type="button" class="pkdone">Done</button></h3>${body}</div>`;
+    document.body.append(el); document.body.classList.add("sheet-open");
+    el.querySelector(".scrim").onclick = el.querySelector(".pkdone").onclick = closePicker;
+  } else {
+    el.className = "pkpop"; el.innerHTML = body;
+    document.body.append(el);
+    const r = btn.getBoundingClientRect(), h = el.offsetHeight, below = innerHeight - r.bottom;
+    el.style.minWidth = r.width + "px";
+    el.style.left = Math.max(8, Math.min(r.left, innerWidth - el.offsetWidth - 8)) + "px";
+    el.style.top = (below < h + 12 && r.top > below ? Math.max(8, r.top - h - 4) : r.bottom + 4) + "px";
+  }
+  pkOpen = { el, btn, sel };
+  el.querySelectorAll(".pkopt").forEach(o => o.onclick = () => {
+    const changed = sel.value !== o.dataset.v;
+    sel.value = o.dataset.v; closePicker(); syncPick(sel); btn.focus();
+    if (changed) { sel.dispatchEvent(new Event("input", { bubbles: true })); sel.dispatchEvent(new Event("change", { bubbles: true })); }
+  });
+  // the chosen option starts in the middle of the list
+  const on = el.querySelector(".pkopt.on"), sc = phone() ? el.querySelector(".sheet") : el.querySelector(".pklist");
+  if (on) sc.scrollTop = on.offsetTop - sc.clientHeight / 2 + on.offsetHeight / 2;
+  const find = el.querySelector(".pkfind");
+  if (find) {
+    find.oninput = () => {
+      const q = find.value.trim().toLowerCase();
+      el.querySelectorAll(".pkopt").forEach(o => o.hidden = q && !o.textContent.toLowerCase().includes(q));
+      el.querySelectorAll(".pksect").forEach(s => { let n = s.nextElementSibling, any = false; while (n && !n.classList.contains("pksect")) { any ||= !n.hidden; n = n.nextElementSibling; } s.hidden = !any; });
+    };
+    find.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); el.querySelector(".pkopt:not([hidden])")?.click(); } };
+    if (!phone()) find.focus();
+  } else if (!phone()) (on || el.querySelector(".pkopt"))?.focus();
+}
+new MutationObserver(enhanceSelects).observe(document.body, { childList: true, subtree: true });
+enhanceSelects();
+// a click outside the menu closes it; so does scrolling the page (the menu doesn't move with it)
+document.addEventListener("pointerdown", ev => { if (pkOpen && !phone() && !pkOpen.el.contains(ev.target) && !pkOpen.btn.contains(ev.target)) closePicker(); });
+window.addEventListener("scroll", () => { if (pkOpen && !phone()) closePicker(); }, { passive: true });
+// Esc closes the menu, else the top sheet (through its scrim, so a sheet that applies on close still does)
+document.addEventListener("keydown", ev => {
+  if (ev.key !== "Escape") return;
+  if (pkOpen) { const b = pkOpen.btn; closePicker(); b.focus(); return; }
+  [...document.querySelectorAll(".sheetwrap:not([hidden])")].pop()?.querySelector(".scrim")?.click();
+});
+
 // ---------- routing ----------
 function route() {
-  commitPractice();
+  closePicker();
+  scrollMem[curHash] = window.scrollY; curHash = location.hash;
   const [tab, arg] = decodeURIComponent(location.hash.slice(1)).split("/");
   const t = VIEWS[tab] ? tab : "w";
-  // Lists, Practice and Quiz share the Study tab, which goes back to whichever was used last
-  if (STUDY.includes(t)) store.set("studyLast", t);
+  // Lists, Practice and Quiz share the Study tab, which goes back to exactly where you were: the list that was
+  // open, or the practice card
+  if (STUDY.includes(t)) store.set("studyLast", location.hash.slice(1));
+  // the search bar only keeps its text on the Word and Search pages
+  if (t !== "w" && t !== "search") $("#q").value = "";
+  const fresh = searchFromBar;
   $('#tabs [data-tab="study"]').href = "#" + store.get("studyLast", "lists");
   document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === t || (a.dataset.tab === "study" && STUDY.includes(t))));
   if (t !== "quiz") document.onkeydown = null;
@@ -2184,6 +2403,9 @@ function route() {
   if (t !== "practice") pSheetOpen = false;
   VIEWS[t](arg);
   window.scrollTo({ top: 0 });
+  // lists, search and My words go back to where they were scrolled (results that build a moment later restore it themselves)
+  pendingScroll = ["lists", "search", "mine"].includes(t) && !fresh ? scrollMem[curHash] || 0 : 0;
+  restoreScroll();
 }
 window.addEventListener("hashchange", route);
 $("#form").addEventListener("submit", ev => {
@@ -2198,6 +2420,10 @@ $("#form").addEventListener("submit", ev => {
   searchFromBar = true; searchState = { ...SEARCH_DEFAULT, ...keep, ...barSearch(q) }; store.set("search", searchState);
   onSearch ? VIEWS.search() : location.hash = "search";
 });
+$("#qClear").addEventListener("click", () => { $("#q").value = ""; $("#q").focus(); });
+// a shorter hint fits the phone's narrower search box
+const qHint = () => $("#q").placeholder = phone() ? "Word or letters" : "Word, letters, ?AE or QU*";
+phoneMQ.addEventListener?.("change", qHint); qHint();
 $("#randBtn").addEventListener("click", () => {
   const lo = Math.min(SET.randMin, SET.randMax), hi = Math.max(SET.randMin, SET.randMax);
   const pool = BYLEN[lo + Math.floor(Math.random() * (hi - lo + 1))];
