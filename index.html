@@ -513,7 +513,17 @@ body.sheet-open { overflow: hidden; }
   .carow h4 button { display: none; }
   .cont, .fc-card, .rack, .rackbtns { max-width: 640px; width: 100%; margin-inline: auto; }
   /* bigger tiles so they fill the wider rack */
+  /* sized by the card column (100cqi), not the window, so the stats panel beside it can't squeeze them over */
+  .stage { container-type: inline-size; }
   .slots, .rack .tiles:not(.mini) { --sz: min(60px, calc((min(100vw, 640px) - 60px) / var(--n, 7) - 5px)); }
+  .stage .slots { --sz: min(60px, calc((min(100cqi, 640px) - 60px) / var(--n, 7) - 5px)); }
+  .stage .rack .tiles { --sz: min(58px, calc((min(100cqi, 640px) - 70px) / var(--n, 7) - 6px)); gap: 6px; }
+  .stage .rack .tile { width: var(--sz); height: var(--sz); font-size: calc(var(--sz) * .58); }
+  .stage .rack .tile sub { font-size: .66rem; right: 4px; bottom: 5px; }
+  .stage .rack { padding: 15px 8px 13px; }
+  /* spread the card, rack and buttons down the screen instead of bunching at the top; grows with the window height */
+  .foc > .stage { gap: clamp(14px, 4vh, 44px); }
+  .stage > .fc-card { padding-block: clamp(22px, 5vh, 56px); }
 }
 /* practice and quiz: the card in the middle, a stats panel on the right (underneath on narrower screens) */
 main.wrap:has(> .foc) { max-width: 1400px; }
@@ -1065,6 +1075,16 @@ const sorters = {
   score: (a, b) => score(b) - score(a) || (a < b ? -1 : 1),
   play: (a, b) => DICT.get(a).pl - DICT.get(b).pl,
 };
+// the order Quiz and Practice go through their words. Racks (alphagrams) go by their most likely or most played
+// word; probability and playability ranks count within each length, so shorter words come first
+const ORDERS = { rand: "Random", prob: "Probability", alpha: "A–Z", play: "Playability" };
+function ordered(xs, order, racks) {
+  if (!ORDERS[order] || order === "rand") return shuffle(xs);
+  if (order === "alpha") return [...xs].sort((a, b) => a < b ? -1 : 1);
+  const f = order === "prob" ? "p" : "pl", k = new Map(xs.map(x => [x, Math.min(...(racks ? ANA.get(x) : [x]).map(w => DICT.get(w)[f]))]));
+  return [...xs].sort((a, b) => a.length - b.length || k.get(a) - k.get(b));
+}
+const orderPick = (id, v) => `<div class="seg" id="${id}">${Object.entries(ORDERS).map(([k, t]) => `<button type="button" class="btn sm ${k === (v || "rand") ? "on" : ""}" data-order="${k}">${t}</button>`).join("")}</div>`;
 let lastResults = [];
 // going back to a list, search or My words puts you where you were: the scroll position, plus each results
 // list's length chips and "Show more" count (kept per page and word count, for this visit to the site)
@@ -1129,7 +1149,7 @@ function results(el, words, opts = {}) {
     el.querySelector("#defChk").onchange = e => { saveSettings({ defs: e.target.checked }); el.querySelector(".rows")?.classList.toggle("nodefs", !SET.defs); };
     el.querySelector("#moreBtn")?.addEventListener("click", () => { st.shown += +SET.pageSize; mem.shown = st.shown; draw(); });
     el.querySelector("#quizThese").onclick = () => { quizSetup.source = "last"; quizSetup.lens = []; quizSetup.starOnly = false; location.hash = "quiz"; };
-    el.querySelector("#practiceThese").onclick = () => { saveSettings({ practice: { ...PO_DEFAULT, src: "my:last", lens: [] } }); location.hash = "practice"; };
+    el.querySelector("#practiceThese").onclick = () => { saveSettings({ practice: { ...PO_DEFAULT, order: SET.practice?.order || "rand", src: "my:last", lens: [] } }); location.hash = "practice"; };
     // Star all / Unstar all for exactly the rows in view (after the length and rank filters)
     el.querySelector("#starAll").onclick = () => { const s = getStars(), inList = new Set(list); store.set("stars", allStarred ? s.filter(w => !inList.has(w)) : [...list.filter(w => !starSet.has(w)), ...s]); draw(); };
     if (first) { first = false; restoreScroll(); pendingScroll = 0; }
@@ -1564,7 +1584,7 @@ function listsHome() {
   const v = $("#view");
   v.querySelectorAll("[data-list]").forEach(b => b.onclick = () => location.hash = "lists/" + b.dataset.list);
   v.querySelectorAll("[data-all]").forEach(b => b.onclick = () => { const r = b.closest(".carow"); r.classList.toggle("all"); b.textContent = r.classList.contains("all") ? "Show less" : "See all"; });
-  v.querySelector("[data-play]")?.addEventListener("click", ev => { ev.stopPropagation(); saveSettings({ practice: { ...PO_DEFAULT, src: "g:" + last.id, lens: last.len ? [last.len] : [] } }); location.hash = "practice/go"; });
+  v.querySelector("[data-play]")?.addEventListener("click", ev => { ev.stopPropagation(); saveSettings({ practice: { ...PO_DEFAULT, order: SET.practice?.order || "rand", src: "g:" + last.id, lens: last.len ? [last.len] : [] } }); location.hash = "practice/go"; });
   const fill = x => {
     const ws = groupWords(x), [n, all] = learnt(x), pct = all ? n / all * 100 : 0;
     const c = $("#cnt_" + x.id); if (c) c.textContent = ws.length.toLocaleString() + (x.special ? " stems" : " words") + (n ? ` · ${n.toLocaleString()} learnt` : "");
@@ -1635,10 +1655,12 @@ function makePhony(w) {
   }
   return null;
 }
-function buildQuestions(words, mode, n) {
-  let src = shuffle(words.filter(w => DICT.has(w)));
-  if (mode === "anagram") { const seen = new Set(); src = src.filter(w => { const a = alpha(w); if (seen.has(a)) return false; seen.add(a); return true; }); }
+function buildQuestions(words, mode, n, order = "rand") {
+  let src = [...new Set(words.filter(w => DICT.has(w)))];
   if (mode === "def") src = src.filter(w => !DICT.get(w).d.startsWith("<"));
+  // anagrams: one question per rack (the first of its words in the list), so a rack with three words is no likelier than one with one
+  if (mode === "anagram") { const rep = new Map(); for (const w of src) if (!rep.has(alpha(w))) rep.set(alpha(w), w); src = ordered([...rep.keys()], order, true).map(a => rep.get(a)); }
+  else src = ordered(src, order);
   return src.slice(0, n).map(w => {
     if (mode === "phony" && Math.random() * 100 < SET.phony) { const p = makePhony(w); if (p) return { w, show: p, phony: true }; }
     return { w, show: w };
@@ -1663,6 +1685,7 @@ VIEWS.quiz = () => {
       ${groupOptions(quizSetup.source.replace("list:", ""), true).replace(/value="/g, 'value="list:')}</select></div>
     <div class="field wide"><span class="flabel">Length</span>${lenPick("qlens", quizSetup.lens)}</div>
     <div class="field wide"><label for="qcount">Questions</label><div class="numpick"><input id="qcount" value="${SET.qcount}" inputmode="numeric" aria-label="Number of questions">${[10, 20, 50, 100].map(n => `<button type="button" class="btn sm ${n === +SET.qcount ? "on" : ""}" data-qn="${n}">${n}</button>`).join("")}</div></div>
+    <div class="field wide"><span class="flabel">Order</span>${orderPick("qorder", quizSetup.order)}<p class="help" style="margin:6px 0 0">Playability is how often a word gets played in real games, most played first.</p></div>
     <div class="field wide"><label class="check"><input type="checkbox" id="qstar" ${quizSetup.starOnly ? "checked" : ""}> Only words I've starred</label></div>
   </div></div>
   <button type="button" class="btn primary block" id="qstart">${going ? "Start a new quiz" : "Start quiz"}</button><p class="small" id="qmsg" style="text-align:center;margin:-6px 0 0"></p>`;
@@ -1677,17 +1700,18 @@ VIEWS.quiz = () => {
   $("#view").querySelectorAll("[data-qn]").forEach(b => b.onclick = () => setCount(b.dataset.qn));
   $("#qlens").onchange = e => { quizSetup.lens = lensOf(e.target.value); store.set("quizSetup", quizSetup); count(); };
   $("#qstar").onchange = e => { quizSetup.starOnly = e.target.checked; count(); };
+  $("#view").querySelectorAll("#qorder [data-order]").forEach(b => b.onclick = () => { quizSetup.order = b.dataset.order; store.set("quizSetup", quizSetup); $("#view").querySelectorAll("#qorder [data-order]").forEach(x => x.classList.toggle("on", x === b)); });
   count();
   const begin = (qs, mode = quizSetup.mode) => { Q = { mode, qs, i: 0, right: 0, wrong: [], answered: false, done: false, start: Date.now(), res: [] }; drawQuestion(); window.scrollTo(0, 0); };
   $("#qstart").onclick = () => {
     store.set("quizSetup", quizSetup);
-    const qs = buildQuestions(sourceWords(quizSetup.source), quizSetup.mode, +SET.qcount);
+    const qs = buildQuestions(sourceWords(quizSetup.source), quizSetup.mode, +SET.qcount, quizSetup.order);
     if (!qs.length) { $("#qmsg").textContent = "No words there yet. Star some words or pick a list."; return; }
     begin(qs);
   };
   $("#qGo")?.addEventListener("click", () => { Q.paused = false; drawQuestion(); window.scrollTo(0, 0); });
   $("#qEnd")?.addEventListener("click", () => { commitQuiz(); Q.done = true; Q.answered = false; saveQ(); VIEWS.quiz(); });
-  $("#retryMissed")?.addEventListener("click", () => begin(buildQuestions(Q.wrong, Q.mode, 999), Q.mode));
+  $("#retryMissed")?.addEventListener("click", () => begin(buildQuestions(Q.wrong, Q.mode, 999, quizSetup.order), Q.mode));
 };
 function summaryHTML() {
   const n = Q.res.length;
@@ -1869,7 +1893,7 @@ const saveP = () => store.set("psess", { key: P.key, streak: P.streak, solved: P
 // ok: the card's mark once it's marked (null before)
 const saveCard = () => store.set("pcur", { key: P.key, letters: P.letters, found: P.found, ok: P.verdict ? P.verdict.ok : null });
 // practice options: where words come from + the same filters as Search
-const PO_DEFAULT = { src: "", lens: [7], top: "", starts: "", ends: "", contains: "", incl: "", excl: "", pattern: "", from: "", to: "" };
+const PO_DEFAULT = { src: "", lens: [7], top: "", starts: "", ends: "", contains: "", incl: "", excl: "", pattern: "", from: "", to: "", order: "rand" };
 // the saved options, with a single length from before the length chips turned into a list
 function practiceOpts() {
   const sp = SET.practice || {}, o = { ...PO_DEFAULT, ...sp };
@@ -1914,18 +1938,22 @@ function schedule(a, ok) {
   store.set("pq", q);
 }
 const recent = [];
-function pickPractice(pool) {
-  const q = getPQ();
-  const inPool = new Set(pool.map(alpha));
+let rackCache = { pool: null, order: "", racks: [] };
+// a due review first; otherwise a new rack (each rack as likely as any other, however many words it has),
+// either at random (now and then a learnt one) or the next one in the chosen order
+function pickPractice(pool, order = "rand") {
+  if (rackCache.pool !== pool || rackCache.order !== order) { const r = [...new Set(pool.map(alpha))]; rackCache = { pool, order, racks: order === "rand" ? r : ordered(r, order, true) }; }
+  const q = getPQ(), racks = rackCache.racks, inPool = new Set(racks);
   const due = q.items.filter(x => x.due <= q.n && inPool.has(x.a) && !recent.includes(x.a)).sort((a, b) => a.due - b.due)[0];
-  let w = due ? anagrams(due.a)[0] : null;
+  let a = due ? due.a : null;
   // new racks first; racks waiting in the review queue come back through the queue instead
   const L = getLearnt(), queued = new Set(q.items.map(x => x.a));
-  const fresh = pool.filter(c => !L.has(alpha(c)) && !queued.has(alpha(c)));
-  const from = fresh.length && Math.random() < 0.85 ? fresh : pool;
-  for (let t = 0; !w && t < 30; t++) { const c = from[Math.floor(Math.random() * from.length)]; if (!recent.includes(alpha(c)) || t === 29) w = c; }
-  recent.unshift(alpha(w)); recent.length = Math.min(recent.length, Math.min(20, Math.floor(pool.length / 2)));
-  return w;
+  const fresh = racks.filter(c => !L.has(c) && !queued.has(c) && !recent.includes(c));
+  if (!a && order !== "rand") a = fresh[0];
+  const from = fresh.length && Math.random() < 0.85 ? fresh : racks;
+  for (let t = 0; !a && t < 30; t++) { const c = from[Math.floor(Math.random() * from.length)]; if (!recent.includes(c) || t === 29) a = c; }
+  recent.unshift(a); recent.length = Math.min(recent.length, Math.min(20, Math.floor(racks.length / 2)));
+  return ANA.get(a)[0];
 }
 // a practice mark is saved only on Next (or when the options change under a marked card). Until then the marked
 // card stays as it is, so opening a word from it and coming back finds it unchanged.
@@ -1953,6 +1981,7 @@ VIEWS.practice = () => {
           <optgroup label="Mine"><option value="my:stars" ${o.src === "my:stars" ? "selected" : ""}>Starred words (${getStars().length})</option><option value="my:missed" ${o.src === "my:missed" ? "selected" : ""}>Missed words (${store.get("missed", []).length})</option><option value="my:last" ${o.src === "my:last" ? "selected" : ""}>Last search results (${lastResults.length})</option></optgroup>
           ${groupOptions(o.src.startsWith("g:") ? o.src.slice(2) : "").replace(/value="/g, 'value="g:')}</select></div>
         <div class="field wide"><span class="flabel">Length</span>${lenPick("po_lens", o.lens)}</div>
+        <div class="field wide"><span class="flabel">Order</span>${orderPick("po_order", o.order)}<p class="help" style="margin:6px 0 0">Random or in order, new racks first; missed racks still come back for review. Playability is how often a word gets played in real games.</p></div>
       </div>`;
   const more = `
     <details class="card" id="pOpts" ${open ? "open" : ""}><summary class="lbl" style="cursor:pointer;margin:0">More options · ${pool.length.toLocaleString()} words in play</summary>
@@ -1972,9 +2001,11 @@ VIEWS.practice = () => {
       </div>
 
     </details>`;
+  const wireOrder = () => $("#view").querySelectorAll("#po_order [data-order]").forEach(b => b.onclick = () => { saveSettings({ practice: { ...o, order: b.dataset.order } }); VIEWS.practice(); });
   const wire = () => {
     // only the setup page's folding box remembers being open (the copy in the sheet is always open)
     if (!$("#pOpts").closest(".sheet")) $("#pOpts").addEventListener("toggle", e => store.set("pOpen", e.target.open));
+    wireOrder();
     $("#po_star").onchange = e => { saveSettings({ practice: { ...o, starOnly: e.target.checked } }); VIEWS.practice(); };
     const read = () => { const n = { ...o }; for (const k of ["src", "starts", "ends", "contains", "incl", "excl", "pattern", "from", "to"]) n[k] = $("#po_" + k).value.trim(); n.lens = lensOf($("#po_lens").value); saveSettings({ practice: n }); VIEWS.practice(); };
     // picking a list picks its usual length too
@@ -1995,7 +2026,7 @@ let pSheetOpen = false;
 function practicePlay(pool, o, opts, wire) {
   const v = $("#view"), pq = getPQ().items.length, pr = progress(pool);
   const src = o.src.startsWith("g:") ? G(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src];
-  const pills = [lensLabel(o), src, o.starOnly && "★ only", (o.from || o.to) && (+o.from > 1 ? `Most likely ${o.from}–${o.to || "all"}` : `Top ${o.to}`), `Streak ${P.streak}`, pq && `${pq} to review`].filter(Boolean);
+  const pills = [lensLabel(o), src, o.order !== "rand" && ORDERS[o.order] + " order", o.starOnly && "★ only", (o.from || o.to) && (+o.from > 1 ? `Most likely ${o.from}–${o.to || "all"}` : `Top ${o.to}`), `Streak ${P.streak}`, pq && `${pq} to review`].filter(Boolean);
   const top = `<div class="fc-top"><button type="button" class="ib2" id="pExit" aria-label="Leave practice">×</button><div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div>
       <span class="n" title="racks learnt">${pr.racks.toLocaleString()} / ${pr.racksAll.toLocaleString()}</span><button type="button" class="ib2 phone-only" id="pStatsBtn" aria-label="Stats">${icon('<path d="M5 20V11M12 20V4M19 20v-6"/>')}</button><button type="button" class="ib2" id="pOptBtn" aria-label="Options">${icon('<path d="M4 6h16M7 12h10M10 18h4"/>')}</button></div>
     <div class="hscroll ppills">${pills.map(p => `<button type="button" class="pill" data-popt>${esc(p)}</button>`).join("")}</div>`;
@@ -2021,7 +2052,7 @@ function practicePlay(pool, o, opts, wire) {
   const cur = store.get("pcur");
   P.done = false; P.verdict = null;
   if (cur?.key === P.key && ANA.has(cur.letters)) { P.letters = cur.letters; P.want = anagrams(cur.letters); P.found = cur.found.filter(x => P.want.includes(x)); }
-  else { const w = pickPractice(pool); P.letters = alpha(w); P.want = anagrams(w); P.found = []; saveCard(); }
+  else { const w = pickPractice(pool, o.order); P.letters = alpha(w); P.want = anagrams(w); P.found = []; saveCard(); }
   P.review = !!getPQ().items.find(x => x.a === P.letters);
   const n = P.letters.length, kbd = phone() && store.get("pKbd", false);
   const key = k => `<kbd>${k}</kbd>`;
