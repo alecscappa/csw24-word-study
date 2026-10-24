@@ -18,7 +18,7 @@ const srt=w=>w.split('').sort().join('');
 const S=o=>runSearch({...SEARCH_DEFAULT,...o});
 
 // 1. data matches the database
-const rows=db.prepare('select word,definition d,front_hooks fh,back_hooks bh,lexicon_symbols sym,probability_order0 p from words').all();
+const rows=db.prepare('select word,definition d,front_hooks fh,back_hooks bh,lexicon_symbols sym,probability_order2 p from words').all();
 ok('word count', rows.length===DICT.size, rows.length+' vs '+DICT.size);
 let bad=0; for(const r of rows){const e=DICT.get(r.word); if(!e||e.d!==(r.d||'')||e.fh!==(r.fh||'').replace(/[+]/g,'')||e.bh!==(r.bh||'').replace(/[+]/g,'')||e.fhNew+e.bhNew!==((r.fh||'')+'|'+(r.bh||'')).split('|').map(h=>(h.match(/[a-z](?=[+])/g)||[]).join('')).join('')||e.n!==(r.sym==='+')||e.p!==r.p) bad++;} ok('every row matches DB',bad===0,bad+' mismatched');
 // 2. hooks recomputed from the word list itself

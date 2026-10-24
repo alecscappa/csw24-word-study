@@ -440,6 +440,12 @@ body.sheet-open { overflow: hidden; }
 .fc-card .q { font: 600 .82rem var(--mono); color: var(--muted); margin: 14px 0 0; }
 .found { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 12px; }
 .found > .rows { width: 100%; text-align: left; padding: 0 6px; }
+.stems { margin: 14px 6px 0; padding: 12px 6px 4px; border-top: 1px solid var(--line); text-align: left; }
+.stems .lbl { display: flex; justify-content: space-between; margin: 0 0 6px; }
+.stemrow { display: flex; align-items: center; gap: 4px; }
+.stemrow p { flex: 1; margin: 0; line-height: 1.7; }
+.stemrow .ib2:disabled { opacity: .3; cursor: default; }
+.stems .al { font: 700 1.05rem var(--display); letter-spacing: .08em; }
 .found .w.blank { color: var(--muted); border-style: dashed; background: none; letter-spacing: .1em; cursor: default; opacity: .6; }
 .rack { padding: 14px 6px 12px; border-radius: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--tile-edge) 72%, #000), color-mix(in srgb, var(--tile-edge) 50%, #000)); box-shadow: inset 0 2px 0 rgb(255 255 255 / .2), 0 6px 14px -4px rgb(0 0 0 / .4); }
 .rack .tiles { justify-content: center; gap: 5px; flex-wrap: nowrap; }
@@ -506,6 +512,8 @@ body.sheet-open { overflow: hidden; }
   .carow .hscroll { flex-wrap: wrap; overflow: visible; }
   .carow h4 button { display: none; }
   .cont, .fc-card, .rack, .rackbtns { max-width: 640px; width: 100%; margin-inline: auto; }
+  /* bigger tiles so they fill the wider rack */
+  .slots, .rack .tiles:not(.mini) { --sz: min(60px, calc((min(100vw, 640px) - 60px) / var(--n, 7) - 5px)); }
 }
 /* practice and quiz: the card in the middle, a stats panel on the right (underneath on narrower screens) */
 main.wrap:has(> .foc) { max-width: 1400px; }
@@ -1767,6 +1775,7 @@ function drawQuestion() {
     else if (board && ev.key === "Backspace") board.back();
     else if (board && ev.key === " ") { ev.preventDefault(); board.shuffle(); }
     else if (board && ev.key === "Enter" && ev.target === document.body) { ev.preventDefault(); Q.answered ? next() : check(); }
+    else if (Q.answered && /^Arrow(Left|Right)$/.test(ev.key)) { if (stepStems(ev.key === "ArrowLeft" ? -1 : 1)) ev.preventDefault(); }
     else if (ev.key === "1") $("#qAlt")?.click();
     else if (ev.key === "2") $("#qMain")?.click();
   };
@@ -1811,7 +1820,7 @@ function check(ans, force) {
   Q.answered = true;
   // the mark is only saved on Next, so the left button can still switch it
   $("#qfb").innerHTML = `<p class="fb" id="qverdict" style="margin:12px 0 6px"></p><div class="words" style="align-items:center;justify-content:center">${reveal}</div>
-    ${mode === "anagram" ? "" : `<p class="small" style="margin:8px 0 0">${esc(e.d)}</p>`}`;
+    ${mode === "anagram" ? stemsHTML(alpha(q.w)) : `<p class="small" style="margin:8px 0 0">${esc(e.d)}</p>`}`;
   const mark = Q.mark = v => { Q.ok = v; rest(v); $("#qverdict").className = "fb " + (v ? "ok" : "no"); $("#qverdict").textContent = v ? "Correct" : "Not quite"; Q.marks(); saveQ(); };
   mark(ok);
   $("#qthumb").hidden = false;
@@ -1826,6 +1835,26 @@ function commitQuiz() {
 }
 // a result row for the quiz and practice, marked ✓ or ✗; it opens the word page (the question waits as it was)
 const quizRow = (w, cls) => rowHTML(w).replace('class="r"', `class="r ${cls}"`).replace('<span class="wl">', `<span class="wl">${cls === "got" ? "✓ " : "✗ "}`);
+// 8-letter racks: the 7-letter bingo racks inside them (one tile taken out), most likely first.
+// Shown under the answers once a card is marked; ‹ › or the arrow keys step through them.
+function stemsOf(letters) {
+  if (letters.length !== 8) return [];
+  const best = ws => Math.min(...ws.map(w => DICT.get(w).p)), out = [];
+  for (const c of new Set(letters)) { const s = letters.replace(c, ""); if (ANA.has(s)) out.push({ s, c, words: ANA.get(s) }); }
+  return out.sort((a, b) => best(a.words) - best(b.words));
+}
+function stemsHTML(letters, i = 0) {
+  const all = stemsOf(letters);
+  if (letters.length !== 8) return "";
+  if (!all.length) return `<div class="stems"><p class="lbl">Bingo stems</p><p class="small" style="margin:0 0 8px">No 7-letter bingo inside these tiles.</p></div>`;
+  const k = (i + all.length) % all.length, st = all[k], eights = ANA.get(letters);
+  return `<div class="stems" data-letters="${letters}" data-i="${k}"><p class="lbl"><span>Bingo stems</span><span>${k + 1} of ${all.length}</span></p>
+    <div class="stemrow"><button type="button" class="ib2" data-stem="-1" aria-label="Previous stem" ${all.length > 1 ? "" : "disabled"}>‹</button>
+      <p><b class="al">${st.s}</b> is ${st.words.map(chip).join(" ")} · add <b class="al">${st.c}</b> to make ${eights.map(chip).join(" ")}</p>
+      <button type="button" class="ib2" data-stem="1" aria-label="Next stem" ${all.length > 1 ? "" : "disabled"}>›</button></div></div>`;
+}
+const stepStems = d => { const b = document.querySelector(".stems[data-letters]"); if (b) b.outerHTML = stemsHTML(b.dataset.letters, +b.dataset.i + d); return !!b; };
+document.addEventListener("click", ev => { const b = ev.target.closest("[data-stem]"); if (b) stepStems(+b.dataset.stem); });
 function next() {
   commitQuiz();
   Q.i++; Q.answered = false;
@@ -2008,7 +2037,7 @@ function practicePlay(pool, o, opts, wire) {
   // while playing: a chip per word (dots until found). Once marked: the words with hooks and definitions, in the
   // card at the top (each opens its word page; coming back finds this card as it was)
   const chips = () => { $("#pchips").innerHTML = P.done
-    ? `<div class="rows">${P.want.map(x => quizRow(x, P.found.includes(x) || P.verdict.ok ? "got" : "miss")).join("")}</div>`
+    ? `<div class="rows">${P.want.map(x => quizRow(x, P.found.includes(x) || P.verdict.ok ? "got" : "miss")).join("")}</div>${stemsHTML(P.letters)}`
     : P.want.map(x => P.found.includes(x) ? `<a class="w got" href="#w/${x}">${x}</a>` : `<span class="w blank">${"•".repeat(x.length)}</span>`).join(""); };
   const finish = ok => {
     P.done = true; P.verdict = { letters: P.letters, want: P.want, ok };
@@ -2047,6 +2076,7 @@ function practicePlay(pool, o, opts, wire) {
     if (/^[A-Z]$/.test(k)) board.type(k);
     else if (e.key === "Backspace") board.back();
     else if (e.key === " ") { e.preventDefault(); board.shuffle(); }
+    else if (P.done && /^Arrow(Left|Right)$/.test(e.key)) { if (stepStems(e.key === "ArrowLeft" ? -1 : 1)) e.preventDefault(); }
     else if (e.key === "1") $("#pAlt").click();
     else if (e.key === "2" || e.key === "Enter") { e.preventDefault(); $("#pMain").click(); }
   };
