@@ -955,6 +955,33 @@ for (const line of window.CSW_TSV.split("\n")) {
   (BYLEN[w.length] ||= []).push(w);
 }
 window.CSW_TSV = null;
+// probability ranks are worked out here from the tiles, whatever the file says: the number of ways to draw the word
+// from a full bag, counting the two blanks (as Zyzzyva does by default). Most ways is #1 in each length; ties go by
+// alphagram, then the word, which gives exactly Zyzzyva's order
+const BAG = { A: 9, B: 2, C: 2, D: 4, E: 12, F: 2, G: 3, H: 2, I: 9, J: 1, K: 1, L: 4, M: 2, N: 6, O: 8, P: 2, Q: 1, R: 6, S: 4, T: 6, U: 4, V: 2, W: 2, X: 1, Y: 2, Z: 1 };
+const CHOOSE = [...Array(13)].map((_, n) => [...Array(n + 1)].map((_, k) => { let r = 1; for (let i = 0; i < k; i++) r = r * (n - i) / (i + 1); return r; }));
+// a = an alphagram. ways[b] counts draws with b blanks standing in for letters so far; each run of k of the same
+// letter is drawn k - u times from the bag and covered by u blanks. The two blanks can be picked 1, 2 or 1 ways
+function draws(a) {
+  let ways = [1, 0, 0];
+  for (let i = 0; i < a.length;) {
+    let j = i; while (a[j] === a[i]) j++;
+    const k = j - i, row = CHOOSE[BAG[a[i]]], next = [0, 0, 0];
+    for (let b = 0; b < 3; b++) if (ways[b]) for (let u = 0; u <= Math.min(k, 2 - b); u++) next[b + u] += ways[b] * (row[k - u] || 0);
+    ways = next; i = j;
+  }
+  return ways[0] + 2 * ways[1] + ways[2];
+}
+{
+  // anagrams share their tiles, so it's worked out once per rack; racks are ranked, then each rack's words in A–Z order
+  const racks = {};
+  for (const [a, ws] of ANA) (racks[a.length] ||= []).push({ a, ws, n: draws(a) });
+  for (const rs of Object.values(racks)) {
+    let i = 0;
+    rs.sort((x, y) => y.n - x.n || (x.a < y.a ? -1 : 1));
+    for (const r of rs) for (const w of [...r.ws].sort()) DICT.get(w).p = ++i;
+  }
+}
 const ALL = [...DICT.keys()];
 
 const anagrams = w => ANA.get(alpha(w)) || [];

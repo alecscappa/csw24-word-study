@@ -8,7 +8,7 @@ db = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser("~/Zyzzyva/lexicon
 con = sqlite3.connect(db)
 rows = con.execute(
     "select word, coalesce(definition,''), coalesce(front_hooks,''), coalesce(back_hooks,''),"
-    " coalesce(lexicon_symbols,''), probability_order2, playability_order, point_value"
+    " coalesce(lexicon_symbols,''), probability_order0, playability_order, point_value"
     " from words order by word"
 )
 lines = []
