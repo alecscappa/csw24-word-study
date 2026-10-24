@@ -240,6 +240,10 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .numpick::-webkit-scrollbar { display: none; }
 .numpick input { width: 5em; text-align: center; flex: none; }
 .numpick .btn { flex: none; }
+/* Most likely words: never scrolls; on a narrow screen "or 1 to all" drops under the buttons in one piece */
+.numpick.likely { flex-wrap: wrap; overflow: visible; row-gap: 8px; }
+.likely .lkr { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.likely input { width: 4em; }
 /* length chips: any number can be on; none on means any length */
 .lenpick { flex-wrap: wrap; }
 /* pickers: our own dropdown in place of each <select> */
@@ -1077,14 +1081,21 @@ const sorters = {
 };
 // the order Quiz and Practice go through their words. Racks (alphagrams) go by their most likely or most played
 // word; probability and playability ranks count within each length, so shorter words come first
-const ORDERS = { rand: "Random", prob: "Probability", alpha: "A–Z", play: "Playability" };
-function ordered(xs, order, racks) {
+// Anagrams puts racks with the most words first (then by probability); rev turns any order but Random round
+const ORDERS = { rand: "Random", prob: "Probability", alpha: "A–Z", play: "Playability", ana: "Anagrams" };
+function ordered(xs, order, racks, rev) {
   if (!ORDERS[order] || order === "rand") return shuffle(xs);
-  if (order === "alpha") return [...xs].sort((a, b) => a < b ? -1 : 1);
-  const f = order === "prob" ? "p" : "pl", k = new Map(xs.map(x => [x, Math.min(...(racks ? ANA.get(x) : [x]).map(w => DICT.get(w)[f]))]));
-  return [...xs].sort((a, b) => a.length - b.length || k.get(a) - k.get(b));
+  let out;
+  if (order === "alpha") out = [...xs].sort((a, b) => a < b ? -1 : 1);
+  else {
+    const best = (x, f) => Math.min(...(racks ? ANA.get(x) : [x]).map(w => DICT.get(w)[f]));
+    const k = new Map(xs.map(x => [x, order === "ana" ? best(x, "p") - (racks ? ANA.get(x) : anagrams(x)).length * 1e7 : best(x, order === "prob" ? "p" : "pl")]));
+    out = [...xs].sort((a, b) => (order === "ana" ? 0 : a.length - b.length) || k.get(a) - k.get(b));
+  }
+  return rev ? out.reverse() : out;
 }
-const orderPick = (id, v) => `<div class="seg" id="${id}">${Object.entries(ORDERS).map(([k, t]) => `<button type="button" class="btn sm ${k === (v || "rand") ? "on" : ""}" data-order="${k}">${t}</button>`).join("")}</div>`;
+const orderText = (order, rev) => `${ORDERS[order] || ORDERS.rand} order${rev && order !== "rand" ? ", reversed" : ""}`;
+const orderPick = (id, v, rev) => `<div class="seg" id="${id}">${Object.entries(ORDERS).map(([k, t]) => `<button type="button" class="btn sm ${k === (v || "rand") ? "on" : ""}" data-order="${k}">${t}</button>`).join("")}<button type="button" class="btn sm ${rev && v !== "rand" ? "on" : ""}" data-rev aria-pressed="${!!rev}" ${!v || v === "rand" ? "disabled" : ""}>⇅ Reverse</button></div>`;
 let lastResults = [];
 // going back to a list, search or My words puts you where you were: the scroll position, plus each results
 // list's length chips and "Show more" count (kept per page and word count, for this visit to the site)
@@ -1119,12 +1130,13 @@ function results(el, words, opts = {}) {
         <button class="btn sm" id="starAll">${allStarred ? "Unstar all" : "Star all"}</button></div>
       </div>
       <div class="row rangebar">
-        <span class="small">Show words</span>
+        <span class="small">Show</span>
+        <button class="btn sm ${ranged ? "" : "on"}" data-top="0">All</button>
+        ${[30, 50, 100].map(n => `<button class="btn sm ${st.from <= 1 && st.to === n ? "on" : ""}" data-top="${n}">${n}</button>`).join("")}
+        <span class="small">or</span>
         <input id="rFrom" inputmode="numeric" placeholder="1" value="${st.from || ""}" aria-label="From rank">
         <span class="small">to</span>
         <input id="rTo" inputmode="numeric" placeholder="all" value="${st.to || ""}" aria-label="To rank">
-        ${[30, 50, 100].map(n => `<button class="btn sm ${st.from <= 1 && st.to === n ? "on" : ""}" data-top="${n}">Top ${n}</button>`).join("")}
-        <button class="btn sm ${ranged ? "" : "on"}" data-top="0">All</button>
         <span class="small">in ${SORTS[SET.sort] || "Probability"} order</span>
       </div>
       ${lens.length > 1 ? `<div class="chips" style="margin:10px 0 6px"><button class="btn sm ${st.lens.size ? "" : "on"}" data-len="0">All lengths</button>${lens.map(n => `<button class="btn sm ${st.lens.has(n) ? "on" : ""}" data-len="${n}">${n}</button>`).join("")}</div>` : ""}
@@ -1149,7 +1161,7 @@ function results(el, words, opts = {}) {
     el.querySelector("#defChk").onchange = e => { saveSettings({ defs: e.target.checked }); el.querySelector(".rows")?.classList.toggle("nodefs", !SET.defs); };
     el.querySelector("#moreBtn")?.addEventListener("click", () => { st.shown += +SET.pageSize; mem.shown = st.shown; draw(); });
     el.querySelector("#quizThese").onclick = () => { quizSetup.source = "last"; quizSetup.lens = []; quizSetup.starOnly = false; location.hash = "quiz"; };
-    el.querySelector("#practiceThese").onclick = () => { saveSettings({ practice: { ...PO_DEFAULT, order: SET.practice?.order || "rand", src: "my:last", lens: [] } }); location.hash = "practice"; };
+    el.querySelector("#practiceThese").onclick = () => { saveSettings({ practice: { ...PO_DEFAULT, order: SET.practice?.order || "rand", rev: !!SET.practice?.rev, src: "my:last", lens: [] } }); location.hash = "practice"; };
     // Star all / Unstar all for exactly the rows in view (after the length and rank filters)
     el.querySelector("#starAll").onclick = () => { const s = getStars(), inList = new Set(list); store.set("stars", allStarred ? s.filter(w => !inList.has(w)) : [...list.filter(w => !starSet.has(w)), ...s]); draw(); };
     if (first) { first = false; restoreScroll(); pendingScroll = 0; }
@@ -1306,8 +1318,9 @@ async function fetchOnline(w) {
 
 // ---------- search ----------
 // lens = the lengths picked with the chips; min and max are still understood (Practice uses them) but not shown
-const SEARCH_DEFAULT = { pattern: "", rack: "", mode: "exact", lens: "", min: "", max: "", starts: "", ends: "", contains: "", incl: "", excl: "", def: "", group: "", top: "", from: "", to: "" };
+const SEARCH_DEFAULT = { pattern: "", rack: "", mode: "exact", lens: "", min: "", max: "", starts: "", ends: "", contains: "", incl: "", excl: "", def: "", group: "", anas: "", pfrom: "", pto: "", from: "", to: "" };
 let searchState = Object.fromEntries(Object.keys(SEARCH_DEFAULT).map(k => [k, store.get("search", {})[k] ?? SEARCH_DEFAULT[k]]));
+if (store.get("search", {}).top && !searchState.pto) searchState.pto = store.get("search", {}).top;
 if (!G(searchState.group) || G(searchState.group).special) searchState.group = "";
 // a search saved before the length chips: its shortest–longest becomes those lengths
 if (searchState.min || searchState.max) { searchState.lens ||= range(+searchState.min || 2, +searchState.max || 15).join(","); searchState.min = searchState.max = ""; }
@@ -1344,7 +1357,7 @@ function runSearch(s) {
   const incl = counts(letters(s.incl)), excl = new Set(letters(s.excl));
   const def = (s.def || "").trim().toLowerCase();
   const group = s.group ? G(s.group) : null;
-  const top = +s.top || 0;
+  const ar = anaRange(s.anas);
   const rl = rack.replace(/\?/g, ""), rb = rack.length - rl.length, rc = counts(rl);
   const masks = rack && rb ? new Map() : null;
   const pool = rack && s.mode === "exact" ? BYLEN[rack.length] || [] : group ? groupWords(group) : ALL;
@@ -1358,7 +1371,7 @@ function runSearch(s) {
     if (re && !re.test(w)) continue;
     if (excl.size && [...w].some(c => excl.has(c))) continue;
     const e = DICT.get(w);
-    if (top && e.p > top) continue;
+    if (ar) { const n = ANA.get(alpha(w)).length; if (n < ar[0] || n > ar[1]) continue; }
     if (group && !group.test(w, e)) continue;
     if (Object.keys(incl).length) { const wc = counts(w); if (Object.entries(incl).some(([c, n]) => (wc[c] || 0) < n)) continue; }
     if (rack) {
@@ -1369,20 +1382,35 @@ function runSearch(s) {
     if (def && !e.d.toLowerCase().includes(def)) continue;
     out.push(w);
   }
-  return { words: out, masks };
+  return { words: likelyRange(out, s.pfrom, s.pto), masks };
 }
 
-// probability: type how many of the most likely words to keep, or pick one of the usual amounts
-const TOPS = [50, 100, 250, 500, 1000];
-const topField = (id, v) => `<div class="field wide"><label for="${id}">Probability</label><div class="numpick"><input id="${id}" value="${esc(v || "")}" placeholder="all" inputmode="numeric" aria-label="Only this many of the most likely words">${TOPS.map(n => `<button type="button" class="btn sm ${+v === n ? "on" : ""}" data-top="${id}" data-n="${n}">${n.toLocaleString()}</button>`).join("")}</div></div>`;
-const markTop = el => el.parentNode.querySelectorAll("[data-n]").forEach(b => b.classList.toggle("on", +b.dataset.n === +el.value));
+// "Most likely words" (Search and Practice): All, a usual amount, or ranks from–to, all on one line.
+// Ranks count in probability order within each length of the words found, so 100 with 7s and 8s keeps the top 100 of each
+const LIKELY = [30, 50, 100, 500];
+const likelyField = (pre, from, to) => `<div class="field wide"><span class="flabel">Most likely words</span><div class="numpick likely">
+    <button type="button" class="btn sm ${+from > 1 || +to ? "" : "on"}" data-lk="0">All</button>${LIKELY.map(n => `<button type="button" class="btn sm ${!(+from > 1) && +to === n ? "on" : ""}" data-lk="${n}">${n}</button>`).join("")}
+    <span class="lkr"><span class="small">or</span><input id="${pre}from" value="${esc(from || "")}" placeholder="1" inputmode="numeric" aria-label="From rank"><span class="small">to</span><input id="${pre}to" value="${esc(to || "")}" placeholder="all" inputmode="numeric" aria-label="To rank"></span></div></div>`;
+const paintLikely = box => { const [f, t] = box.querySelectorAll("input"); box.querySelectorAll("[data-lk]").forEach(b => b.classList.toggle("on", +b.dataset.lk ? !(+f.value > 1) && +t.value === +b.dataset.lk : !(+f.value > 1) && !+t.value)); };
 document.addEventListener("click", ev => {
-  const b = ev.target.closest("[data-top][data-n]"); if (!b) return;
-  // tapping the amount that's already picked clears it back to all words
-  const el = $("#" + b.dataset.top); el.value = +el.value === +b.dataset.n ? "" : b.dataset.n; markTop(el);
-  el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true }));
+  const b = ev.target.closest(".likely [data-lk]"); if (!b) return;
+  const box = b.closest(".likely"), [f, t] = box.querySelectorAll("input");
+  f.value = ""; t.value = +b.dataset.lk || ""; paintLikely(box);
+  t.dispatchEvent(new Event("input", { bubbles: true })); box.dispatchEvent(new Event("likely", { bubbles: true }));
 });
-document.addEventListener("input", ev => { if (ev.target.matches?.("#s_top, #po_top")) markTop(ev.target); });
+document.addEventListener("input", ev => { const box = ev.target.closest?.(".likely"); if (box) paintLikely(box); });
+function likelyRange(words, from, to) {
+  from = parseInt(from) || 0; to = parseInt(to) || 0;
+  if (from && to && to < from) [from, to] = [to, from];
+  if (!(from > 1 || to)) return words;
+  const by = {}; for (const w of words) (by[w.length] ||= []).push(w);
+  const keep = new Set(Object.values(by).flatMap(ws => ws.sort(sorters.prob).slice(Math.max(1, from) - 1, to || undefined)));
+  return words.filter(w => keep.has(w));
+}
+const likelyText = (from, to) => +from > 1 ? `Ranks ${from}–${to || "all"}` : +to ? `${to} most likely` : "";
+// anagrams: how many words the rack makes, typed as 3, 2-4 or 5+
+const anaRange = v => { const m = String(v || "").match(/^\s*(\d+)\s*(?:([-–]\s*(\d+))|(\+))?\s*$/); if (!m) return null; const lo = +m[1], hi = m[4] ? Infinity : m[3] ? +m[3] : lo; return lo > hi ? [hi, lo] : [lo, hi]; };
+const anaText = v => { const r = anaRange(v); return r ? `${r[1] === Infinity ? r[0] + "+" : r[0] === r[1] ? r[0] : r[0] + "–" + r[1]} anagram${r[0] === 1 && r[1] === 1 ? "" : "s"}` : ""; };
 // the two search sections' fields (letters come from the top bar), shared by the folding form and the phone's sheets
 function searchSecs(s) {
   const f = (id, label, p, hint = "", cls = "") => `<div class="field"><label for="s_${id}">${label}</label><input id="s_${id}" class="${cls}" value="${esc(s[id])}" placeholder="${p}" spellcheck="false" autocorrect="off" autocapitalize="${cls ? "none" : "characters"}">${hint ? `<span class="hint">${hint}</span>` : ""}</div>`;
@@ -1396,14 +1424,15 @@ function searchSecs(s) {
         ${f("def", "Definition contains", "e.g. fish", "", "lc")}
         ${f("starts", "Starts with", "e.g. UN")}
         ${f("ends", "Ends with", "e.g. ZA")}
-        ${f("contains", "Contains", "e.g. QI")}
+        ${f("contains", "Contains in a row", "e.g. QI")}
         ${f("incl", "Must include", "e.g. VV")}
         ${f("excl", "Must exclude", "e.g. AEIOU")}
-        ${topField("s_top", s.top)}
+        ${f("anas", "Anagrams", "e.g. 3, 2-4 or 5+")}
+        ${likelyField("s_p", s.pfrom, s.pto)}
       </div>`,
   };
 }
-const SEARCH_SECS = { group: ["Group and length", ["group", "lens"]], narrow: ["Filters", ["def", "starts", "ends", "contains", "incl", "excl", "top"]] };
+const SEARCH_SECS = { group: ["Group and length", ["group", "lens"]], narrow: ["Filters", ["def", "starts", "ends", "contains", "incl", "excl", "anas", "pfrom", "pto"]] };
 VIEWS.search = () => {
   if (phone()) return searchPhone();
   const s = searchState, secs = searchSecs(s);
@@ -1473,7 +1502,7 @@ function accSummary(key) {
     group: [G(s.group)?.name, lensText(s.lens)],
     letters: [s.pattern && patLabel(s.pattern), s.rack && `rack ${up(s.rack)}`],
     narrow: [s.def && `“${s.def}”`, s.starts && `${up(s.starts)}…`, s.ends && `…${up(s.ends)}`, s.contains && `has ${up(s.contains)}`,
-      s.incl && `uses ${up(s.incl)}`, s.excl && `no ${up(s.excl)}`, s.top && `top ${(+s.top).toLocaleString()}`],
+      s.incl && `uses ${up(s.incl)}`, s.excl && `no ${up(s.excl)}`, anaText(s.anas).toLowerCase(), likelyText(s.pfrom, s.pto).toLowerCase()],
   }[key];
   return parts.filter(Boolean).join(" · ");
 }
@@ -1497,7 +1526,7 @@ function searchPhone() {
     ["group", G(s.group)?.name, ["group"]], ["narrow", s.def && `“${s.def}”`, ["def"]],
     ["bar", s.pattern && patLabel(s.pattern), ["pattern"]], ["bar", s.rack && `Rack ${up(s.rack)}${s.mode === "build" ? " · subanagram" : s.mode === "super" ? " · superanagram" : ""}`, ["rack", "mode"]],
     ["group", lensText(s.lens), ["lens"]], ["narrow", s.starts && `${up(s.starts)}…`, ["starts"]], ["narrow", s.ends && `…${up(s.ends)}`, ["ends"]],
-    ["narrow", s.contains && `Has ${up(s.contains)}`, ["contains"]], ["narrow", s.incl && `Uses ${up(s.incl)}`, ["incl"]], ["narrow", s.excl && `No ${up(s.excl)}`, ["excl"]], ["narrow", s.top && `Top ${(+s.top).toLocaleString()}`, ["top"]],
+    ["narrow", s.contains && `Has ${up(s.contains)}`, ["contains"]], ["narrow", s.incl && `Uses ${up(s.incl)}`, ["incl"]], ["narrow", s.excl && `No ${up(s.excl)}`, ["excl"]], ["narrow", anaText(s.anas), ["anas"]], ["narrow", likelyText(s.pfrom, s.pto), ["pfrom", "pto"]],
   ].filter(c => c[1]);
   const secs = searchSecs(s);
   $("#view").innerHTML = `<div class="filterbar"><div class="hscroll">
@@ -1528,7 +1557,7 @@ function searchPhone() {
   $("#sClear")?.addEventListener("click", () => { searchState = { ...SEARCH_DEFAULT }; store.set("search", searchState); searchPhone(); });
   v.querySelectorAll("[data-reset]").forEach(b => b.onclick = () => {
     for (const k of SEARCH_SECS[b.dataset.reset][1]) { const el = $("#s_" + k); if (el) el.value = SEARCH_DEFAULT[k]; }
-    $("#groupHint").textContent = G($("#s_group").value)?.blurb || ""; syncPick($("#s_group")); v.querySelectorAll(".lenpick").forEach(paintLens); markTop($("#s_top")); read(); count();
+    $("#groupHint").textContent = G($("#s_group").value)?.blurb || ""; syncPick($("#s_group")); v.querySelectorAll(".lenpick").forEach(paintLens); v.querySelectorAll(".likely").forEach(paintLikely); read(); count();
   });
   $("#sform").addEventListener("input", () => { read(); count(); });
   $("#s_group").onchange = e => { $("#groupHint").textContent = G(e.target.value)?.blurb || ""; read(); count(); };
@@ -1584,7 +1613,7 @@ function listsHome() {
   const v = $("#view");
   v.querySelectorAll("[data-list]").forEach(b => b.onclick = () => location.hash = "lists/" + b.dataset.list);
   v.querySelectorAll("[data-all]").forEach(b => b.onclick = () => { const r = b.closest(".carow"); r.classList.toggle("all"); b.textContent = r.classList.contains("all") ? "Show less" : "See all"; });
-  v.querySelector("[data-play]")?.addEventListener("click", ev => { ev.stopPropagation(); saveSettings({ practice: { ...PO_DEFAULT, order: SET.practice?.order || "rand", src: "g:" + last.id, lens: last.len ? [last.len] : [] } }); location.hash = "practice/go"; });
+  v.querySelector("[data-play]")?.addEventListener("click", ev => { ev.stopPropagation(); saveSettings({ practice: { ...PO_DEFAULT, order: SET.practice?.order || "rand", rev: !!SET.practice?.rev, src: "g:" + last.id, lens: last.len ? [last.len] : [] } }); location.hash = "practice/go"; });
   const fill = x => {
     const ws = groupWords(x), [n, all] = learnt(x), pct = all ? n / all * 100 : 0;
     const c = $("#cnt_" + x.id); if (c) c.textContent = ws.length.toLocaleString() + (x.special ? " stems" : " words") + (n ? ` · ${n.toLocaleString()} learnt` : "");
@@ -1655,12 +1684,12 @@ function makePhony(w) {
   }
   return null;
 }
-function buildQuestions(words, mode, n, order = "rand") {
+function buildQuestions(words, mode, n, order = "rand", rev = false) {
   let src = [...new Set(words.filter(w => DICT.has(w)))];
   if (mode === "def") src = src.filter(w => !DICT.get(w).d.startsWith("<"));
   // anagrams: one question per rack (the first of its words in the list), so a rack with three words is no likelier than one with one
-  if (mode === "anagram") { const rep = new Map(); for (const w of src) if (!rep.has(alpha(w))) rep.set(alpha(w), w); src = ordered([...rep.keys()], order, true).map(a => rep.get(a)); }
-  else src = ordered(src, order);
+  if (mode === "anagram") { const rep = new Map(); for (const w of src) if (!rep.has(alpha(w))) rep.set(alpha(w), w); src = ordered([...rep.keys()], order, true, rev).map(a => rep.get(a)); }
+  else src = ordered(src, order, false, rev);
   return src.slice(0, n).map(w => {
     if (mode === "phony" && Math.random() * 100 < SET.phony) { const p = makePhony(w); if (p) return { w, show: p, phony: true }; }
     return { w, show: w };
@@ -1685,7 +1714,7 @@ VIEWS.quiz = () => {
       ${groupOptions(quizSetup.source.replace("list:", ""), true).replace(/value="/g, 'value="list:')}</select></div>
     <div class="field wide"><span class="flabel">Length</span>${lenPick("qlens", quizSetup.lens)}</div>
     <div class="field wide"><label for="qcount">Questions</label><div class="numpick"><input id="qcount" value="${SET.qcount}" inputmode="numeric" aria-label="Number of questions">${[10, 20, 50, 100].map(n => `<button type="button" class="btn sm ${n === +SET.qcount ? "on" : ""}" data-qn="${n}">${n}</button>`).join("")}</div></div>
-    <div class="field wide"><span class="flabel">Order</span>${orderPick("qorder", quizSetup.order)}<p class="help" style="margin:6px 0 0">Playability is how often a word gets played in real games, most played first.</p></div>
+    <div class="field wide"><span class="flabel">Order</span>${orderPick("qorder", quizSetup.order, quizSetup.rev)}</div>
     <div class="field wide"><label class="check"><input type="checkbox" id="qstar" ${quizSetup.starOnly ? "checked" : ""}> Only words I've starred</label></div>
   </div></div>
   <button type="button" class="btn primary block" id="qstart">${going ? "Start a new quiz" : "Start quiz"}</button><p class="small" id="qmsg" style="text-align:center;margin:-6px 0 0"></p>`;
@@ -1700,18 +1729,22 @@ VIEWS.quiz = () => {
   $("#view").querySelectorAll("[data-qn]").forEach(b => b.onclick = () => setCount(b.dataset.qn));
   $("#qlens").onchange = e => { quizSetup.lens = lensOf(e.target.value); store.set("quizSetup", quizSetup); count(); };
   $("#qstar").onchange = e => { quizSetup.starOnly = e.target.checked; count(); };
-  $("#view").querySelectorAll("#qorder [data-order]").forEach(b => b.onclick = () => { quizSetup.order = b.dataset.order; store.set("quizSetup", quizSetup); $("#view").querySelectorAll("#qorder [data-order]").forEach(x => x.classList.toggle("on", x === b)); });
+  const wireQOrder = () => {
+    $("#view").querySelectorAll("#qorder [data-order]").forEach(b => b.onclick = () => { quizSetup.order = b.dataset.order; store.set("quizSetup", quizSetup); $("#qorder").outerHTML = orderPick("qorder", quizSetup.order, quizSetup.rev); wireQOrder(); });
+    $("#view").querySelectorAll("#qorder [data-rev]").forEach(b => b.onclick = () => { quizSetup.rev = !quizSetup.rev; store.set("quizSetup", quizSetup); $("#qorder").outerHTML = orderPick("qorder", quizSetup.order, quizSetup.rev); wireQOrder(); });
+  };
+  wireQOrder();
   count();
   const begin = (qs, mode = quizSetup.mode) => { Q = { mode, qs, i: 0, right: 0, wrong: [], answered: false, done: false, start: Date.now(), res: [] }; drawQuestion(); window.scrollTo(0, 0); };
   $("#qstart").onclick = () => {
     store.set("quizSetup", quizSetup);
-    const qs = buildQuestions(sourceWords(quizSetup.source), quizSetup.mode, +SET.qcount, quizSetup.order);
+    const qs = buildQuestions(sourceWords(quizSetup.source), quizSetup.mode, +SET.qcount, quizSetup.order, quizSetup.rev);
     if (!qs.length) { $("#qmsg").textContent = "No words there yet. Star some words or pick a list."; return; }
     begin(qs);
   };
   $("#qGo")?.addEventListener("click", () => { Q.paused = false; drawQuestion(); window.scrollTo(0, 0); });
   $("#qEnd")?.addEventListener("click", () => { commitQuiz(); Q.done = true; Q.answered = false; saveQ(); VIEWS.quiz(); });
-  $("#retryMissed")?.addEventListener("click", () => begin(buildQuestions(Q.wrong, Q.mode, 999, quizSetup.order), Q.mode));
+  $("#retryMissed")?.addEventListener("click", () => begin(buildQuestions(Q.wrong, Q.mode, 999, quizSetup.order, quizSetup.rev), Q.mode));
 };
 function summaryHTML() {
   const n = Q.res.length;
@@ -1893,7 +1926,7 @@ const saveP = () => store.set("psess", { key: P.key, streak: P.streak, solved: P
 // ok: the card's mark once it's marked (null before)
 const saveCard = () => store.set("pcur", { key: P.key, letters: P.letters, found: P.found, ok: P.verdict ? P.verdict.ok : null });
 // practice options: where words come from + the same filters as Search
-const PO_DEFAULT = { src: "", lens: [7], top: "", starts: "", ends: "", contains: "", incl: "", excl: "", pattern: "", from: "", to: "", order: "rand" };
+const PO_DEFAULT = { src: "", lens: [7], top: "", starts: "", ends: "", contains: "", incl: "", excl: "", pattern: "", from: "", to: "", anas: "", order: "rand", rev: false };
 // the saved options, with a single length from before the length chips turned into a list
 function practiceOpts() {
   const sp = SET.practice || {}, o = { ...PO_DEFAULT, ...sp };
@@ -1908,15 +1941,13 @@ function practicePool(o) {
   const key = JSON.stringify(o) + (o.src.startsWith("my:") || o.starOnly ? getStars().length + ":" + store.get("missed", []).length + ":" + lastResults.length : "");
   if (poolCache.key === key) return poolCache.pool;
   const g = o.src.startsWith("g:") ? o.src.slice(2) : "";
-  const r = runSearch({ ...SEARCH_DEFAULT, group: g, lens: o.lens.join(","), top: o.top, starts: o.starts, ends: o.ends, contains: o.contains, incl: o.incl, excl: o.excl, pattern: o.pattern });
+  const r = runSearch({ ...SEARCH_DEFAULT, group: g, lens: o.lens.join(","), starts: o.starts, ends: o.ends, contains: o.contains, incl: o.incl, excl: o.excl, pattern: o.pattern, anas: o.anas });
   let pool = r.words || [];
   const mine = { "my:stars": getStars(), "my:missed": store.get("missed", []), "my:last": lastResults }[o.src];
   if (mine) { const set = new Set(mine); pool = pool.filter(w => set.has(w)); }
   if (o.starOnly) { const set = new Set(getStars()); pool = pool.filter(w => set.has(w)); }
-  // optional rank range, counted in probability order (e.g. ranks 1–50 or 30–80)
-  let from = parseInt(o.from) || 0, to = parseInt(o.to) || 0;
-  if (from && to && to < from) [from, to] = [to, from];
-  if (from > 1 || to) pool = [...pool].sort(sorters.prob).slice(Math.max(1, from) - 1, to || undefined);
+  // optional rank range, counted in probability order within each length (e.g. ranks 1–50 or 30–80)
+  pool = likelyRange(pool, o.from, o.to);
   return (poolCache = { key, pool, error: r.error }).pool;
 }
 const leftText = () => { const n = P.want.length, f = P.found.length; return n === 1 ? (f ? "Found it" : "1 word") : `${n} words · ${f} found · ${n - f} left`; };
@@ -1938,11 +1969,11 @@ function schedule(a, ok) {
   store.set("pq", q);
 }
 const recent = [];
-let rackCache = { pool: null, order: "", racks: [] };
+let rackCache = { pool: null, order: "", rev: false, racks: [] };
 // a due review first; otherwise a new rack (each rack as likely as any other, however many words it has),
 // either at random (now and then a learnt one) or the next one in the chosen order
-function pickPractice(pool, order = "rand") {
-  if (rackCache.pool !== pool || rackCache.order !== order) { const r = [...new Set(pool.map(alpha))]; rackCache = { pool, order, racks: order === "rand" ? r : ordered(r, order, true) }; }
+function pickPractice(pool, order = "rand", rev = false) {
+  if (rackCache.pool !== pool || rackCache.order !== order || rackCache.rev !== rev) { const r = [...new Set(pool.map(alpha))]; rackCache = { pool, order, rev, racks: order === "rand" ? r : ordered(r, order, true, rev) }; }
   const q = getPQ(), racks = rackCache.racks, inPool = new Set(racks);
   const due = q.items.filter(x => x.due <= q.n && inPool.has(x.a) && !recent.includes(x.a)).sort((a, b) => a.due - b.due)[0];
   let a = due ? due.a : null;
@@ -1981,37 +2012,36 @@ VIEWS.practice = () => {
           <optgroup label="Mine"><option value="my:stars" ${o.src === "my:stars" ? "selected" : ""}>Starred words (${getStars().length})</option><option value="my:missed" ${o.src === "my:missed" ? "selected" : ""}>Missed words (${store.get("missed", []).length})</option><option value="my:last" ${o.src === "my:last" ? "selected" : ""}>Last search results (${lastResults.length})</option></optgroup>
           ${groupOptions(o.src.startsWith("g:") ? o.src.slice(2) : "").replace(/value="/g, 'value="g:')}</select></div>
         <div class="field wide"><span class="flabel">Length</span>${lenPick("po_lens", o.lens)}</div>
-        <div class="field wide"><span class="flabel">Order</span>${orderPick("po_order", o.order)}<p class="help" style="margin:6px 0 0">Random or in order, new racks first; missed racks still come back for review. Playability is how often a word gets played in real games.</p></div>
+        <div class="field wide"><span class="flabel">Order</span>${orderPick("po_order", o.order, o.rev)}</div>
       </div>`;
   const more = `
     <details class="card" id="pOpts" ${open ? "open" : ""}><summary class="lbl" style="cursor:pointer;margin:0">More options · ${pool.length.toLocaleString()} words in play</summary>
       <div class="form" style="margin-top:12px">
-        ${tf("starts", "Starts with", "e.g. UN")}${tf("ends", "Ends with", "e.g. ING")}${tf("contains", "Contains", "e.g. QI")}
+        ${tf("starts", "Starts with", "e.g. UN")}${tf("ends", "Ends with", "e.g. ING")}${tf("contains", "Contains in a row", "e.g. QI")}
         <div class="field"><span class="flabel">Starred</span><label class="check"><input type="checkbox" id="po_star" ${o.starOnly ? "checked" : ""}> Only words I've starred</label></div>
         ${tf("incl", "Must include", "e.g. Z")}${tf("excl", "Must exclude", "e.g. S")}${tf("pattern", "Pattern", "e.g. .A.E*")}
+        ${tf("anas", "Anagrams", "e.g. 3, 2-4 or 5+")}
       </div>
-      <div class="field" style="margin-top:14px"><span class="flabel">Probability</span>
-        <div class="numpick">${[30, 50, 100, 500].map(n => `<button type="button" class="btn sm ${!(+o.from > 1) && +o.to === n ? "on" : ""}" data-prange="${n}">Top ${n}</button>`).join("")}<button type="button" class="btn sm ${o.from || o.to ? "" : "on"}" data-prange="0">All</button></div>
-        <div class="row rangebar" style="margin-top:6px"><span class="small">or the most likely from</span>
-          <input id="po_from" value="${esc(o.from)}" placeholder="1" inputmode="numeric" aria-label="From">
-          <span class="small">to</span>
-          <input id="po_to" value="${esc(o.to)}" placeholder="all" inputmode="numeric" aria-label="To"></div></div>
+      <div style="margin-top:14px">${likelyField("po_", o.from, o.to)}</div>
       <div class="row" style="margin-top:16px">
         <span style="margin-left:auto"></span><button class="btn sm" id="poApply">Apply</button><button class="btn sm" id="poReset">Reset options</button><button class="btn sm" id="poForget">Reset learnt for these words</button>
       </div>
 
     </details>`;
-  const wireOrder = () => $("#view").querySelectorAll("#po_order [data-order]").forEach(b => b.onclick = () => { saveSettings({ practice: { ...o, order: b.dataset.order } }); VIEWS.practice(); });
+  const wireOrder = () => {
+    $("#view").querySelectorAll("#po_order [data-order]").forEach(b => b.onclick = () => { saveSettings({ practice: { ...o, order: b.dataset.order } }); VIEWS.practice(); });
+    $("#view").querySelectorAll("#po_order [data-rev]").forEach(b => b.onclick = () => { saveSettings({ practice: { ...o, rev: !o.rev } }); VIEWS.practice(); });
+  };
   const wire = () => {
     // only the setup page's folding box remembers being open (the copy in the sheet is always open)
     if (!$("#pOpts").closest(".sheet")) $("#pOpts").addEventListener("toggle", e => store.set("pOpen", e.target.open));
     wireOrder();
     $("#po_star").onchange = e => { saveSettings({ practice: { ...o, starOnly: e.target.checked } }); VIEWS.practice(); };
-    const read = () => { const n = { ...o }; for (const k of ["src", "starts", "ends", "contains", "incl", "excl", "pattern", "from", "to"]) n[k] = $("#po_" + k).value.trim(); n.lens = lensOf($("#po_lens").value); saveSettings({ practice: n }); VIEWS.practice(); };
+    const read = () => { const n = { ...o }; for (const k of ["src", "starts", "ends", "contains", "incl", "excl", "pattern", "anas", "from", "to"]) n[k] = $("#po_" + k).value.trim(); n.lens = lensOf($("#po_lens").value); saveSettings({ practice: n }); VIEWS.practice(); };
     // picking a list picks its usual length too
     $("#po_src").onchange = () => { const v = $("#po_src").value; if (v) $("#po_lens").value = v.startsWith("g:") ? G(v.slice(2))?.len || "" : ""; read(); }; $("#po_lens").onchange = read; $("#poApply").onclick = read;
     $("#pOpts").querySelectorAll("input").forEach(i => i.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); read(); } });
-    $("#view").querySelectorAll("[data-prange]").forEach(b => b.onclick = () => { $("#po_from").value = ""; $("#po_to").value = +b.dataset.prange || ""; read(); });
+    $("#pOpts .likely").addEventListener("likely", read); paintLikely($("#pOpts .likely"));
     $("#poReset").onclick = () => { saveSettings({ practice: { ...PO_DEFAULT } }); VIEWS.practice(); };
     confirmBtn($("#poForget"), () => { const racks = new Set(pool.map(alpha)); store.set("plearnt", [...getLearnt()].filter(a => !racks.has(a))); VIEWS.practice(); });
   };
@@ -2026,7 +2056,7 @@ let pSheetOpen = false;
 function practicePlay(pool, o, opts, wire) {
   const v = $("#view"), pq = getPQ().items.length, pr = progress(pool);
   const src = o.src.startsWith("g:") ? G(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src];
-  const pills = [lensLabel(o), src, o.order !== "rand" && ORDERS[o.order] + " order", o.starOnly && "★ only", (o.from || o.to) && (+o.from > 1 ? `Most likely ${o.from}–${o.to || "all"}` : `Top ${o.to}`), `Streak ${P.streak}`, pq && `${pq} to review`].filter(Boolean);
+  const pills = [lensLabel(o), src, o.order !== "rand" && orderText(o.order, o.rev), o.starOnly && "★ only", likelyText(o.from, o.to), anaText(o.anas), `Streak ${P.streak}`, pq && `${pq} to review`].filter(Boolean);
   const top = `<div class="fc-top"><button type="button" class="ib2" id="pExit" aria-label="Leave practice">×</button><div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div>
       <span class="n" title="racks learnt">${pr.racks.toLocaleString()} / ${pr.racksAll.toLocaleString()}</span><button type="button" class="ib2 phone-only" id="pStatsBtn" aria-label="Stats">${icon('<path d="M5 20V11M12 20V4M19 20v-6"/>')}</button><button type="button" class="ib2" id="pOptBtn" aria-label="Options">${icon('<path d="M4 6h16M7 12h10M10 18h4"/>')}</button></div>
     <div class="hscroll ppills">${pills.map(p => `<button type="button" class="pill" data-popt>${esc(p)}</button>`).join("")}</div>`;
@@ -2052,7 +2082,7 @@ function practicePlay(pool, o, opts, wire) {
   const cur = store.get("pcur");
   P.done = false; P.verdict = null;
   if (cur?.key === P.key && ANA.has(cur.letters)) { P.letters = cur.letters; P.want = anagrams(cur.letters); P.found = cur.found.filter(x => P.want.includes(x)); }
-  else { const w = pickPractice(pool, o.order); P.letters = alpha(w); P.want = anagrams(w); P.found = []; saveCard(); }
+  else { const w = pickPractice(pool, o.order, !!o.rev); P.letters = alpha(w); P.want = anagrams(w); P.found = []; saveCard(); }
   P.review = !!getPQ().items.find(x => x.a === P.letters);
   const n = P.letters.length, kbd = phone() && store.get("pKbd", false);
   const key = k => `<kbd>${k}</kbd>`;
