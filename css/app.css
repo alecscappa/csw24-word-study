@@ -127,7 +127,7 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .r .wl { font: 700 1rem var(--mono); letter-spacing: .04em; }
 .r .wl mark { background: none; color: var(--accent); }
 .r .d { color: var(--muted); font-size: .93rem; min-width: 0; }
-.r .meta { font: .72rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.r .meta { font: .72rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rows.nodefs .d, .rows.noprob .meta { display: none; }
 .rows.noprob .r { grid-template-columns: 4.5em max-content 4.5em minmax(0,1fr) auto; }
 .rows.nohooks .fh, .rows.nohooks .bh { visibility: hidden; }

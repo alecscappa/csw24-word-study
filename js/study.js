@@ -761,13 +761,16 @@ function practiceOpts() {
   return o;
 }
 let poolCache = { key: "", pool: [] };
+// practice on "Last search results" keeps the results it started with: a later search doesn't change it
+const practiceLast = () => store.get("pLast", null) ?? lastResults;
+const keepLast = () => store.set("pLast", [...lastResults]);
 function practicePool(o) {
-  const key = JSON.stringify(o) + (o.src.startsWith("my:") || o.starOnly ? getStars().length + ":" + store.get("missed", []).length + ":" + lastResults.length : "");
+  const key = JSON.stringify(o) + (o.src.startsWith("my:") || o.starOnly ? getStars().length + ":" + store.get("missed", []).length + ":" + practiceLast().length : "");
   if (poolCache.key === key) return poolCache.pool;
   const g = o.src.startsWith("g:") ? o.src.slice(2) : "";
   const r = runSearch({ ...SEARCH_DEFAULT, group: g, lens: o.lens.join(","), starts: o.starts, ends: o.ends, contains: o.contains, incl: o.incl, excl: o.excl, pattern: o.pattern, anas: o.anas });
   let pool = r.words || [];
-  const mine = { "my:stars": getStars(), "my:missed": store.get("missed", []), "my:last": lastResults }[o.src];
+  const mine = { "my:stars": getStars(), "my:missed": store.get("missed", []), "my:last": practiceLast() }[o.src];
   if (mine) { const set = new Set(mine); pool = pool.filter(w => set.has(w)); }
   if (o.starOnly) { const set = new Set(getStars()); pool = pool.filter(w => set.has(w)); }
   // optional rank range, counted in probability order within each length (e.g. ranks 1–50 or 30–80)
@@ -833,7 +836,7 @@ VIEWS.practice = () => {
   // main: where the words come from and their lengths (always in view); more: the rest, folded on the setup page
   const main = `<div class="form">
         <div class="field wide"><label for="po_src">Words from</label><select id="po_src"><option value="">Any word</option>
-          <optgroup label="Mine"><option value="my:stars" ${o.src === "my:stars" ? "selected" : ""}>Starred words (${getStars().length})</option><option value="my:missed" ${o.src === "my:missed" ? "selected" : ""}>Missed words (${store.get("missed", []).length})</option><option value="my:last" ${o.src === "my:last" ? "selected" : ""}>Last search results (${lastResults.length})</option></optgroup>
+          <optgroup label="Mine"><option value="my:stars" ${o.src === "my:stars" ? "selected" : ""}>Starred words (${getStars().length})</option><option value="my:missed" ${o.src === "my:missed" ? "selected" : ""}>Missed words (${store.get("missed", []).length})</option><option value="my:last" ${o.src === "my:last" ? "selected" : ""}>Last search results (${o.src === "my:last" ? practiceLast().length : lastResults.length})</option></optgroup>
           ${groupOptions(o.src.startsWith("g:") ? o.src.slice(2) : "").replace(/value="/g, 'value="g:')}</select></div>
         <div class="field wide"><span class="flabel">Length</span>${lenPick("po_lens", o.lens)}</div>
         <div class="field wide"><span class="flabel">Order</span>${orderPick("po_order", o.order, o.rev)}</div>
@@ -863,7 +866,7 @@ VIEWS.practice = () => {
     $("#po_star").onchange = e => { saveSettings({ practice: { ...o, starOnly: e.target.checked } }); VIEWS.practice(); };
     const read = () => { const n = { ...o }; for (const k of ["src", "starts", "ends", "contains", "incl", "excl", "pattern", "anas", "from", "to"]) n[k] = $("#po_" + k).value.trim(); n.lens = lensOf($("#po_lens").value); saveSettings({ practice: n }); VIEWS.practice(); };
     // picking a list picks its usual length too
-    $("#po_src").onchange = () => { const v = $("#po_src").value; if (v) $("#po_lens").value = v.startsWith("g:") ? groupOf(v.slice(2))?.len || "" : ""; read(); }; $("#po_lens").onchange = read; $("#poApply").onclick = read;
+    $("#po_src").onchange = () => { const v = $("#po_src").value; if (v === "my:last") keepLast(); if (v) $("#po_lens").value = v.startsWith("g:") ? groupOf(v.slice(2))?.len || "" : ""; read(); }; $("#po_lens").onchange = read; $("#poApply").onclick = read;
     $("#pOpts").querySelectorAll("input").forEach(i => i.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); read(); } });
     $("#pOpts .likely").addEventListener("likely", read); paintLikely($("#pOpts .likely"));
     $("#poReset").onclick = () => { saveSettings({ practice: { ...PO_DEFAULT } }); VIEWS.practice(); };
