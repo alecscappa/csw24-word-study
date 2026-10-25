@@ -1087,6 +1087,9 @@ const THEME_GROUPS = [
   ["Warm", ["cherry", "terracotta", "autumn", "desert", "lemon", "parchment", "solar"]],
   ["Dark and bold", ["charcoal", "neon"]],
 ];
+// every theme in its group, with any not listed above under Other (the board's theme picker)
+const bThemeGroups = () => { const grouped = new Set(THEME_GROUPS.flatMap(g => g[1]));
+  return [...THEME_GROUPS, ["Other", Object.keys(THEMES).filter(id => !grouped.has(id))]].map(([g, ids]) => [g, ids.filter(id => THEMES[id])]).filter(([, ids]) => ids.length); };
 // each theme's own tiles, matched to its colours (Board green and High contrast keep theirs); a touch darker in dark mode
 const THEME_TILES = { cocoa: "#e8c48a", vanilla: "#dfe5c4", parchment: "#f3e7c6", blush: "#f6c9cf", oat: "#d9d3a0", tournament: "#f7efd8", ocean: "#bfe0ef",
   plum: "#dcc6e8", midnight: "#f2cf72", paper: "#ffffff", forest: "#c9dbb2", emerald: "#f2cf72", mint: "#c4f0dc", teal: "#ffc2b0", sky: "#cfe8fb",
