@@ -64,6 +64,7 @@ const rgb2hex = c => "#" + c.map(v => Math.round(Math.max(0, Math.min(255, v))).
 const mix = (a, b, t) => { const x = hex2rgb(a), y = hex2rgb(b); return rgb2hex(x.map((v, i) => v + (y[i] - v) * t)); };
 const lum = h => { const [r, g, b] = hex2rgb(h).map(v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
 const inkOn = h => lum(h) > .36 ? "#161410" : "#ffffff";
+const ratioOf = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
 function hsl(h, s, l) {
   s /= 100; l /= 100;
   const f = n => { const k = (n + h / 30) % 12; return 255 * (l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1))); };
@@ -226,6 +227,8 @@ function tokensFor(dark) {
   if (tc) Object.assign(tok, tileTok(tc));
   if (SET.headCustom) { const h = dark ? mix(SET.headCustom, "#000000", .3) : SET.headCustom; Object.assign(tok, { head: h, "head-ink": inkOn(h) }); }
   if (SET.accentCustom) { const a = dark ? mix(SET.accentCustom, "#ffffff", .2) : SET.accentCustom; Object.assign(tok, { accent: a, "on-accent": inkOn(a) }); }
+  // text on the main buttons: if the theme's own colour is hard to read on its accent, near-black or white instead
+  if (ratioOf(tok["on-accent"], tok.accent) < 4.5) tok["on-accent"] = ["#161410", "#ffffff"].reduce((b, c) => ratioOf(c, tok.accent) > ratioOf(b, tok.accent) ? c : b, tok["on-accent"]);
   return tok;
 }
 function applySettings() {
