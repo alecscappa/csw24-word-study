@@ -74,7 +74,8 @@ function ENGINE() {
     for (let i = 0; i < 225; i++) { const ch = board[i]; if (ch && ch !== ".") { const u = ch.toUpperCase(); L[i] = u.charCodeAt(0) - 65; B[i] = ch !== u ? 1 : 0; } }
     return { L, B };
   }
-  function genAll(board, rack) {
+  // seen(score, tiles placed, rack counts left), when given, hears of each play as it's found and nothing is listed
+  function genAll(board, rack, seenPlay) {
     const { L, B } = parse(board);
     const empty = !L.some(x => x >= 0);
     const rc = new Int8Array(27);
@@ -113,6 +114,7 @@ function ENGINE() {
       // single tiles turn up both ways round, so each play is kept once
       const record = (start, end, main, wm, crossSum) => {
         const score = main * wm + crossSum + (np === 7 ? 50 : 0);
+        if (seenPlay) return seenPlay(score, np, rc);
         const tiles = [];
         for (let k = 0; k < np; k++) tiles.push([at(pS[k]), pL[k], pB[k]]);
         tiles.sort((a, b) => a[0] - b[0]);
@@ -228,6 +230,29 @@ function ENGINE() {
     ms.sort((a, b) => b.eq - a.eq || b.score - a.score);
     return ms;
   }
+  // the play moves(...)[0] would pick, for a look-ahead's reply: the same weighing and order (plays, then exchanges,
+  // then a pass; ties go to the higher score, then the first found), without making, sorting or naming every play
+  function bestMove(board, rack, bag, unseen = "") {
+    const m = { score: 0, leave: "" }, opp = bag ? "" : unseen;
+    let best = null, bestEq = -Infinity;
+    const take = (score, lv, eq) => { if (eq > bestEq || (eq === bestEq && score > best.score)) { bestEq = eq; best = { score, leave: lv }; } };
+    genAll(board, rack, (score, n, rc) => {
+      let lv = "";
+      for (let k = 0; k < 27; k++) for (let j = 0; j < rc[k]; j++) lv += k === 26 ? "?" : String.fromCharCode(65 + k);
+      m.score = score; m.leave = lv; take(score, lv, equityOf(m, bag, opp));
+    });
+    if (bag >= 7) {
+      const r = [...rack].sort(), seenX = new Set();
+      for (let mask = 0; mask < (1 << r.length) - 1; mask++) {
+        let keep = "";
+        for (let k = 0; k < r.length; k++) if (mask >>> k & 1) keep += r[k];
+        if (seenX.has(keep)) continue; seenX.add(keep);
+        take(0, keep, leave(keep) - 1.5);
+      }
+    }
+    take(0, rack, bag > 0 ? leave(rack) - 30 : -2 * pts(rack) - 12);
+    return best;
+  }
   // tiles nobody has seen: a full bag less the board and the rack
   function unseenOf(board, rack) {
     const n = [...BAGN, BLANKS];
@@ -247,7 +272,7 @@ function ENGINE() {
       cands.forEach((m, ci) => {
         if (m.pass || m.exch) {
           // after an exchange or a pass the board doesn't change, so the reply is the same
-          const opp = deal.slice(0, 7), best = moves(board, opp, Math.max(0, bag - 7), "")[0];
+          const opp = deal.slice(0, 7), best = bestMove(board, opp, Math.max(0, bag - 7), "");
           tally[ci].sum += m.eq - (best ? best.score + (bag > 7 ? leave(best.leave) * .3 : 0) : 0); tally[ci].n++;
           return;
         }
@@ -255,7 +280,7 @@ function ENGINE() {
         const draw = Math.min(m.n, bag), opp = deal.slice(draw, draw + 7);
         if (!opp) { tally[ci].sum += m.eq; tally[ci].n++; return; }
         const nb = put(board, m), left = Math.max(0, bag - draw - opp.length);
-        const best = moves(nb, opp, left, m.leave + deal.slice(0, draw))[0];
+        const best = bestMove(nb, opp, left, m.leave + deal.slice(0, draw));
         tally[ci].sum += m.eq - (best ? best.score + (left > 0 ? leave(best.leave) * .3 : 0) : 0); tally[ci].n++;
       });
       yield { it: it + 1, vals: tally.map(t => t.n ? t.sum / t.n : 0) };
@@ -319,6 +344,6 @@ function ENGINE() {
       reply({ error: "unknown request" });
     } catch (e) { reply({ error: String(e && e.stack || e) }); }
   }
-  return { load, isWord, moves, simulate, leave, unseenOf, put, rackLeft, genAll, puzzle, serve, VAL };
+  return { load, isWord, moves, bestMove, simulate, leave, unseenOf, put, rackLeft, genAll, puzzle, serve, VAL };
 }
 if (typeof module !== "undefined") module.exports = ENGINE();
