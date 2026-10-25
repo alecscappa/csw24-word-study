@@ -1044,3 +1044,20 @@ main.wrap:has(> .foc) { max-width: 1400px; }
   .rvgrid .bside .rvturncard { order: -1; }
   .rvtophd .lbl .small { display: none; }
 }
+
+/* hooks and patterns (Quiz and Practice): the word's tiles with dashed gaps, letter boxes, and the answer marked */
+.tiles.gapt { justify-content: center; flex-wrap: nowrap; margin: 4px 0 14px; }
+.tile.gap { background: transparent; color: var(--muted); box-shadow: none; border: 2px dashed color-mix(in srgb, var(--muted) 60%, transparent); background-image: none; animation: none; }
+.tile.gap sub { display: none; }
+.lform { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.lform label { display: flex; flex-direction: column; gap: 4px; flex: 1 1 140px; max-width: 260px; }
+.lform label span { font: 700 .66rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.lans { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 10px; margin: 0 0 10px; }
+.lans > span:not(.lmk) { font: 700 .66rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.lmk { display: inline-flex; flex-wrap: wrap; gap: 3px; }
+.lmk i { font: 700 .95rem var(--mono); font-style: normal; min-width: 1.5em; text-align: center; padding: 2px 4px; border-radius: 5px; }
+.lmk i.hit { background: color-mix(in srgb, var(--good) 20%, transparent); color: color-mix(in srgb, var(--good) 85%, var(--ink)); }
+.lmk i.miss { background: color-mix(in srgb, var(--warn) 22%, transparent); color: color-mix(in srgb, var(--warn) 85%, var(--ink)); }
+.lmk i.extra { color: var(--bad); text-decoration: line-through; }
+.lmk em { font-style: normal; color: var(--muted); }
+.lcard .rows { text-align: left; }

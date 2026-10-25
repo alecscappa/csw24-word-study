@@ -43,9 +43,12 @@ $("#qClear").addEventListener("click", () => { $("#q").value = ""; $("#q").focus
 // a shorter hint fits the phone's narrower search box
 const qHint = () => $("#q").placeholder = phone() ? "Word or letters" : "Word, letters, ?AE or QU*";
 phoneMQ.addEventListener?.("change", qHint); qHint();
+// a random word in the lengths and probability ranks set in Settings (ranks count within each length)
 $("#randBtn").addEventListener("click", () => {
-  const lo = Math.min(SET.randMin, SET.randMax), hi = Math.max(SET.randMin, SET.randMax);
-  const pool = BYLEN[lo + Math.floor(Math.random() * (hi - lo + 1))];
+  const lo = Math.min(SET.randMin, SET.randMax), hi = Math.max(SET.randMin, SET.randMax), from = +SET.randFrom || 1, to = +SET.randTo || Infinity;
+  const pools = range(lo, hi).map(n => (BYLEN[n] || []).filter(w => { const p = DICT.get(w).p; return p >= from && p <= to; })).filter(p => p.length);
+  if (!pools.length) { location.hash = "settings"; return; }
+  const pool = pools[Math.floor(Math.random() * pools.length)];
   location.hash = "w/" + pool[Math.floor(Math.random() * pool.length)];
 });
 document.addEventListener("click", ev => {

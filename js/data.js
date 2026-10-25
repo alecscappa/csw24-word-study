@@ -244,7 +244,7 @@ function results(el, words, opts = {}) {
     el.querySelector("#defChk").onchange = e => { saveSettings({ defs: e.target.checked }); el.querySelector(".rows")?.classList.toggle("nodefs", !SET.defs); };
     el.querySelector("#moreBtn")?.addEventListener("click", () => { st.shown += +SET.pageSize; mem.shown = st.shown; draw(); });
     el.querySelector("#quizThese").onclick = () => { quizSetup.source = "last"; quizSetup.lens = []; quizSetup.starOnly = false; location.hash = "quiz"; };
-    el.querySelector("#practiceThese").onclick = () => { store.set("pLast", [...lastResults]); saveSettings({ practice: { ...PO_DEFAULT, order: SET.practice?.order || "rand", rev: !!SET.practice?.rev, src: "my:last", lens: [] } }); location.hash = "practice"; };
+    el.querySelector("#practiceThese").onclick = () => { store.set("pLast", [...lastResults]); saveSettings({ practice: { ...PO_DEFAULT, mode: SET.practice?.mode || "anagram", order: SET.practice?.order || "rand", rev: !!SET.practice?.rev, src: "my:last", lens: [] } }); location.hash = "practice"; };
     // Star all / Unstar all for exactly the rows in view (after the length and rank filters)
     el.querySelector("#starAll").onclick = () => { const s = getStars(), inList = new Set(list); store.set("stars", allStarred ? s.filter(w => !inList.has(w)) : [...list.filter(w => !starSet.has(w)), ...s]); draw(); };
     if (first) { first = false; restoreScroll(); pendingScroll = 0; }
