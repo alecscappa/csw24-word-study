@@ -1265,12 +1265,13 @@ function addHistory(w) { const h = store.get("hist", []).filter(x => x !== w); h
 VIEWS.mine = (tab) => {
   tab ||= "stars";
   const notes = getNotes();
-  const tabs = { stars: ["Starred", getStars()], missed: ["Missed", store.get("missed", [])], notes: ["With notes", Object.keys(notes)], hist: ["Recently viewed", store.get("hist", [])] };
-  $("#view").innerHTML = `<div><h3 class="title">My words</h3><p class="sub">Saved in this browser.</p></div>
+  const tabs = { stars: ["Starred", getStars()], missed: ["Missed", store.get("missed", [])], notebook: ["Notes", getNotebook()], notes: ["Word notes", Object.keys(notes)], hist: ["Recently viewed", store.get("hist", [])] };
+  $("#view").innerHTML = `<div><h3 class="title">My words</h3><p class="sub">${typeof SYNC !== "undefined" && SYNC.user ? "Synced to your account." : "Saved in this browser."}</p></div>
     <div class="seg">${Object.entries(tabs).map(([k, [n, l]]) => `<a class="btn ${k === tab ? "on" : ""}" href="#mine/${k}">${n} (${l.length})</a>`).join("")}</div>
     ${tab === "stars" && tabs.stars[1].length ? `<div class="row"><button class="btn sm" id="copyList">Copy list</button><button class="btn sm" id="clearStars">Clear starred</button><span class="small" id="msg"></span></div>` : ""}
     ${tab === "missed" && tabs.missed[1].length ? `<div class="row"><button class="btn sm" id="clearMissed">Clear missed</button></div>` : ""}
     <div class="card" id="mres"></div>`;
+  if (tab === "notebook") return notebook();
   const words = tabs[tab][1].filter(w => DICT.has(w));
   if (tab === "notes") {
     $("#mres").innerHTML = words.length ? `<div class="rows">${words.map(w => `<div class="r" data-go="${w}"><span class="meta"></span><span class="fh"></span><span class="wl">${w}</span><span class="bh"></span><span class="d">${esc(notes[w])}</span><span></span></div>`).join("")}</div>` : `<p class="empty">Write notes on any word page and it shows up here.</p>`;
@@ -1280,6 +1281,34 @@ VIEWS.mine = (tab) => {
   confirmBtn($("#clearStars"), () => { store.set("stars", []); VIEWS.mine("stars"); });
   confirmBtn($("#clearMissed"), () => { store.set("missed", []); VIEWS.mine("missed"); });
 };
+// your own notes: as many as you like, each a title and some text, saved as you type (and synced when signed in)
+const getNotebook = () => store.get("notebook", []);
+const edited = t => { const s = (Date.now() - t) / 1000; return s < 60 ? "just now" : s < 3600 ? Math.round(s / 60) + " min ago" : s < 86400 ? Math.round(s / 3600) + " h ago" : new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short" }); };
+function notebook() {
+  const list = getNotebook();
+  $("#mres").innerHTML = `<div class="row" style="margin-bottom:12px"><button class="btn primary" id="nbNew">+ New note</button></div>
+    ${list.length ? `<div class="nbook">${list.map(n => `<div class="nbnote" data-nb="${n.id}">
+      <input class="nbtitle" value="${esc(n.title)}" placeholder="Title" aria-label="Note title">
+      <textarea class="nbbody" placeholder="Write anything…" aria-label="Note">${esc(n.body)}</textarea>
+      <div class="nbfoot"><span class="small">Edited ${edited(n.at)}</span><button class="btn sm" data-nbdel="${n.id}">Delete</button></div></div>`).join("")}</div>`
+    : `<p class="empty">No notes yet. Press + New note to start one.</p>`}`;
+  const grow = t => { t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; };
+  let timer = 0;
+  const saveNote = el => { clearTimeout(timer); timer = setTimeout(() => {
+    const id = el.dataset.nb, all = getNotebook(), n = all.find(x => x.id === id); if (!n) return;
+    n.title = el.querySelector(".nbtitle").value; n.body = el.querySelector(".nbbody").value; n.at = Date.now();
+    store.set("notebook", all); el.querySelector(".nbfoot .small").textContent = "Edited just now";
+  }, 400); };
+  $("#mres").querySelectorAll(".nbnote").forEach(el => {
+    const t = el.querySelector(".nbbody"); grow(t);
+    el.addEventListener("input", ev => { if (ev.target === t) grow(t); saveNote(el); });
+  });
+  $("#nbNew").onclick = () => {
+    const n = { id: Date.now().toString(36) + rnd(1e6).toString(36), title: "", body: "", at: Date.now() };
+    store.set("notebook", [n, ...getNotebook()]); VIEWS.mine("notebook"); $(".nbnote .nbtitle")?.focus();
+  };
+  $("#mres").querySelectorAll("[data-nbdel]").forEach(b => confirmBtn(b, () => { store.set("notebook", getNotebook().filter(x => x.id !== b.dataset.nbdel)); VIEWS.mine("notebook"); }));
+}
 // two-press confirmation for destructive buttons
 function confirmBtn(el, fn) {
   if (!el) return;
