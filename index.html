@@ -23,6 +23,7 @@ try {
     r.dataset.values = p.values;
     r.dataset.tstyle = p.tstyle || "soft";
     r.dataset.tfont = p.tfont || "sans";
+    r.dataset.theme = p.theme || ""; r.dataset.mode = dark ? "dark" : "light";
     document.getElementById("themeColor").content = tok.head;
   }
 } catch {}
@@ -638,6 +639,252 @@ main.wrap:has(> .foc) { max-width: 1400px; }
   @keyframes drop { from { transform: translateY(-6px); opacity: .3; } }
 }
 @media (max-width: 480px) { .tile { width: 38px; height: 38px; font-size: 1.3rem; } .qprompt { font-size: 1.8rem; } }
+
+/* ---------- the Deluxe theme: the page dressed like the wooden Deluxe board. A mahogany header with the grain and a gold
+   edge; in dark mode the page is the flocked crimson board with faint gold lines, in light mode an ivory card-stock page
+   with the same faint lines, and gold-edged cards. Colours are the theme's tokens; this adds the textures. ---------- */
+:root[data-theme="deluxe"] header { background-image: var(--grain-h), linear-gradient(180deg, rgb(255 210 180 / .1), transparent 40%, rgb(0 0 0 / .18));
+  background-size: 100% 60px, 100% 100%; box-shadow: 0 2px 0 #b8934f, 0 3px 0 rgb(60 30 0 / .45), 0 6px 14px -4px rgb(30 8 5 / .45); }
+:root[data-theme="deluxe"] body { background-attachment: fixed;
+  background-image: linear-gradient(90deg, rgb(184 147 79 / .13) 1.5px, transparent 1.5px), linear-gradient(180deg, rgb(184 147 79 / .13) 1.5px, transparent 1.5px),
+    var(--mottle), var(--flock); background-size: 46px 46px, 46px 46px, 300px 300px, 160px 160px; }
+:root[data-theme="deluxe"][data-mode="dark"] body {
+  background-image: linear-gradient(90deg, rgb(200 160 90 / .2) 1.5px, transparent 1.5px), linear-gradient(180deg, rgb(200 160 90 / .2) 1.5px, transparent 1.5px),
+    var(--flock), var(--mottle), var(--speck); background-size: 46px 46px, 46px 46px, 160px 160px, 300px 300px, 220px 220px; }
+:root[data-theme="deluxe"] .card { border-color: color-mix(in srgb, #b8934f 55%, var(--line)); box-shadow: inset 0 1px 0 rgb(255 255 255 / .45), 0 1px 2px rgb(60 10 10 / .12); }
+:root[data-theme="deluxe"][data-mode="dark"] .card { background-image: linear-gradient(180deg, rgb(255 220 190 / .04), transparent 30%); box-shadow: inset 0 1px 0 rgb(255 220 190 / .08), 0 2px 8px rgb(0 0 0 / .35); }
+/* ---------- board tab: a 15×15 board. Its colours are tokens on .bwrap: Theme mixes them from the theme (accent = word bonuses,
+   link = letter bonuses); the Board look sheet can swap in Classic, Pastel or Plain, and a neon colour for the new tiles ---------- */
+.bwrap { --bf: color-mix(in srgb, var(--head) 82%, #000); --bs: color-mix(in srgb, var(--panel) 90%, var(--head)); --bs-ink: var(--muted);
+  --btw: color-mix(in srgb, var(--accent) 85%, var(--panel)); --btw-ink: var(--panel); --bdw: color-mix(in srgb, var(--accent) 35%, var(--panel)); --bdw-ink: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  --btl: color-mix(in srgb, var(--link) 80%, var(--panel)); --btl-ink: var(--panel); --bdl: color-mix(in srgb, var(--link) 30%, var(--panel)); --bdl-ink: color-mix(in srgb, var(--link) 70%, var(--ink)); }
+.bwrap.pal-classic { --bf: #2e4a3d; --bs: #d9d1b7; --bs-ink: #857c63; --btw: #d4443b; --btw-ink: #fff; --bdw: #f1a7a0; --bdw-ink: #7c211b; --btl: #2a6fb6; --btl-ink: #fff; --bdl: #a9d3ef; --bdl-ink: #1c4d72; }
+.bwrap.pal-pastel { --bf: #b9c2bb; --bs: #eef1ec; --bs-ink: #8d968f; --btw: #f0a897; --btw-ink: #6e2a1d; --bdw: #fbdcd3; --bdw-ink: #93473a; --btl: #9fc2e8; --btl-ink: #1f4870; --bdl: #d9e8f6; --bdl-ink: #3d6690; }
+.bwrap.pal-plain { --bs: var(--panel); --btw: color-mix(in srgb, var(--ink) 22%, var(--panel)); --btw-ink: var(--ink); --bdw: color-mix(in srgb, var(--ink) 10%, var(--panel)); --bdw-ink: var(--ink);
+  --btl: color-mix(in srgb, var(--ink) 22%, var(--panel)); --btl-ink: var(--ink); --bdl: color-mix(in srgb, var(--ink) 10%, var(--panel)); --bdl-ink: var(--ink); }
+.bwrap.pal-vintage { --bf: #5b2a1e; --bs: #cdbf9c; --bs-ink: #7d6f52; --btw: #b4463b; --btw-ink: #fbefe0; --bdw: #dc9c8f; --bdw-ink: #6d241b; --btl: #3e6e99; --btl-ink: #f1ece0; --bdl: #a0c0d4; --bdl-ink: #274a66; }
+.bwrap.pal-night { --bf: #0e1013; --bs: #262a30; --bs-ink: #7c8590; --btw: #b8403f; --btw-ink: #fde8e6; --bdw: #5f3640; --bdw-ink: #f0b6bd; --btl: #2f62a3; --btl-ink: #e5efff; --bdl: #2d4a63; --bdl-ink: #a9cbe8; }
+.bwrap.pal-dlxd { --bf: #34171a; --bfh: #4d2523; --bs: #831a27; --bs-ink: rgb(255 215 190 / .5); --btw: #ad3640; --btw-ink: #2c070b; --bdw: #d6b196; --bdw-ink: #43281c;
+  --btl: #0f86c8; --btl-ink: #071f36; --bdl: #74c6df; --bdl-ink: #103548; --gold: #a98a4c; --red-hi: rgb(220 120 120 / .3); }
+.bwrap.pal-dlxa { --bf: #3d1518; --bfh: #5d2a24; --bs: #962030; --bs-ink: rgb(255 215 200 / .6); --btw: #c0404a; --btw-ink: #3a0b10; --bdw: #e2b9a8; --bdw-ink: #4a2a20;
+  --btl: #2389cf; --btl-ink: #0c2540; --bdl: #93cdea; --bdl-ink: #173a5a; --gold: #b8934f; --red-hi: rgb(238 150 150 / .55); }
+.bwrap.nocoord { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
+.bwrap.nocoord .bcx, .bwrap.nocoord .bcy { display: none; }
+.bwrap.nocoord .bd { grid-column: 1; grid-row: 1; }
+.bbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+.bgrid { display: grid; grid-template-columns: minmax(0, 620px) minmax(260px, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 860px) { .bgrid { grid-template-columns: minmax(0, 1fr); gap: 12px; } .bgrid > * { max-width: 620px; width: 100%; margin: 0 auto; } }
+.bside { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.bwrap { --pad: 8px; position: relative; display: grid; grid-template-columns: 13px minmax(0, 1fr); grid-template-rows: 13px auto; gap: 3px; }
+.bcx, .bcy { display: grid; font: 600 .6rem/1 var(--mono); color: var(--muted); }
+.bcx { grid-column: 2; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: var(--gap); padding: 0 var(--pad); text-align: center; align-items: end; }
+.bcy { grid-row: 2; grid-template-rows: repeat(15, minmax(0, 1fr)); gap: var(--gap); padding: var(--pad) 0; text-align: right; align-items: center; }
+.bd { grid-column: 2; grid-row: 2; display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); grid-template-rows: repeat(15, minmax(0, 1fr)); gap: var(--gap); padding: var(--pad);
+  aspect-ratio: 1; container-type: inline-size; border-radius: 12px; background: var(--bf);
+  box-shadow: 0 10px 24px -8px rgb(0 0 0 / .45), inset 0 1px 0 rgb(255 255 255 / .12); user-select: none; -webkit-user-select: none; }
+.bd .sq { position: relative; display: grid; place-items: center; min-width: 0; border-radius: 3px; cursor: pointer;
+  background-color: var(--bs); color: var(--bs-ink); font: 700 2.3cqi/1 var(--display); letter-spacing: .02em; }
+.bd .sq.tw { background-color: var(--btw); color: var(--btw-ink); }
+.bd .sq.dw { background-color: var(--bdw); color: var(--bdw-ink); }
+.bd .sq.tl { background-color: var(--btl); color: var(--btl-ink); }
+.bd .sq.dl { background-color: var(--bdl); color: var(--bdl-ink); }
+.bd .sq.tw { --sqc: var(--btw); --sqi: var(--btw-ink); } .bd .sq.dw { --sqc: var(--bdw); --sqi: var(--bdw-ink); }
+.bd .sq.tl { --sqc: var(--btl); --sqi: var(--btl-ink); } .bd .sq.dl { --sqc: var(--bdl); --sqi: var(--bdl-ink); }
+/* board styles: how the board is built (Gaps is the plain one above) */
+/* board styles: how the board is built (Gaps is the plain one above). Each sets --pad (the frame) and --gap (between squares)
+   on .bwrap so the A–O and 1–15 labels stay lined up with the squares. */
+.bwrap { --fw: 10px; --gap: 2px; }
+.bwrap.st-lined { --pad: 1px; --gap: 1px; gap: calc(var(--fw) + 3px); }
+.bwrap.st-lined .bd { border-radius: 2px; background: color-mix(in srgb, var(--bs) 50%, #000);
+  box-shadow: 0 0 0 var(--fw) var(--bf), 0 0 0 calc(var(--fw) + 1px) rgb(0 0 0 / .25), 0 14px 28px -8px rgb(0 0 0 / .5); }
+.bwrap.st-lined .sq { border-radius: 0; font-weight: 600; }
+/* Wooden: a honey-oak frame with a soft grain and a few darker streaks, a bevelled edge, and the squares inlaid in a dark groove */
+.bwrap.st-wood { --pad: 14px; --gap: 1px; }
+.bwrap.st-wood .bd { position: relative; border-radius: 10px;
+  background: repeating-linear-gradient(180deg, rgb(90 45 15 / .07) 0 1px, transparent 1px 3px, rgb(255 228 185 / .05) 3px 4px, transparent 4px 7px),
+    radial-gradient(ellipse 70% 3% at 28% 6%, rgb(90 45 15 / .3), transparent), radial-gradient(ellipse 55% 2.5% at 72% 3%, rgb(255 225 180 / .25), transparent),
+    radial-gradient(ellipse 60% 3% at 60% 96%, rgb(90 45 15 / .28), transparent), radial-gradient(ellipse 3% 50% at 2.5% 40%, rgb(90 45 15 / .25), transparent),
+    radial-gradient(ellipse 3% 45% at 97.5% 62%, rgb(255 225 180 / .2), transparent),
+    linear-gradient(180deg, #c08a55, #b07843 35%, #a56d3b 60%, #b47d48);
+  box-shadow: inset 0 1px 0 rgb(255 238 205 / .5), inset 0 -2px 0 rgb(70 35 10 / .35), inset 0 0 0 1px rgb(70 35 10 / .2), 0 2px 0 #7a4c26, 0 14px 26px -8px rgb(40 20 5 / .55); }
+.bwrap.st-wood .bd::before { content: ""; position: absolute; inset: calc(var(--pad) - 3px); border-radius: 3px; background: #3d2512;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / .6), 0 1px 0 rgb(255 236 200 / .35), 0 -1px 0 rgb(70 35 10 / .4); }
+.bwrap.st-wood .sq { border-radius: 1px; background-image: repeating-linear-gradient(180deg, rgb(80 40 10 / .035) 0 1px, transparent 1px 3px), linear-gradient(180deg, rgb(255 255 255 / .06), rgb(0 0 0 / .04)); }
+.bwrap.st-inset { --gap: 2.5px; }
+.bwrap.st-inset .sq { border-radius: 2px; box-shadow: inset 0 1.5px 3px rgb(0 0 0 / .35), inset 0 -1px 0 rgb(255 255 255 / .3); }
+.bwrap.st-felt { --gap: 1.5px; }
+.bwrap.st-felt .bd { background-image: radial-gradient(rgb(255 255 255 / .06) .7px, transparent 1px); background-size: 4px 4px; }
+.bwrap.st-felt .sq { border-radius: 2px; font-weight: 600; background-image: radial-gradient(rgb(0 0 0 / .08) .6px, transparent 1px), radial-gradient(rgb(255 255 255 / .12) .6px, transparent 1px);
+  background-size: 3px 3px, 5px 5px; background-position: 0 0, 1px 2px; }
+.bwrap.st-print { --pad: 1px; --gap: 1px; }
+.bwrap.st-print .bd { border-radius: 0; background: color-mix(in srgb, var(--bs-ink) 55%, var(--bs)); box-shadow: none; }
+.bwrap.st-print .sq { border-radius: 0; font: 600 2.1cqi/1 var(--body); text-transform: uppercase; }
+.bwrap.st-print.lab-words .sq span { font: 600 1.05cqi/1.15 var(--body); }
+/* Ridged: moulded plastic, each square a shallow well between raised ridges that hold the tiles (like a turntable deluxe set) */
+.bwrap.st-ridged { --pad: 12px; --gap: 2.5px; }
+.bwrap.st-ridged .bd { border-radius: 14px; background: linear-gradient(160deg, color-mix(in srgb, var(--bf) 82%, #fff), var(--bf) 45%, color-mix(in srgb, var(--bf) 80%, #000));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 -2px 0 rgb(0 0 0 / .3), 0 3px 0 color-mix(in srgb, var(--bf) 70%, #000), 0 16px 30px -8px rgb(0 0 0 / .55); }
+.bwrap.st-ridged .sq { border-radius: 1.5px; box-shadow: inset 0 2px 2px rgb(0 0 0 / .4), inset 0 -1px 0 rgb(255 255 255 / .14); }
+/* textures from the Deluxe board photos (wood grain across and down, pale flecks, mottling, flocking); the Deluxe boards and the Deluxe theme use them */
+:root {
+  --grain-h: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='120' preserveAspectRatio='none'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.004 .32' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 .08 0 0 0 0 .02 0 0 0 0 .02 2.6 0 0 0 -1.05'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  --grain-v: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='600' preserveAspectRatio='none'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.32 .004' numOctaves='3' seed='9'/%3E%3CfeColorMatrix values='0 0 0 0 .08 0 0 0 0 .02 0 0 0 0 .02 2.6 0 0 0 -1.05'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  --speck: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='1' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .7 0 0 0 0 .7 5 0 0 0 -3.45'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  --mottle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.05' numOctaves='3' seed='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .2 0 0 0 0 0 0 0 0 0 .03 1.2 0 0 0 -.45'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  --flock: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='2.2' numOctaves='1' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .15 0 0 0 0 0 0 0 0 0 .02 .9 0 0 0 -.25'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E"); }
+/* Deluxe and Deluxe compact: the wooden Deluxe set of about 2000. A mahogany frame with mitred grain and a bevel down to a gold
+   edge; flocked red squares with thin raised gold lines (each square draws half of each line); the bonuses on bevelled plaques
+   (the label span) with four arrows each. Sizes in cqi are of the board's width, so it all scales. */
+.bwrap:is(.st-dlx, .st-dlxc) { --pad: 22px; --gap: 0px; --bev: 8px; --G: .21cqi; --ai: -15.2%;
+  --mT: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M39.9 9.3L50 .3 60.1 9.3Z'/%3E%3C/svg%3E"); --mR: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M90.7 39.9L99.7 50 90.7 60.1Z'/%3E%3C/svg%3E");
+  --mB: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M60.1 90.7L50 99.7 39.9 90.7Z'/%3E%3C/svg%3E"); --mL: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M9.3 60.1L.3 50 9.3 39.9Z'/%3E%3C/svg%3E"); }
+.bwrap.st-dlxc { --pad: 10px; --bev: 4px; }
+.bwrap:is(.st-dlx, .st-dlxc) .bd { position: relative; border-radius: 8px;
+  background: var(--grain-h) 0 0 / 100% 22%, linear-gradient(180deg, var(--bfh, var(--bf)), var(--bf) 30%, var(--bf) 70%, color-mix(in srgb, var(--bf) 80%, #000));
+  box-shadow: inset 0 2px 0 rgb(255 210 190 / .12), inset 0 -2px 1px rgb(0 0 0 / .4), 0 12px 20px -6px rgb(30 8 5 / .6), 0 2px 3px rgb(30 8 5 / .35); }
+.bwrap:is(.st-dlx, .st-dlxc) .bd::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: var(--grain-v) 0 0 / 22% 100%, linear-gradient(90deg, var(--bfh, var(--bf)), var(--bf) 30%, var(--bf) 70%, color-mix(in srgb, var(--bf) 80%, #000));
+  clip-path: polygon(0 0, var(--pad) var(--pad), var(--pad) calc(100% - var(--pad)), 0 100%, 0 0, 100% 0, calc(100% - var(--pad)) var(--pad), calc(100% - var(--pad)) calc(100% - var(--pad)), 100% 100%, 100% 0); }
+.bwrap:is(.st-dlx, .st-dlxc) .bd::after { content: ""; position: absolute; inset: calc(var(--pad) - var(--bev) - 2px); border: var(--bev) solid; pointer-events: none;
+  border-color: rgb(20 4 6 / .55) rgb(255 200 180 / .07) rgb(255 200 180 / .14) rgb(20 4 6 / .4); box-shadow: inset 0 0 0 2px var(--gold, #b8934f); }
+.bwrap:is(.st-dlx, .st-dlxc) .sq, .bwrap:is(.st-dlx, .st-dlxc) .sq:is(.tw, .dw, .tl, .dl) { border-radius: 0;
+  background: var(--flock) calc(var(--c, 0) * -11cqi) calc(var(--r, 0) * -7cqi) / 30cqi, var(--mottle) calc(var(--c, 0) * -13cqi) calc(var(--r, 0) * -17cqi) / 60cqi,
+    var(--speck) calc(var(--c, 0) * -23cqi) calc(var(--r, 0) * -29cqi) / 44cqi, var(--bs);
+  box-shadow: inset 0 0 0 var(--G) var(--gold, #b8934f), inset 0 0 0 calc(var(--G) + .08cqi) rgb(60 30 0 / .55),
+    inset 0 calc(var(--G) + .45cqi) .25cqi -.1cqi var(--red-hi, transparent), inset 0 calc(-1 * var(--G) - .25cqi) .2cqi -.1cqi rgb(40 0 6 / .35); }
+.bwrap:is(.st-dlx, .st-dlxc) .sq.tw { --tri: color-mix(in srgb, var(--btw) 85%, #fff); }
+.bwrap:is(.st-dlx, .st-dlxc) .sq:is(.tw, .dw, .tl, .dl) > span { position: absolute; z-index: 2; inset: .36cqi; display: grid; place-items: center; border-radius: .35cqi;
+  background: var(--sqc); color: var(--sqi); font: 700 1.2cqi/1.12 Optima, "Marcellus", Candara, "Segoe UI", sans-serif; letter-spacing: .04em; text-align: center; text-transform: uppercase;
+  box-shadow: inset 0 .32cqi 0 rgb(255 255 255 / .42), inset .2cqi 0 0 rgb(255 255 255 / .18), inset -.15cqi 0 0 rgb(0 0 0 / .12), inset 0 -.25cqi 0 rgb(0 0 0 / .16), 0 .15cqi .25cqi rgb(40 0 5 / .45); }
+.bwrap:is(.st-dlx, .st-dlxc) .sq span i { font-style: normal; }
+.bwrap:is(.st-dlx, .st-dlxc) .sq span .s { display: none; font-size: 2.1cqi; letter-spacing: .02em; }
+.bwrap:is(.st-dlx, .st-dlxc) .sq.st > span svg { width: 76%; height: 76%; }
+.bwrap:is(.st-dlx, .st-dlxc) .bd .tile { inset: .28cqi; }
+.bwrap.st-dlxc .sq:is(.tw, .dw, .tl, .dl) > span { inset: .5cqi; font-size: 2.3cqi; }
+/* phone-sized boards: Deluxe swaps to the short labels, Deluxe compact keeps only the colours and arrows */
+@container (max-width: 400px) {
+  .bwrap.st-dlx .sq span .l { display: none; } .bwrap.st-dlx .sq span .s { display: block; }
+  .bwrap.st-dlxc .sq:not(.st) > span i { display: none; }
+}
+/* Raised: each square a little cushion standing up off the board */
+.bwrap.st-raised { --gap: 3px; }
+.bwrap.st-raised .sq { border-radius: 3px; background-image: linear-gradient(180deg, rgb(255 255 255 / .22), rgb(0 0 0 / .06));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .4), 0 1px 0 rgb(0 0 0 / .25), 0 2px 3px rgb(0 0 0 / .25); }
+/* Leather: a dark hide frame with stitching round the playing area */
+.bwrap.st-leather { --pad: 14px; --gap: 1.5px; }
+.bwrap.st-leather .bd { position: relative; border-radius: 12px;
+  background: radial-gradient(rgb(255 255 255 / .05) .8px, transparent 1.2px) 0 0 / 5px 5px, radial-gradient(rgb(0 0 0 / .12) .8px, transparent 1.2px) 2px 3px / 6px 6px,
+    radial-gradient(ellipse at 30% 20%, #6e4630, #4f2f1e 70%);
+  box-shadow: inset 0 1px 0 rgb(255 220 190 / .25), inset 0 -2px 3px rgb(0 0 0 / .35), 0 14px 26px -8px rgb(30 15 5 / .6); }
+.bwrap.st-leather .bd::before { content: ""; position: absolute; inset: calc(var(--pad) / 2 - 1px); border: 1.5px dashed rgb(240 215 175 / .55); border-radius: 8px; pointer-events: none; }
+.bwrap.st-leather .sq { border-radius: 2px; }
+/* Stone: a speckled slate frame and squares with a faint grit */
+.bwrap.st-stone { --pad: 10px; --gap: 1.5px; }
+.bwrap.st-stone .bd { border-radius: 6px;
+  background: radial-gradient(rgb(255 255 255 / .1) .7px, transparent 1.1px) 0 0 / 7px 7px, radial-gradient(rgb(0 0 0 / .18) .8px, transparent 1.2px) 3px 2px / 5px 5px,
+    radial-gradient(rgb(255 255 255 / .06) 1px, transparent 1.6px) 1px 4px / 11px 11px, linear-gradient(150deg, #5d6268, #464a50 55%, #3a3d42);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .18), inset 0 -2px 0 rgb(0 0 0 / .3), 0 14px 26px -8px rgb(0 0 0 / .55); }
+.bwrap.st-stone .sq { border-radius: 1px; background-image: radial-gradient(rgb(0 0 0 / .07) .6px, transparent 1px), radial-gradient(rgb(255 255 255 / .1) .6px, transparent 1px);
+  background-size: 4px 4px, 3px 3px; background-position: 0 0, 2px 1px; }
+/* Glass: see-through squares with a sheen, on a smoky frame */
+.bwrap.st-glass { --gap: 2px; }
+.bwrap.st-glass .bd { background: linear-gradient(160deg, color-mix(in srgb, var(--bf) 75%, #fff), var(--bf) 60%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .25), 0 14px 30px -8px rgb(0 0 0 / .45); }
+.bwrap.st-glass .sq { border-radius: 4px; background-image: linear-gradient(160deg, rgb(255 255 255 / .45), rgb(255 255 255 / .08) 55%, rgb(255 255 255 / 0));
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .35), inset 0 -1px 2px rgb(0 0 0 / .12); }
+/* small previews of the styles and colours in the Board look sheet */
+.bpicks { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.bpicks button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); font: 600 .8rem var(--display); cursor: pointer; }
+.bpicks button.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.bwrap.bmini { --fw: 4px; --pad: 4px; --gap: 1px; display: block; width: 64px; }
+.bwrap.bmini .bd { grid-column: auto; grid-row: auto; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); border-radius: 5px; }
+.bwrap.bmini.st-lined, .bwrap.bmini.st-print { width: 56px; margin: 4px; }
+.bwrap.bmini.st-wood, .bwrap.bmini.st-leather, .bwrap.bmini.st-stone { --pad: 7px; }
+.bwrap.bmini .sq { cursor: inherit; } .bwrap.bmini .tile { font-size: 9px; }
+.bd .sq.st span { font-size: 4cqi; }
+/* arrows: each bonus square points a small triangle into its four neighbours, like a printed board. Each triangle is its own
+   mask layer, so the edges are clean, and a square on the edge of the board leaves out the one that would point off it. */
+.bwrap { --ai: -20%; --mT: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M38 14.3L50 1.5 62 14.3Z'/%3E%3C/svg%3E"); --mR: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M85.7 38L98.5 50 85.7 62Z'/%3E%3C/svg%3E");
+  --mB: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M62 85.7L50 98.5 38 85.7Z'/%3E%3C/svg%3E"); --mL: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M14.3 62L1.5 50 14.3 38Z'/%3E%3C/svg%3E"); }
+.bwrap.arrows .sq:is(.tw, .dw, .tl, .dl)::before { content: ""; position: absolute; inset: var(--ai); z-index: 1; pointer-events: none; background: var(--tri, var(--sqc));
+  -webkit-mask-image: var(--mT), var(--mR), var(--mB), var(--mL); mask-image: var(--mT), var(--mR), var(--mB), var(--mL);
+  -webkit-mask-size: var(--sT, 100% 100%), var(--sR, 100% 100%), var(--sB, 100% 100%), var(--sL, 100% 100%); mask-size: var(--sT, 100% 100%), var(--sR, 100% 100%), var(--sB, 100% 100%), var(--sL, 100% 100%);
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+.bd .sq.et { --sT: 0 0; } .bd .sq.eb { --sB: 0 0; } .bd .sq.el { --sL: 0 0; } .bd .sq.er { --sR: 0 0; }
+.bwrap.arrows .sq > span { position: relative; z-index: 1; }
+.bwrap.arrows .sq:is(.tw, .dw, .tl, .dl) > span { z-index: 2; }
+.bwrap.arrows .sq.tw, .bwrap.arrows .sq.dw, .bwrap.arrows .sq.tl, .bwrap.arrows .sq.dl { z-index: auto; }
+/* labels written out (TRIPLE WORD SCORE), small and on three lines */
+.bwrap.lab-words2 .sq span, .bwrap.lab-words .sq span { font: 700 1.05cqi/1.15 var(--display); letter-spacing: 0; text-align: center; text-transform: uppercase; }
+.bwrap.lab-words .sq.st span, .bwrap.lab-words2 .sq.st span { font-size: 4cqi; }
+.bd .sq.cur { box-shadow: inset 0 0 0 2px var(--accent); z-index: 2; }
+.bd .sq.cur > span { display: none; }
+.bd .sq.cur::after { content: "→"; color: var(--accent); font: 700 4cqi/1 var(--display); position: relative; z-index: 2; }
+.bd .sq.cur.dn::after { content: "↓"; }
+.bd .sq.cur:has(.tile)::after { position: absolute; right: -1px; top: -3px; font-size: 3cqi; background: var(--panel); border-radius: 3px; padding: 1px; }
+/* the same tiles as everywhere else, with the letter at the size it has on a rack tile (about 56% of the tile) */
+.bd .tile { position: absolute; inset: 0; width: auto; height: auto; --lip: 2px; border-radius: 3px; font-size: 3.5cqi; z-index: 3; }
+.bd .tile sub { font-size: 1.5cqi; right: 7%; bottom: 7%; }
+.bd .tile.blank { color: var(--accent); }
+.bd .tile.new { z-index: 4; }
+/* in Scoring the new tiles stand out, one of six ways (Board look); on the Board tab they look like any other tile */
+.bwrap.mk-lift .tile.new { translate: 0 -12%; filter: drop-shadow(0 4px 3px rgb(0 0 0 / .45)); }
+.bwrap.mk-tint .tile.new { background-color: color-mix(in srgb, #ffd98a 35%, var(--tile)); filter: brightness(1.05); }
+.bwrap.mk-dim .tile:not(.new) { opacity: .42; }
+/* the tile itself lights up instead of getting a line round it */
+.bwrap.mk-bright .tile.new { filter: brightness(1.14) saturate(1.12) drop-shadow(0 0 4px color-mix(in srgb, var(--tile) 75%, #fff)); }
+.bwrap.mk-halo .tile.new { filter: brightness(1.06) drop-shadow(0 0 3px rgb(255 250 230 / .9)) drop-shadow(0 0 7px rgb(255 240 200 / .55)); }
+.bwrap.mk-shine .tile.new::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(135deg, rgb(255 255 255 / .55), rgb(255 255 255 / .12) 40%, transparent 60%); }
+.bwrap.mk-shine .tile.new { filter: brightness(1.06); }
+
+/* a new tile on a bonus square gets the bonus on a small tab stuck to its side, out over an empty square: above or below
+   for an across play, right or left for a down one. With both sides taken it tucks into the tile's top-left corner. */
+.bd .tile .bb { position: absolute; display: grid; place-items: center; font: 800 max(1.5cqi, 6.5px)/1 var(--display); letter-spacing: -.02em;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .3); z-index: 4; }
+.bd .tile .bb.up, .bd .tile .bb.dn { left: 0; right: 0; height: 36%; }
+.bd .tile .bb.up { bottom: calc(100% + 4px); border-radius: 4px; } .bd .tile .bb.dn { top: calc(100% + 4px); border-radius: 4px; }
+.bd .tile .bb.lt, .bd .tile .bb.rt { top: 0; bottom: 0; width: 42%; }
+.bd .tile .bb.lt { right: calc(100% + 4px); border-radius: 4px; } .bd .tile .bb.rt { left: calc(100% + 4px); border-radius: 4px; }
+.bd .tile .bb.in { top: 6%; left: 6%; padding: 1px 2px; border-radius: 3px; font-size: max(1.2cqi, 5.5px); box-shadow: none; }
+.bd .tile .bb.tw { background: var(--btw); color: var(--btw-ink); } .bd .tile .bb.dw { background: var(--bdw); color: var(--bdw-ink); }
+.bd .tile .bb.tl { background: var(--btl); color: var(--btl-ink); } .bd .tile .bb.dl { background: var(--bdl); color: var(--bdl-ink); }
+.bkin { position: fixed; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; font-size: 16px; border: 0; padding: 0; pointer-events: none; }
+@media (max-width: 620px) { .bwrap { --pad: 5px; --gap: 1.5px; --fw: 7px; grid-template-columns: 10px minmax(0, 1fr); grid-template-rows: 10px auto; gap: 2px; } .bcx, .bcy { font-size: .5rem; } .bd { border-radius: 9px; }
+  .bwrap.st-wood, .bwrap.st-leather { --pad: 9px; } .bwrap.st-stone { --pad: 7px; } .bwrap.st-dlx { --pad: 10px; --bev: 4px; } .bwrap.st-dlxc { --pad: 6px; --bev: 3px; } }
+/* the working: each word's letters, bonuses and total */
+.bk { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 6px 0; border-top: 1px dashed var(--line); font: 600 .8rem var(--mono); }
+.bk:first-child { border-top: 0; }
+.bk .bkw { font: 700 .95rem var(--display); letter-spacing: .03em; margin-right: 4px; }
+.bk .bkw.bad { color: var(--bad); text-decoration: line-through; }
+.bk i { font-style: normal; background: var(--chip); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
+.bk i.dl { background: color-mix(in srgb, var(--link) 22%, var(--chip)); } .bk i.tl { background: color-mix(in srgb, var(--link) 45%, var(--chip)); }
+.bk i.bl { color: var(--accent); }
+.bk .wm { color: var(--accent); }
+.bk b { margin-left: auto; font: 700 .95rem var(--display); }
+.btotal { display: flex; align-items: baseline; justify-content: space-between; margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line); font: 700 1.1rem var(--display); }
+.btotal b { font-size: 1.6rem; }
+.bq { font: 700 1.3rem/1.2 var(--display); margin: 0; }
+.bq em { font-style: normal; color: var(--accent); letter-spacing: .03em; }
+.bans { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.bans .box { flex: 1; min-height: 50px; background: var(--field); color: var(--field-ink); border: 2px solid var(--accent); border-radius: 12px; padding: 6px 14px; font: 800 1.6rem/1.3 var(--display); font-variant-numeric: tabular-nums; }
+.bans .box:empty::before { content: "Score"; color: var(--muted); font-weight: 500; font-size: 1rem; opacity: .7; }
+.bans .box.right { border-color: var(--good); color: var(--good); } .bans .box.wrong { border-color: var(--bad); color: var(--bad); }
+.bpad { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 10px; }
+.bpad button { min-height: 46px; border: 1px solid var(--line); background: var(--panel); border-radius: 10px; font: 700 1.15rem var(--display); cursor: pointer; }
+.bpad button.go { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.btally { display: flex; gap: 18px; flex-wrap: wrap; }
+.btally div { font: .74rem var(--mono); color: var(--muted); }
+.btally b { display: block; font: 700 1.2rem var(--display); color: var(--ink); font-variant-numeric: tabular-nums; }
+.bres { font: 700 1rem var(--display); margin: 10px 0 4px; }
+.bres.right { color: var(--good); } .bres.wrong { color: var(--bad); }
+.bmoves { display: flex; flex-direction: column; font: .85rem/1.5 var(--mono); }
+.bmoves div { display: grid; grid-template-columns: 2em 3.6em minmax(0, 1fr) auto; gap: 8px; padding: 4px 0; border-top: 1px dashed var(--line); }
+.bmoves div:first-child { border-top: 0; }
+.bmoves div.bad span:nth-child(3) { color: var(--bad); }
+.bmoves b { font-family: var(--display); }
+.blevels { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.blevels .btn { flex: none; }
+@media (max-width: 620px) { .bside .card { padding: 12px 14px; } .bq { font-size: 1.15rem; } }
 </style>
 </head>
 <body>
@@ -655,6 +902,7 @@ main.wrap:has(> .foc) { max-width: 1400px; }
       <a href="#w" data-tab="w">Word</a>
       <a href="#search" data-tab="search">Search</a>
       <a href="#lists" data-tab="study">Study</a>
+      <a href="#board" data-tab="board">Board</a>
       <a href="#mine" data-tab="mine"><span class="lg">My words</span><span class="sh">Mine</span></a>
       <a href="#settings" data-tab="settings" class="end">Settings</a>
     </nav>
@@ -720,6 +968,10 @@ const THEMES = {
   board: { name: "Board green (original)",
     light: { bg:"#edf1ee", panel:"#ffffff", ink:"#1b2420", muted:"#5b6a62", line:"#d3dcd6", chip:"#f2f5f3", head:"#1f5c4a", "head-ink":"#e9f3ee", field:"#e9f3ee", "field-ink":"#15211c", tile:"#f1dcaa", "tile-edge":"#c4a566", "tile-ink":"#2b2213", accent:"#b8364a", "on-accent":"#ffffff", link:"#2b74a8", good:"#22804e", bad:"#b8364a", new:"#7d50c4" },
     dark:  { bg:"#141c18", panel:"#1b2621", ink:"#e2ebe5", muted:"#93a69b", line:"#2c3b33", chip:"#22302a", head:"#1a4a3c", "head-ink":"#e2f1e8", field:"#e2f1e8", "field-ink":"#15211c", tile:"#e6cf97", "tile-edge":"#a88d52", "tile-ink":"#2b2213", accent:"#e8707f", "on-accent":"#1b0f12", link:"#84bfe3", good:"#56c487", bad:"#e8707f", new:"#b592ef" } },
+  // from the wooden Deluxe board: mahogany header, crimson and gold, the plaques' blue for links, light wooden tiles
+  deluxe: { name: "Deluxe board",
+    light: { bg:"#efe3cf", panel:"#fbf5ea", ink:"#2a1410", muted:"#74503f", line:"#e0cfb4", chip:"#f3e8d6", head:"#4a1c18", "head-ink":"#f4e2c4", field:"#fbf5ea", "field-ink":"#2a1410", tile:"#ecd6ac", "tile-edge":"#b89363", "tile-ink":"#17110c", accent:"#9b2230", "on-accent":"#fff4ea", link:"#1c6fae", good:"#2a7a46", bad:"#b3232f", new:"#7d50c4" },
+    dark:  { bg:"#5a1520", panel:"#2c1012", ink:"#f3e6d3", muted:"#d0aa98", line:"#5e3a26", chip:"#3b1619", head:"#33130f", "head-ink":"#f0dcbc", field:"#f3e6d3", "field-ink":"#2a1410", tile:"#e2cba0", "tile-edge":"#a8845a", "tile-ink":"#17110c", accent:"#d8b064", "on-accent":"#2a1410", link:"#93cdea", good:"#78d39b", bad:"#ff9a9a", new:"#c5a6ff" } },
   cocoa: { name: "Cream and cocoa",
     light: { bg:"#f6f0e4", panel:"#fffaf0", ink:"#2a2118", muted:"#74685a", line:"#e3d8c4", chip:"#f3ead9", head:"#4a3426", "head-ink":"#f8efe0", field:"#fffaf0", "field-ink":"#2a2118", tile:"#efd7a0", "tile-edge":"#c19d5a", "tile-ink":"#2a1f0e", accent:"#b5532e", "on-accent":"#ffffff", link:"#2f6f8f", good:"#3d7d3a", bad:"#b5532e", new:"#8a4fa8", warn:"#a66300" },
     dark:  { bg:"#1c1712", panel:"#251e17", ink:"#f1e7d6", muted:"#a99a85", line:"#3a2f24", chip:"#2c241c", head:"#2c2119", "head-ink":"#f1e7d6", field:"#f1e7d6", "field-ink":"#2a2118", tile:"#e8cf96", "tile-edge":"#a7854a", "tile-ink":"#2a1f0e", accent:"#e58a5e", "on-accent":"#1c0f08", link:"#8cc3dc", good:"#7cc576", bad:"#ec8a6a", new:"#c9a0e8", warn:"#f0b45a" } },
@@ -827,7 +1079,7 @@ Object.assign(THEMES, {
 });
 // how the theme picker groups the themes under "More themes"; anything not listed lands in Other
 const THEME_GROUPS = [
-  ["Classic", ["board", "tournament", "paper", "contrast", "midnight"]],
+  ["Classic", ["board", "tournament", "deluxe", "paper", "contrast", "midnight"]],
   ["Coffee and cocoa", ["coffee", "espresso", "mocha", "latenight", "coldbrew", "velvet", "cafe", "cocoa"]],
   ["Greens", ["forest", "emerald", "mint", "oat", "vanilla"]],
   ["Blues", ["ocean", "sky", "royal", "nord", "slate", "teal"]],
@@ -889,7 +1141,7 @@ const TILE_STYLES = {
   brushed: ["Brushed metal", `background-image: repeating-linear-gradient(90deg, rgb(255 255 255 / .1) 0 1px, rgb(0 0 0 / .045) 1px 2px), linear-gradient(180deg, rgb(255 255 255 / .38), rgb(0 0 0 / .12)); box-shadow: ${LIP}, inset 0 1px 0 rgb(255 255 255 / .6), 0 2px 4px rgb(0 0 0 / .3);`],
 };
 // with the tile look on "Theme", each theme brings its own look
-const THEME_TSTYLE = { board: "soft", tournament: "bevel", paper: "flat", contrast: "outline", midnight: "brushed",
+const THEME_TSTYLE = { deluxe: "wood", board: "soft", tournament: "bevel", paper: "flat", contrast: "outline", midnight: "brushed",
   coffee: "wood", espresso: "gloss", mocha: "soft", latenight: "float", coldbrew: "frosted", velvet: "pebble", cafe: "wood", cocoa: "wood",
   forest: "wood", emerald: "marble", mint: "frosted", oat: "linen", vanilla: "linen",
   ocean: "frosted", sky: "float", royal: "marble", nord: "float", slate: "outline", teal: "pebble",
@@ -901,7 +1153,8 @@ const tileLookOf = () => SET.tileLook === "theme" ? THEME_TSTYLE[SET.theme] || "
 document.head.insertAdjacentHTML("beforeend", `<style>${Object.entries(TILE_STYLES).map(([id, [, css, sub]]) => `:root[data-tstyle="${id}"] .tile { ${css} }${sub ? ` :root[data-tstyle="${id}"] .tile sub { ${sub} }` : ""}`).join("\n")}
 ${Object.entries(TILE_STYLES).map(([id, [, css, sub]]) => `.tstyles .tile.ts-${id} { ${css} }${sub ? ` .tstyles .tile.ts-${id} sub { ${sub} }` : ""}`).join("\n")}</style>`);
 const SET_DEFAULT = { theme: "board", mode: "auto", size: "md", values: true, sort: "prob", defs: true, prob: true, hooks: true, pageSize: 300, online: true, phony: 50, randMin: 2, randMax: 8, qcount: 20,
-  tiles: "theme", tileCustom: "#f1dcaa", headCustom: "", accentCustom: "", glare: "soft", tileLook: "theme", tileFont: "sans", rackLook: "oak" };
+  tiles: "theme", tileCustom: "#f1dcaa", headCustom: "", accentCustom: "", glare: "soft", tileLook: "theme", tileFont: "sans", rackLook: "oak",
+  bPal: "theme", bLabels: "letters", bCoords: true, bTile: "same", bStyle: "gaps", bMark: "bright", bTheme: "", bTileCol: "same", bArrows: false };
 let SET = { ...SET_DEFAULT, ...store.get("settings", {}) };
 const darkMQ = matchMedia("(prefers-color-scheme: dark)");
 const isDark = () => SET.mode === "dark" || (SET.mode === "auto" && darkMQ.matches);
@@ -930,9 +1183,10 @@ function applySettings() {
   root.dataset.values = SET.values ? "on" : "off";
   root.dataset.tstyle = tileLookOf();
   root.dataset.tfont = SET.tileFont;
+  root.dataset.theme = SET.theme; root.dataset.mode = dark ? "dark" : "light";
   // the phone's browser bar follows the header colour
   document.getElementById("themeColor").content = tok.head;
-  store.set("paint", { mode: SET.mode, light: tokensFor(false), dark: tokensFor(true), size: root.style.fontSize, values: root.dataset.values, tstyle: tileLookOf(), tfont: SET.tileFont });
+  store.set("paint", { mode: SET.mode, light: tokensFor(false), dark: tokensFor(true), size: root.style.fontSize, values: root.dataset.values, tstyle: tileLookOf(), tfont: SET.tileFont, theme: SET.theme });
 }
 function saveSettings(patch) { SET = { ...SET, ...patch }; store.set("settings", SET); applySettings(); }
 darkMQ.addEventListener?.("change", applySettings);
@@ -2410,14 +2664,15 @@ VIEWS.settings = () => {
 // the tile-colour preview shows the word in the search bar, else the last word viewed
 const sampleWord = () => [$("#q").value, store.get("hist", [])[0], "SCRABBLE"].map(w => (w || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 15)).find(Boolean);
 
-// ---------- study: Lists, Practice and Quiz share one tab, with a switch along the top ----------
-const STUDY = ["lists", "practice", "quiz"];
+// ---------- study: Lists, Practice, Quiz and Scoring share one tab, with a switch along the top ----------
+const STUDY = ["lists", "practice", "quiz", "scoring"];
+VIEWS.scoring = () => viewCount();
 for (const k of STUDY) {
   const f = VIEWS[k];
   VIEWS[k] = arg => {
     f(arg);
     const top = !(k === "lists" && arg) && location.hash !== "#practice/go" && !(k === "quiz" && Q && !Q.done && !Q.paused);
-    if (top && !$("#view .studyseg")) $("#view").insertAdjacentHTML("afterbegin", `<nav class="studyseg">${[["lists", "Lists"], ["practice", "Practice"], ["quiz", "Quiz"]].map(([h, n]) => `<a href="#${h}" class="${h === k ? "on" : ""}">${n}</a>`).join("")}</nav>`);
+    if (top && !$("#view .studyseg")) $("#view").insertAdjacentHTML("afterbegin", `<nav class="studyseg">${[["lists", "Lists"], ["practice", "Practice"], ["quiz", "Quiz"], ["scoring", "Scoring"]].map(([h, n]) => `<a href="#${h}" class="${h === k ? "on" : ""}">${n}</a>`).join("")}</nav>`);
   };
 }
 
@@ -2498,6 +2753,340 @@ document.addEventListener("keydown", ev => {
   if (pkOpen) { const b = pkOpen.btn; closePicker(); b.focus(); return; }
   [...document.querySelectorAll(".sheetwrap:not([hidden])")].pop()?.querySelector(".scrim")?.click();
 });
+
+// ---------- board: Look (the Board tab: place tiles and see the score worked out) and Count (Study → Scoring: practise adding up a play) ----------
+// Squares are numbered 0–224 across the rows. Across plays are named row then column (8H), down plays column then row (H8).
+const BPREM = (() => {
+  const p = Array(225).fill(""), q = { tw: [[0, 0], [0, 7]], dw: [[1, 1], [2, 2], [3, 3], [4, 4], [7, 7]], tl: [[1, 5], [5, 5]], dl: [[0, 3], [2, 6], [3, 7], [6, 6]] };
+  for (const [k, l] of Object.entries(q)) for (const [r, c] of l) for (const [a, b] of [[r, c], [c, r]]) for (const R of [a, 14 - a]) for (const C of [b, 14 - b]) p[R * 15 + C] = k;
+  return p;
+})();
+const BWORDS = { tw: "Triple<br>word<br>score", dw: "Double<br>word<br>score", tl: "Triple<br>letter<br>score", dl: "Double<br>letter<br>score" };
+// the Deluxe centre star: eight points, outlined like the printed one
+const DSTAR = (() => { let d = ""; for (let i = 0; i < 16; i++) { const a = Math.PI * i / 8 - Math.PI / 2, r = i % 2 ? 19 : 44; d += (i ? "L" : "M") + (50 + r * Math.cos(a)).toFixed(1) + " " + (50 + r * Math.sin(a)).toFixed(1); }
+  return `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="${d}Z" fill="rgb(255 240 232 / .55)" stroke="rgb(150 70 60 / .7)" stroke-width="3" stroke-linejoin="round"/></svg>`; })();
+const BWORDS2 = { tw: "Triple<br>word", dw: "Double<br>word", tl: "Triple<br>letter", dl: "Double<br>letter" };
+const BLABELS = { letters: { tw: "TW", dw: "DW", tl: "TL", dl: "DL" }, nums: { tw: "3W", dw: "2W", tl: "3L", dl: "2L" } }, BLM = { dl: 2, tl: 3 }, BWM = { dw: 2, tw: 3 }, BCOLS = "ABCDEFGHIJKLMNO";
+const bAt = (i, d) => d ? BCOLS[i % 15] + (1 + (i / 15 | 0)) : (1 + (i / 15 | 0)) + BCOLS[i % 15];
+const rnd = n => Math.floor(Math.random() * n), pickOne = a => a[rnd(a.length)];
+// the score of the new tiles `news` (square → {ch, b}) on `cells`: every word made, or an error saying why it isn't a play
+function scorePlay(cells, news) {
+  const idx = [...news.keys()];
+  if (!idx.length) return null;
+  const at = i => news.get(i) || cells[i];
+  const rows = new Set(idx.map(i => i / 15 | 0)), cols = new Set(idx.map(i => i % 15));
+  if (rows.size > 1 && cols.size > 1) return { error: "The tiles need to be in one row or column." };
+  const run = (i, d) => {
+    const step = d ? 15 : 1, ok = j => j >= 0 && j < 225 && (d || (j / 15 | 0) === (i / 15 | 0)) && at(j);
+    let s = i; while (ok(s - step)) s -= step;
+    const out = []; for (let j = s; ok(j); j += step) out.push(j);
+    return out;
+  };
+  // one tile goes whichever way makes the longer word
+  const dir = rows.size > 1 ? 1 : cols.size > 1 ? 0 : run(idx[0], 1).length > run(idx[0], 0).length ? 1 : 0;
+  const main = run(idx[0], dir);
+  if (!idx.every(i => main.includes(i))) return { error: "There's a gap in the play." };
+  const scoreRun = (sq, d) => {
+    let sum = 0, wm = 1;
+    const parts = sq.map(i => {
+      const t = at(i), fresh = news.has(i), v = t.b ? 0 : VALUES[t.ch], lm = fresh && BLM[BPREM[i]] || 1;
+      if (fresh) wm *= BWM[BPREM[i]] || 1;
+      sum += v * lm;
+      return { ch: t.ch, b: t.b, v, lm, fresh };
+    });
+    return { word: sq.map(i => at(i).ch).join(""), start: sq[0], dir: d, parts, wm, score: sum * wm };
+  };
+  const words = [];
+  if (main.length > 1) words.push(scoreRun(main, dir));
+  for (const i of idx) { const c = run(i, 1 - dir); if (c.length > 1) words.push(scoreRun(c, 1 - dir)); }
+  if (!words.length) return { error: "A word needs at least two letters." };
+  const first = cells.every(c => !c);
+  if (first ? !news.has(112) : !words.some(w => w.parts.some(p => !p.fresh)))
+    return { error: first ? "The first play goes through the centre star." : "The play isn't joined to the tiles on the board." };
+  const bingo = news.size === 7 ? 50 : 0;
+  return { words, bingo, total: words.reduce((s, w) => s + w.score, 0) + bingo };
+}
+// badges: the play's direction (0 across, 1 down) to show the bonus of new tiles on bonus squares on a tab (Count), or false
+function boardHTML(cells, news = new Map(), cur = -1, dir = 0, badges = false) {
+  // which side of square i the tab goes on: the first of the play's two sides that's an empty square on the board
+  const side = i => {
+    const free = (j, ok) => ok && !cells[j] && !news.has(j), r = i / 15 | 0, c = i % 15;
+    const sides = badges ? [["rt", i + 1, c < 14], ["lt", i - 1, c > 0]] : [["up", i - 15, r > 0], ["dn", i + 15, r < 14]];
+    return (sides.find(([, j, ok]) => free(j, ok)) || ["in"])[0];
+  };
+  const lab = SET.bLabels === "none" ? {} : SET.bLabels === "words" ? BWORDS : SET.bLabels === "words2" ? BWORDS2 : BLABELS[SET.bLabels] || BLABELS.letters, blab = BLABELS[SET.bLabels] || BLABELS.letters;
+  const dlx = /^dlx/.test(SET.bStyle);
+  let h = "";
+  for (let i = 0; i < 225; i++) {
+    const t = news.get(i) || cells[i], k = BPREM[i], r = i / 15 | 0, c = i % 15;
+    const edge = k ? (r === 0 ? " et" : r === 14 ? " eb" : "") + (c === 0 ? " el" : c === 14 ? " er" : "") : "";
+    const label = dlx && k && lab[k] ? `<i class="l">${lab[k]}</i><i class="s">${blab[k]}</i>` : lab[k] || "";
+    h += `<div class="sq ${k}${edge}${i === 112 ? " st" : ""}${i === cur ? " cur" + (dir ? " dn" : "") : ""}" data-i="${i}"${dlx ? ` style="--r:${r};--c:${c}"` : ""}>${t
+      ? `<div class="tile${news.has(i) ? " new" : ""}${t.b ? " blank" : ""}">${t.ch}${t.b ? "" : `<sub>${VALUES[t.ch]}</sub>`}${badges !== false && k && news.has(i) ? `<i class="bb ${k} ${side(i)}">${blab[k]}</i>` : ""}</div>`
+      : `<span>${i === 112 ? (dlx ? DSTAR : "★") : label}</span>`}</div>`;
+  }
+  const bts = SET.bTile !== "same" && TILE_STYLES[SET.bTile] ? ` data-bts="${SET.bTile}"` : "";
+  return `<div class="bwrap st-${SET.bStyle} pal-${SET.bPal} ${badges !== false ? " mk-" + (BMARKS.some(([v]) => v === SET.bMark) ? SET.bMark : "bright") : ""}${SET.bCoords ? "" : " nocoord"}${SET.bArrows ? " arrows" : ""} lab-${SET.bLabels}"${bts}${bVars()}><div class="bcx">${[...BCOLS].map(c => `<span>${c}</span>`).join("")}</div><div class="bcy">${BCOLS.split("").map((_, i) => `<span>${i + 1}</span>`).join("")}</div><div class="bd">${h}</div></div>`;
+}
+// a board-only tile style: clear what the Settings style added, then lay this one on
+document.head.insertAdjacentHTML("beforeend", `<style>${Object.entries(TILE_STYLES).map(([id, [, css, sub]]) => `.bwrap[data-bts="${id}"] .tile { background-image: none; transform: none; margin: 0; border-radius: 3px; ${css} }${sub ? ` .bwrap[data-bts="${id}"] .tile sub { ${sub} }` : ""}`).join("\n")}</style>`);
+// Theme board colours can come from a different theme than the app's: its colours go on the board as inline tokens
+const bThemeDecls = (id = SET.bTheme) => {
+  const t = THEMES[id]; if (!t) return [];
+  const c = isDark() ? t.dark : lightOf(id, t);
+  return ["head", "panel", "accent", "link", "ink", "muted"].map(k => `--${k}:${c[k]}`);
+};
+const bThemeVars = id => { const d = bThemeDecls(id); return d.length ? ` style="${d.join(";")}"` : ""; };
+// board-only tile colours: [name, colour or "" for Settings'], set on the board as tile tokens
+const BTILECOLS = { same: ["Same as Settings", ""], burgundy: ["Burgundy wood", "#6e1b24"], natural: ["Natural wood", "#ecd6ac"], ivory: ["Ivory", "#f5eedb"] };
+const bVars = () => {
+  const c = BTILECOLS[SET.bTileCol]?.[1];
+  const d = [...(SET.bPal === "theme" ? bThemeDecls() : []), ...(c ? Object.entries(tileTok(c)).map(([k, v]) => `--${k}:${v}`) : [])];
+  return d.length ? ` style="${d.join(";")}"` : "";
+};
+// one tap for a whole look: the wooden Deluxe set of about 2000 (from photos of a real board), in two sizes of frame
+const BPRESETS = { dlx: ["Deluxe", { bStyle: "dlx", bPal: "dlxd", bLabels: "words2", bTileCol: "natural", bTile: "wood", bArrows: true }],
+  dlxc: ["Deluxe compact", { bStyle: "dlxc", bPal: "dlxa", bLabels: "letters", bTileCol: "natural", bTile: "wood", bArrows: true }] };
+const BMARKS = [["bright", "Brighter"], ["halo", "Soft light"], ["shine", "Shine"], ["lift", "Lifted"], ["tint", "Warm tint"], ["dim", "Others faded"]];
+// Board look: one sheet, opened from the Board tab and from Scoring, saved with the other settings so both follow it
+const bLookBar = () => `<div class="bbar"><button type="button" class="btn sm" id="bLookOpen">Board look</button></div>`;
+function bLookSheet() {
+  const seg = (key, opts) => `<div class="seg">${opts.map(([v, t]) => `<button type="button" class="btn ${String(SET[key]) === String(v) ? "on" : ""}" data-bset="${key}" data-val="${v}">${t}</button>`).join("")}</div>`;
+  const ts = (id, n, look) => `<button type="button" class="${SET.bTile === id ? "on" : ""}" data-bset="bTile" data-val="${id}"><div class="tile ts-${look}">A<sub>1</sub></div>${n}</button>`;
+  // a 5×5 corner of the board in a style and colours, with one tile on it
+  const MINI = ["tw", "", "", "dl", "", "", "dw", "", "", "", "", "", "dw", "", "", "dl", "", "", "dw", "", "", "", "", "", "tl"];
+  const mini = (st, pal, th = SET.bTheme) => `<div class="bwrap bmini st-${st} pal-${pal}"${pal === "theme" ? bThemeVars(th) : ""}><div class="bd">${MINI.map((k, i) => `<div class="sq ${k}">${k ? "<span></span>" : ""}${i === 7 ? `<div class="tile">A</div>` : ""}</div>`).join("")}</div></div>`;
+  const picks = (key, opts, prev) => `<div class="bpicks">${opts.map(([v, n]) => `<button type="button" class="${SET[key] === v ? "on" : ""}" data-bset="${key}" data-val="${v}">${prev(v)}${n}</button>`).join("")}</div>`;
+  return sheetHTML("bsheet", `<h3>Board look<button type="button" id="bLookDone">Done</button></h3>
+    <div class="fs"><h2 class="lbl">Ready-made looks</h2><div class="bpicks">${Object.entries(BPRESETS).map(([id, [n, o]]) =>
+      `<button type="button" class="${Object.entries(o).every(([k, v]) => SET[k] === v) ? "on" : ""}" data-bpreset="${id}">${mini(o.bStyle, o.bPal)}${n}</button>`).join("")}</div></div>
+    <div class="fs"><h2 class="lbl">Board style</h2>${picks("bStyle", [["gaps", "Gaps"], ["lined", "Lined"], ["dlx", "Deluxe"], ["dlxc", "Deluxe compact"], ["ridged", "Ridged"], ["wood", "Wooden"], ["leather", "Leather"], ["stone", "Stone"], ["glass", "Glass"], ["raised", "Raised"], ["inset", "Sunken"], ["felt", "Felt"], ["print", "Printed"]], v => mini(v, SET.bPal))}</div>
+    <div class="fs"><h2 class="lbl">Board colours</h2>${picks("bPal", [["theme", "Theme"], ["classic", "Classic"], ["dlxd", "Deluxe"], ["dlxa", "Deluxe crimson"], ["vintage", "Vintage"], ["pastel", "Pastel"], ["night", "Night"], ["plain", "Plain"]], v => mini(SET.bStyle, v))}
+      ${SET.bPal === "theme" ? `<h2 class="lbl" style="margin-top:14px">Theme for the board</h2>
+        <div class="bpicks"><button type="button" class="${THEMES[SET.bTheme] ? "" : "on"}" data-bset="bTheme" data-val="">${mini(SET.bStyle, "theme", "")}Same as app</button></div>
+        ${bThemeGroups().map(([g, ids]) => `<div class="sect" style="margin:12px 0 6px">${g}</div><div class="bpicks">${ids.map(id =>
+          `<button type="button" class="${SET.bTheme === id ? "on" : ""}" data-bset="bTheme" data-val="${id}">${mini(SET.bStyle, "theme", id)}${esc(THEMES[id].name)}</button>`).join("")}</div>`).join("")}` : ""}</div>
+    <div class="fs"><h2 class="lbl">Bonus squares</h2>${seg("bLabels", [["letters", "TW · DL"], ["nums", "3W · 2L"], ["words", "Written out"], ["words2", "Two words"], ["none", "No labels"]])}</div>
+    <div class="fs"><h2 class="lbl">Arrows on bonus squares</h2>${seg("bArrows", [[true, "Show"], [false, "Hide"]])}</div>
+    <div class="fs"><h2 class="lbl">Edge letters and numbers</h2>${seg("bCoords", [[true, "Show"], [false, "Hide"]])}</div>
+    <div class="fs"><h2 class="lbl">New tiles in Scoring</h2>${seg("bMark", BMARKS)}</div>
+    <div class="fs"><h2 class="lbl">Tiles</h2><div class="tilepick tstyles">${ts("same", "Same as Settings", tileLookOf())}${Object.entries(TILE_STYLES).map(([id, [n]]) => ts(id, n, id)).join("")}</div>
+      <h2 class="lbl" style="margin-top:14px">Tile colour</h2>${seg("bTileCol", Object.entries(BTILECOLS).map(([id, [n]]) => [id, n]))}
+      <p class="small" style="margin:8px 0 0">Tile letters come from Settings.</p></div>`);
+}
+// wire the button and sheet; redraw is the page's own redraw, and the sheet opens again after it
+function bLookWire(redraw) {
+  const open = () => sheet("bsheet", true), close = () => sheet("bsheet", false);
+  $("#bLookOpen").onclick = open;
+  $("#bLookDone").onclick = $("#bsheet .scrim").onclick = close;
+  $("#bsheet").querySelectorAll("[data-bset], [data-bpreset]").forEach(b => b.onclick = () => {
+    const k = b.dataset.bset, v = b.dataset.val;
+    saveSettings(b.dataset.bpreset ? BPRESETS[b.dataset.bpreset][1] : { [k]: k === "bCoords" || k === "bArrows" ? v === "true" : v });
+    const sc = $("#bsheet .sheet").scrollTop;
+    redraw(); open(); $("#bsheet .sheet").scrollTop = sc;
+  });
+}
+// the working for a play: each word's letters (with bonuses), its word bonus and total, then the bingo and the total
+function workHTML(r, checkWords) {
+  return r.words.map(w => `<div class="bk"><span class="bkw${checkWords && !DICT.has(w.word) ? " bad" : ""}">${w.word}</span>${w.parts.map(p =>
+    `<i class="${p.fresh && p.lm > 1 ? (p.lm === 3 ? "tl" : "dl") : ""}${p.b ? " bl" : ""}">${p.ch} ${p.v}${p.lm > 1 ? "×" + p.lm : ""}</i>`).join("+")}${w.wm > 1 ? `<span class="wm">then ×${w.wm}</span>` : ""}<b>${w.score}</b></div>`).join("")
+    + (r.bingo ? `<div class="bk"><span class="bkw">Bingo</span><span class="small">all seven tiles</span><b>+50</b></div>` : "")
+    + (r.words.length > 1 || r.bingo ? `<div class="btotal"><span>Total</span><b>${r.total}</b></div>` : "");
+}
+const coarse = matchMedia("(pointer: coarse)");
+// letters typed onto the board: on a phone through a hidden box (so its keyboard opens), on a computer straight from the keys.
+// The box lives outside the page so redrawing the board doesn't close the phone's keyboard.
+let bkOnKey = null;
+function bkInput() {
+  let inp = $("#bkIn");
+  if (inp) return inp;
+  const KEEP = "  ";
+  document.body.insertAdjacentHTML("beforeend", `<input class="bkin" id="bkIn" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-label="Type letters onto the board">`);
+  inp = $("#bkIn"); inp.value = KEEP;
+  inp.addEventListener("input", () => {
+    const v = inp.value; inp.value = KEEP;
+    if (!bkOnKey || !/^#(board|scoring)/.test(location.hash)) return;
+    if (v.length < KEEP.length) bkOnKey("Backspace");
+    else for (const ch of v.slice(KEEP.length)) bkOnKey(ch);
+  });
+  return inp;
+}
+function boardKeys(onKey) {
+  const inp = bkInput();
+  bkOnKey = onKey;
+  document.onkeydown = ev => {
+    if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    if (ev.target.matches?.("input, textarea, select") && (ev.target !== inp || ev.key !== "Enter")) return;
+    if (onKey(ev.key) !== false) ev.preventDefault();
+  };
+}
+
+// Look: your own board, kept between visits
+let LOOK = null;
+const lookGet = () => LOOK ||= { cells: Array(225).fill(null), moves: [], ...store.get("board", {}), news: new Map(store.get("boardNew", [])), cur: -1, dir: 0, blank: false };
+const lookSave = () => { store.set("board", { cells: LOOK.cells, moves: LOOK.moves }); store.set("boardNew", [...LOOK.news]); };
+function viewLook() {
+  const L = lookGet(), r = scorePlay(L.cells, L.news), used = L.cells.filter(Boolean).length + L.news.size;
+  const main = r && !r.error && r.words[0];
+  $("#view").innerHTML = `${bLookBar()}
+  <div class="bgrid"><div>${boardHTML(L.cells, L.news, L.cur, L.dir)}</div>
+  <div class="bside">
+    <div class="card"><h2 class="lbl">This play</h2>${!r ? `<p class="empty">Tap a square and type to place tiles. Tap the same square again to go down instead of across.</p>`
+      : r.error ? `<p class="empty">${r.error}</p>`
+      : `<p class="bq" style="margin-bottom:6px">${main.word} <span class="small">${bAt(main.start, main.dir)}</span></p>${workHTML(r, true)}`}
+      <div class="row" style="margin-top:12px"><button class="btn primary" id="bPlay" ${r && !r.error ? "" : "disabled"}>Play</button><button class="btn ${L.blank ? "on" : ""}" id="bBlank" aria-pressed="${L.blank}" title="The next letter is a blank (or type ? first)">Blank</button><button class="btn" id="bUndo" ${L.news.size || L.moves.length ? "" : "disabled"}>${L.news.size ? "Take back" : "Undo last play"}</button></div></div>
+    <div class="card"><h2 class="lbl">Plays</h2>${L.moves.length ? `<div class="bmoves">${L.moves.map((m, n) => `<div class="${m.ok ? "" : "bad"}"><span>${n + 1}</span><span>${m.at}</span><span>${m.w}</span><b>${m.s}</b></div>`).join("")}</div>
+      <div class="btotal"><span>Total</span><b>${L.moves.reduce((s, m) => s + m.s, 0)}</b></div>` : `<p class="empty">Plays you make on this board are listed here.</p>`}
+      <div class="row" style="margin-top:12px"><span class="small" style="margin-right:auto">${100 - used} tiles left in the bag</span><button class="btn sm" id="bClear" ${used ? "" : "disabled"}>Clear board</button></div></div>
+  </div></div>${bLookSheet()}`;
+  const redraw = () => { lookSave(); const sy = window.scrollY; viewLook(); window.scrollTo(0, sy); };
+  bLookWire(redraw);
+  const step = () => L.dir ? 15 : 1, inLine = (a, b) => b >= 0 && b < 225 && (L.dir || (a / 15 | 0) === (b / 15 | 0));
+  let blankNext = false;
+  $("#view .bd").addEventListener("click", ev => {
+    const sq = ev.target.closest(".sq"); if (!sq) return;
+    const i = +sq.dataset.i;
+    if (i === L.cur) L.dir = 1 - L.dir; else L.cur = i;
+    redraw();
+    if (coarse.matches) bkInput().focus({ preventScroll: true });
+  });
+  boardKeys(k => {
+    if (k === "Enter") { $("#bPlay")?.click(); return; }
+    if (k === "?") { blankNext = true; return; }
+    const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    if (arrows[k]) {
+      const [dc, dr] = arrows[k], r = (L.cur / 15 | 0) + dr, c = L.cur % 15 + dc;
+      if (L.cur < 0) L.cur = 112; else if (r >= 0 && r < 15 && c >= 0 && c < 15) L.cur = r * 15 + c;
+      redraw(); return;
+    }
+    if (L.cur < 0) return false;
+    if (k === " ") { L.dir = 1 - L.dir; redraw(); return; }
+    if (k === "Backspace") {
+      // take back the tile here, or the last one placed before it
+      let i = L.cur;
+      if (!L.news.has(i)) { i -= step(); while (inLine(L.cur, i) && L.cells[i]) i -= step(); }
+      if (inLine(L.cur, i) && L.news.has(i)) { L.news.delete(i); L.cur = i; }
+      redraw(); return;
+    }
+    if (!/^[a-z]$/i.test(k)) return false;
+    let i = L.cur;
+    while (inLine(L.cur, i) && L.cells[i]) i += step();
+    if (!inLine(L.cur, i)) return;
+    L.news.set(i, { ch: k.toUpperCase(), b: L.blank || blankNext });
+    blankNext = false; L.blank = false;
+    let n = i + step();
+    while (inLine(i, n) && L.cells[n]) n += step();
+    L.cur = inLine(i, n) ? n : i;
+    redraw();
+  });
+  $("#bPlay").onclick = () => {
+    const r = scorePlay(L.cells, L.news); if (!r || r.error) return;
+    const m = r.words[0];
+    L.moves.push({ w: m.word, at: bAt(m.start, m.dir), s: r.total, t: [...L.news.keys()], ok: r.words.every(w => DICT.has(w.word)) });
+    for (const [i, t] of L.news) L.cells[i] = t;
+    L.news = new Map(); L.cur = -1;
+    redraw();
+  };
+  $("#bBlank").onclick = () => { L.blank = !L.blank; redraw(); if (coarse.matches && L.cur >= 0) bkInput().focus({ preventScroll: true }); };
+  $("#bUndo").onclick = () => {
+    if (L.news.size) L.news = new Map();
+    else { const m = L.moves.pop(); if (m) { for (const i of m.t) L.cells[i] = null; } }
+    redraw();
+  };
+  confirmBtn($("#bClear"), () => { LOOK = { cells: Array(225).fill(null), moves: [], news: new Map(), cur: -1, dir: 0, blank: false }; redraw(); });
+}
+
+// Count: a made-up position with a new play outlined; you add up its score
+const BLEVELS = { mix: ["Mixed", () => true], simple: ["Simple", r => r.words.length === 1 && r.words[0].wm === 1 && !r.bingo],
+  word: ["Word bonus", r => r.words[0].wm > 1 && !r.bingo], cross: ["Cross-words", r => r.words.length > 1 && !r.bingo], bingo: ["Bingos", r => !!r.bingo] };
+// a play that fits: a random word laid across a square next to the tiles, with every word it makes real
+function findPlay(cells, ok, tries, lens) {
+  const anchors = [];
+  for (let i = 0; i < 225; i++) if (!cells[i] && [-15, 15, -1, 1].some(d => { const j = i + d; return j >= 0 && j < 225 && (Math.abs(d) === 15 || (j / 15 | 0) === (i / 15 | 0)) && cells[j]; })) anchors.push(i);
+  if (!anchors.length) anchors.push(112);
+  for (let t = 0; t < tries; t++) {
+    const a = pickOne(anchors), dir = rnd(2), step = dir ? 15 : 1, len = pickOne(lens), pool = BYLEN[len];
+    if (!pool) continue;
+    const word = pickOne(pool), start = a - rnd(len) * step, end = start + (len - 1) * step;
+    if (start < 0 || end > 224 || (!dir && (start / 15 | 0) !== (end / 15 | 0))) continue;
+    const news = new Map(); let fits = true;
+    for (let j = 0; j < len; j++) { const sq = start + j * step, c = cells[sq]; if (c) { if (c.ch !== word[j]) { fits = false; break; } } else news.set(sq, { ch: word[j], b: false }); }
+    if (!fits || !news.size || news.size > 7) continue;
+    const r = scorePlay(cells, news);
+    if (!r || r.error || r.words[0].word !== word || !r.words.every(w => DICT.has(w.word)) || !ok(r)) continue;
+    return { news, r };
+  }
+  return null;
+}
+function makeCount(level) {
+  const ok = BLEVELS[level]?.[1] || BLEVELS.mix[1];
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const cells = Array(225).fill(null);
+    const plays = 3 + rnd(9);
+    for (let n = 0; n < plays; n++) { const p = findPlay(cells, () => true, 3000, [2, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 7, 7, 8]); if (p) for (const [i, t] of p.news) cells[i] = t; }
+    // now and then one tile already down is a blank
+    if (Math.random() < .25) { const ts = cells.filter(Boolean); if (ts.length) pickOne(ts).b = true; }
+    const q = findPlay(cells, ok, 8000, level === "bingo" ? [7, 8, 8, 8] : [2, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 7, 8]);
+    if (!q) continue;
+    // and sometimes one of the new tiles is a blank, which scores nothing
+    if ((level === "mix" || level === "bingo") && Math.random() < .2) { const k = pickOne([...q.news.keys()]); q.news.set(k, { ...q.news.get(k), b: true }); q.r = scorePlay(cells, q.news); }
+    return { cells, news: q.news, r: q.r, t0: Date.now(), typed: "", done: false };
+  }
+  return null;
+}
+let CNT = null;
+const cntStats = () => ({ n: 0, right: 0, ms: 0, streak: 0, best: 0, ...store.get("boardStats", {}) });
+function viewCount() {
+  const level = store.get("boardLevel", "mix");
+  if (!CNT || CNT.level !== level) { CNT = makeCount(level); if (CNT) CNT.level = level; }
+  const st = cntStats(), C = CNT;
+  if (!C) { $("#view").innerHTML = `<div class="card"><p class="empty">Couldn't make a position just now. Try again.</p></div>`; return; }
+  const m = C.r.words[0], right = C.done && +C.typed === C.r.total;
+  $("#view").innerHTML = `${bLookBar()}
+  <div class="bgrid"><div>${boardHTML(C.cells, C.news, -1, 0, C.r.words[0].dir)}</div>
+  <div class="bside">
+    <div class="seg blevels">${Object.entries(BLEVELS).map(([k, [n]]) => `<button type="button" class="btn sm ${k === level ? "on" : ""}" data-lv="${k}">${n}</button>`).join("")}</div>
+    <div class="card">
+      <p class="bq">What does <em>${m.word}</em> score?</p>
+      <p class="small" style="margin:2px 0 0">${bAt(m.start, m.dir)}, the glowing tiles${[...C.news.values()].some(t => t.b) ? " (the coloured letter is a blank)" : ""}</p>
+      <div class="bans"><div class="box ${C.done ? (right ? "right" : "wrong") : ""}" id="bBox">${C.typed}</div></div>
+      ${C.done ? `<p class="bres ${right ? "right" : "wrong"}">${right ? `Right, in ${(C.ms / 1000).toFixed(1)}s` : `It's ${C.r.total}`}</p>${workHTML(C.r)}
+        <div class="row" style="margin-top:12px"><button class="btn primary" id="bNext" style="flex:1;min-height:46px">Next</button><button class="btn" id="bToLook" style="min-height:46px">Open in Look</button></div>`
+      : `<div class="bpad">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(d => `<button type="button" data-d="${d}">${d}</button>`).join("")}<button type="button" data-d="del" aria-label="Delete">⌫</button><button type="button" class="go" data-d="ok" aria-label="Check">✓</button></div>`}
+    </div>
+    <div class="card btally"><div><b>${st.right}/${st.n}</b>right</div><div><b>${st.n ? (st.ms / st.n / 1000).toFixed(1) + "s" : "–"}</b>average</div><div><b>${st.streak}</b>in a row</div><div><b>${st.best}</b>best run</div>
+      <button class="btn sm" id="bReset" style="margin-left:auto;align-self:center" ${st.n ? "" : "disabled"}>Reset</button></div>
+  </div></div>${bLookSheet()}`;
+  // redraw for the Board look sheet: the same view with Study's switch put back along the top
+  bLookWire(() => { const sy = window.scrollY; VIEWS.scoring(); window.scrollTo(0, sy); });
+  const check = () => {
+    if (C.done || !C.typed) return;
+    C.done = true; C.ms = Date.now() - C.t0;
+    const s = cntStats(), ok = +C.typed === C.r.total;
+    s.n++; s.ms += C.ms; if (ok) { s.right++; s.streak++; s.best = Math.max(s.best, s.streak); } else s.streak = 0;
+    store.set("boardStats", s); VIEWS.scoring();
+  };
+  const next = () => { CNT = null; VIEWS.scoring(); };
+  const key = k => {
+    if (C.done) { if (k === "Enter" || k === " ") { next(); return; } return false; }
+    if (/^\d$/.test(k) && C.typed.length < 4) C.typed += k;
+    else if (k === "Backspace" || k === "del") C.typed = C.typed.slice(0, -1);
+    else if (k === "Enter" || k === "ok") return check();
+    else return false;
+    $("#bBox").textContent = C.typed;
+  };
+  boardKeys(key);
+  $("#view").querySelectorAll(".bpad [data-d]").forEach(b => b.onclick = () => key(b.dataset.d));
+  $("#view").querySelectorAll("[data-lv]").forEach(b => b.onclick = () => { store.set("boardLevel", b.dataset.lv); CNT = null; VIEWS.scoring(); });
+  if ($("#bNext")) $("#bNext").onclick = next;
+  if ($("#bToLook")) $("#bToLook").onclick = () => {
+    LOOK = { cells: C.cells.map(t => t && { ...t }), moves: [], news: new Map([...C.news].map(([i, t]) => [i, { ...t }])), cur: -1, dir: 0, blank: false };
+    lookSave(); location.hash = "board";
+  };
+  confirmBtn($("#bReset"), () => { store.set("boardStats", {}); VIEWS.scoring(); });
+}
+// Count used to be #board/count; old links go to Scoring
+VIEWS.board = arg => arg === "count" ? location.replace("#scoring") : viewLook();
 
 // ---------- routing ----------
 function route() {
