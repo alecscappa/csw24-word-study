@@ -1176,6 +1176,7 @@ VIEWS.settings = () => {
   <div class="card">
     <div class="fs"><h2 class="lbl">Lexicon</h2>${LEX.html()}</div>
   </div>
+  <div class="card" id="syncCard">${syncHTML()}</div>
   <div class="card">
     <div class="fs"><h2 class="lbl">Your data</h2><p class="small" style="margin:0 0 10px">Starred ${getStars().length} · notes ${Object.keys(getNotes()).length} · quiz records ${Object.keys(store.get("stats", {})).length}</p>
       <div class="row"><button class="btn sm" id="clrHist">Clear history</button><button class="btn sm" id="clrStats">Clear quiz records</button><button class="btn sm" id="clrReview">Clear practice review (${getPQ().items.length})</button><button class="btn sm" id="resetSet">Reset settings</button></div></div>
@@ -1200,7 +1201,7 @@ VIEWS.settings = () => {
   $("#setPhony").onchange = e => saveSettings({ phony: +e.target.value });
   $("#setRmin").onchange = e => saveSettings({ randMin: +e.target.value, randMax: Math.max(+e.target.value, SET.randMax) });
   $("#setRmax").onchange = e => saveSettings({ randMax: +e.target.value, randMin: Math.min(+e.target.value, SET.randMin) });
-  LEX.wire();
+  LEX.wire(); syncWire();
   confirmBtn($("#lexDel"), () => LEX.put(null).then(() => location.reload()));
   confirmBtn($("#clrHist"), () => { store.set("hist", []); VIEWS.settings(); });
   confirmBtn($("#clrReview"), () => { store.set("pq", { n: getPQ().n, items: [] }); VIEWS.settings(); });

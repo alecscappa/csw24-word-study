@@ -12,7 +12,7 @@ const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 const lensOf = v => (Array.isArray(v) ? v : String(v || "").split(",")).map(Number).filter(Boolean).sort((a, b) => a - b);
 const store = {
   get(k, d) { try { return JSON.parse(localStorage.getItem("csw24:" + k)) ?? d; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem("csw24:" + k, JSON.stringify(v)); } catch {} }
+  set(k, v) { try { localStorage.setItem("csw24:" + k, JSON.stringify(v)); } catch {} window.syncChanged?.(k); }
 };
 
 // ---------- settings & themes ----------
