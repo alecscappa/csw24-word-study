@@ -112,14 +112,14 @@ a.badge.plain:hover { color: var(--accent); }
 .links { display: flex; gap: 14px; flex-wrap: wrap; font: .85rem var(--mono); margin-top: 12px; }
 textarea { width: 100%; min-height: 70px; border: 1px solid var(--line); border-radius: 6px; padding: 10px; background: var(--chip); resize: vertical; }
 
-/* result rows: front hooks | word | back hooks | definition | probability */
+/* result rows: probability | front hooks | word | back hooks | definition | star (a list's own rank comes first) */
 .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
 .toolbar .count { font: 700 1rem var(--display); margin-right: auto; }
 .tacts { display: flex; gap: 10px; flex-wrap: wrap; }
 .chips { display: flex; gap: 4px; flex-wrap: wrap; }
 select, .field input { border: 1px solid var(--line); background: var(--chip); border-radius: 6px; padding: 7px 9px; min-width: 0; }
 .rows { display: flex; flex-direction: column; }
-.r { display: grid; grid-template-columns: 4.5em max-content 4.5em minmax(0,1fr) auto auto; gap: 10px; align-items: baseline; padding: 6px 4px; border-top: 1px solid var(--line); cursor: pointer; }
+.r { display: grid; grid-template-columns: 4.6em 4.5em max-content 4.5em minmax(0,1fr) auto; gap: 10px; align-items: baseline; padding: 6px 4px; border-top: 1px solid var(--line); cursor: pointer; }
 .r:first-child { border-top: 0; }
 .r:hover { background: var(--chip); }
 .r .fh { text-align: right; font: .85rem var(--mono); color: var(--link); overflow-wrap: anywhere; }
@@ -127,23 +127,28 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .r .wl { font: 700 1rem var(--mono); letter-spacing: .04em; }
 .r .wl mark { background: none; color: var(--accent); }
 .r .d { color: var(--muted); font-size: .93rem; min-width: 0; }
-.r .meta { font: .72rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.r .meta { font: .72rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 .rows.nodefs .d, .rows.noprob .meta { display: none; }
+.rows.noprob .r { grid-template-columns: 4.5em max-content 4.5em minmax(0,1fr) auto; }
 .rows.nohooks .fh, .rows.nohooks .bh { visibility: hidden; }
 @media (max-width: 620px) {
   /* hooks get a wider, smaller column so long hook lists take two lines at most */
-  .r { grid-template-columns: 5em max-content minmax(0,1fr) auto; }
+  .r { grid-template-columns: 3.7em 5em max-content minmax(0,1fr) auto; gap: 7px; }
   .r .fh, .r .bh { font-size: .76rem; }
+  .r .meta { font-size: .62rem; }
   .r .st { grid-row: 1; grid-column: -2; font-size: 1.35rem; padding: 4px 6px; }
-  .r .d { grid-column: 2 / -1; } .r .meta { display: none; }
-  .rows.ranked .r { grid-template-columns: 2em 4.4em max-content minmax(0,1fr) auto; gap: 6px; }
-  .rows.ranked .r .d { grid-column: 3 / -1; }
+  .r .d { grid-column: 3 / -1; }
+  .rows.noprob .r { grid-template-columns: 5em max-content minmax(0,1fr) auto; } .rows.noprob .r .d { grid-column: 2 / -1; }
+  .rows.ranked .r { grid-template-columns: 2em 3.7em 4.4em max-content minmax(0,1fr) auto; gap: 6px; }
+  .rows.ranked .r .d { grid-column: 4 / -1; }
+  .rows.ranked.noprob .r { grid-template-columns: 2em 4.4em max-content minmax(0,1fr) auto; } .rows.ranked.noprob .r .d { grid-column: 3 / -1; }
 }
 .more { margin-top: 12px; }
 .rangebar { margin-top: 10px; gap: 6px; }
 .rangebar input { width: 4.5em; border: 1px solid var(--line); background: var(--chip); border-radius: 6px; padding: 4px 7px; font: 600 .85rem var(--mono); }
 .r .rk { font: 400 .74rem var(--mono); color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
-.rows.ranked .r { grid-template-columns: 3em 4.5em max-content 4.5em minmax(0,1fr) auto auto; }
+.rows.ranked .r { grid-template-columns: 3em 4.6em 4.5em max-content 4.5em minmax(0,1fr) auto; }
+.rows.ranked.noprob .r { grid-template-columns: 3em 4.5em max-content 4.5em minmax(0,1fr) auto; }
 /* star at the far right of each row: tap to star or unstar */
 .r .st { border: 0; background: none; cursor: pointer; font-size: 1.15rem; line-height: 1; padding: 2px 4px; color: var(--muted); opacity: .5; align-self: center; }
 .r .st:hover { opacity: 1; color: var(--warn); }

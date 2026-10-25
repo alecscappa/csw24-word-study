@@ -255,6 +255,6 @@ const starBtn = (w, on) => `<button type="button" class="st ${on ? "on" : ""}" d
 function rowHTML(w, mask, rank, stars = new Set(getStars())) {
   const e = DICT.get(w);
   const label = mask ? [...w].map((c, i) => mask[i] ? `<mark>${c.toLowerCase()}</mark>` : c).join("") : w;
-  return `<div class="r" data-go="${w}">${rank ? `<span class="rk">${rank}.</span>` : ""}<span class="fh">${hookText(e.fh, e.fhNew)}</span><span class="wl">${label}${e.n ? "<sup>+</sup>" : ""}</span><span class="bh">${hookText(e.bh, e.bhNew)}</span><span class="d">${esc(e.d)}</span><span class="meta">#${e.p.toLocaleString()}</span>${starBtn(w, stars.has(w))}</div>`;
+  return `<div class="r" data-go="${w}">${rank ? `<span class="rk">${rank}.</span>` : ""}<span class="meta">#${e.p.toLocaleString()}</span><span class="fh">${hookText(e.fh, e.fhNew)}</span><span class="wl">${label}${e.n ? "<sup>+</sup>" : ""}</span><span class="bh">${hookText(e.bh, e.bhNew)}</span><span class="d">${esc(e.d)}</span>${starBtn(w, stars.has(w))}</div>`;
 }
 
