@@ -208,8 +208,8 @@ const tileLookOf = () => SET.tileLook === "theme" ? THEME_TSTYLE[SET.theme] || "
 // the page's tiles follow the setting; the previews in Settings (.ts-<id>) come after so they win
 document.head.insertAdjacentHTML("beforeend", `<style>${Object.entries(TILE_STYLES).map(([id, [, css, sub]]) => `:root[data-tstyle="${id}"] .tile { ${css} }${sub ? ` :root[data-tstyle="${id}"] .tile sub { ${sub} }` : ""}`).join("\n")}
 ${Object.entries(TILE_STYLES).map(([id, [, css, sub]]) => `.tstyles .tile.ts-${id} { ${css} }${sub ? ` .tstyles .tile.ts-${id} sub { ${sub} }` : ""}`).join("\n")}</style>`);
-const SET_DEFAULT = { theme: "board", mode: "auto", size: "md", values: true, sort: "prob", defs: true, prob: true, hooks: true, pageSize: 300, online: true, phony: 50, randMin: 2, randMax: 8, qcount: 20,
-  tiles: "theme", tileCustom: "#f1dcaa", headCustom: "", accentCustom: "", glare: "soft", tileLook: "theme", tileFont: "sans", rackLook: "oak",
+const SET_DEFAULT = { theme: "coffee", mode: "light", size: "md", values: true, sort: "prob", defs: true, prob: true, hooks: true, pageSize: 300, online: true, phony: 50, randMin: 2, randMax: 8, qcount: 20,
+  tiles: "maple", tileCustom: "#f1dcaa", headCustom: "", accentCustom: "", glare: "dim", tileLook: "soft", tileFont: "sans", rackLook: "oak",
   bPal: "theme", bLabels: "letters", bCoords: true, bTile: "same", bStyle: "gaps", bMark: "bright", bTheme: "", bTileCol: "same", bArrows: false };
 let SET = { ...SET_DEFAULT, ...store.get("settings", {}) };
 const darkMQ = matchMedia("(prefers-color-scheme: dark)");
