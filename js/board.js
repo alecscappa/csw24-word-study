@@ -187,7 +187,7 @@ const lookSave = () => { store.set("board", { cells: LOOK.cells, moves: LOOK.mov
 function viewLook() {
   const L = lookGet(), r = scorePlay(L.cells, L.news), used = L.cells.filter(Boolean).length + L.news.size;
   const main = r && !r.error && r.words[0];
-  $("#view").innerHTML = `${boardSeg("")}${bLookBar()}
+  $("#view").innerHTML = `${boardSeg("")}
   <div class="bgrid"><div>${boardHTML(L.cells, L.news, L.cur, L.dir)}</div>
   <div class="bside">
     <div class="card"><h2 class="lbl">This play</h2>${!r ? `<p class="empty">Tap a square and type to place tiles. Tap the same square again to go down instead of across.</p>`
@@ -335,7 +335,7 @@ function viewCount() {
   if ($("#bNext")) $("#bNext").onclick = next;
   if ($("#bToLook")) $("#bToLook").onclick = () => {
     LOOK = { cells: C.cells.map(t => t && { ...t }), moves: [], news: new Map([...C.news].map(([i, t]) => [i, { ...t }])), cur: -1, dir: 0, blank: false };
-    lookSave(); location.hash = "board";
+    lookSave(); location.hash = "board/free";
   };
   confirmBtn($("#bReset"), () => { store.set("boardStats", {}); VIEWS.scoring(); });
 }
@@ -379,9 +379,13 @@ const mvAt = m => m.tiles?.length ? bAt(m.start, m.dir) : "";
 const mvWord = m => m.pass ? "Pass" : m.exch !== undefined ? `Swap ${sortRack(m.exch)}` : m.word;
 const signed = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1).replace(/\.0$/, "");
 const wait = ms => new Promise(r => setTimeout(r, ms));
-// the board tab's switch: Free board · Analyse · Play · Games
-const boardSeg = k => `<nav class="studyseg">${[["", "Free board"], ["analyse", "Analyse"], ["play", "Play"], ["games", "Games"]].map(([h, n]) =>
-  `<a href="#board${h ? "/" + h : ""}" class="${h === k ? "on" : ""}">${n}</a>`).join("")}</nav>`;
+// the Board tab: Games is its home, with the tools along the top. Every other page has one row with a back button,
+// its name and (on a board) the Board look button, so the page starts as high as it can
+const BTITLES = { "": "Free board", analyse: "Analyse", play: "Play", type: "Type in a game", rv: "Game review" };
+const boardBack = () => `<a class="bbk" href="#board" aria-label="Back to Games">‹ Games</a>`;
+const boardSeg = (k, look = true) => k === "games"
+  ? `<div class="btools"><span>Tools</span><a href="#board/analyse"><b>Analyse a position</b><small>any board, every play ranked</small></a><a href="#board/free"><b>Free board</b><small>place tiles, see the score</small></a></div>`
+  : `<div class="bback">${boardBack()}<b>${BTITLES[k] || ""}</b>${look ? `<button type="button" class="btn sm" id="bLookOpen">Board look</button>` : ""}</div>`;
 
 // ---------- placing tiles from a rack (Play and the Lab). S: { board, rack, pend: [{ i, ri, ch, b }], cur, dir, sel, swap }.
 // Tap a square then tap tiles or type; or tap a tile then a square. A placed tile goes back with a tap ----------
@@ -522,7 +526,7 @@ const anaSimDrop = A => { if (A.sim?.running) ENG.stop(A.sim.job); A.sim = null;
 function viewAnalyse() {
   const A = anaGet(), sel = A.sel >= 0 && A.res ? A.res.moves[A.sel] : null;
   const news = sel?.tiles.length ? tilesNews(sel.tiles) : new Map();
-  $("#view").innerHTML = `${boardSeg("analyse")}${bLookBar()}
+  $("#view").innerHTML = `${boardSeg("analyse")}
   <div class="bgrid"><div id="anaBoard">${boardHTML(A.cells, news, A.edit ? A.cur : -1, A.dir, sel?.tiles.length ? sel.dir : false)}</div>
   <div class="bside">
     <div class="card"><h2 class="lbl">Your rack</h2>
@@ -763,7 +767,7 @@ function viewPlay() {
     else status += `<p class="small" style="margin-top:6px">Tap a square, then tap tiles or type. The first play goes through the star.</p>`;
   }
   const playable = r && !r.error && (GAME.rule === "chal" || !r.phony.length);
-  $("#view").innerHTML = `${boardSeg("play")}${bLookBar()}
+  $("#view").innerHTML = `${boardSeg("play")}
   <div class="bgrid"><div class="gmain">
     ${scoreHTML(GAME, GAME.over ? -1 : GAME.turn)}
     <div id="gBoard">${boardHTML(strCells(GAME.board), pNews(GUI), myTurn && !cover ? GUI.cur : -1, GUI.dir, false, { last: lastSet, pend: true })}</div>
@@ -846,7 +850,7 @@ async function cpuGo() {
 function playSetup() {
   const o = { mode: "cpu", level: "expert", rule: "reject", first: "me", n1: "", n2: "", ...store.get("gameOpts", {}) };
   const seg = (k, opts) => `<div class="seg">${opts.map(([v, t]) => `<button type="button" class="btn ${o[k] === v ? "on" : ""}" data-gk="${k}" data-gv="${v}">${t}</button>`).join("")}</div>`;
-  $("#view").innerHTML = `${boardSeg("play")}<div class="card gsetup"><h3 class="title" style="margin-top:0">New game</h3>
+  $("#view").innerHTML = `${boardSeg("play", false)}<div class="card gsetup"><h3 class="title" style="margin-top:0">New game</h3>
     <div class="fs"><h2 class="lbl">Play against</h2>${seg("mode", [["cpu", "The computer"], ["friend", "A friend, on this screen"]])}</div>
     ${o.mode === "cpu" ? `<div class="fs"><h2 class="lbl">How strong</h2>${seg("level", Object.entries(LEVELS).map(([k, [n]]) => [k, n]))}<p class="small" style="margin:6px 0 0">${LEVELS[o.level][1]}.</p></div>
       <div class="fs"><h2 class="lbl">Who starts</h2>${seg("first", [["me", "Me"], ["cpu", "The computer"], ["rand", "Draw for it"]])}</div>`
@@ -1020,5 +1024,5 @@ function labTrack() {
 }
 // the Board tab: Free board (Look), Analyse, Play. Count used to be #board/count; old links go to Scoring
 VIEWS.board = arg => arg === "count" ? location.replace("#scoring") : arg === "analyse" ? viewAnalyse() : arg === "play" ? viewPlay()
-  : arg === "games" ? viewGames() : arg === "type" ? viewType() : arg?.startsWith("rv-") ? viewReview(arg.slice(3)) : viewLook();
+  : arg === "free" ? viewLook() : arg === "type" ? viewType() : arg?.startsWith("rv-") ? viewReview(arg.slice(3)) : viewGames();
 

@@ -37,8 +37,9 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   const W = w + "px";
   // ---- Free board, Scoring, Board look
   let e0 = errors.length;
-  await go("board"); check(`${W} Free board draws`, await ev(`!!document.querySelector("#view .bd") && document.querySelectorAll("#view .bgrid .bd .sq").length === 225`));
-  check(`${W} board switch has four parts`, await ev(`document.querySelectorAll("#view nav.studyseg a").length`) === 4);
+  await go("board"); check(`${W} Board opens on Games with the tools`, await ev(`!!document.querySelector("#view .btools") && !!document.querySelector("#view .rvgames")`));
+  await go("board/free"); check(`${W} Free board draws`, await ev(`!!document.querySelector("#view .bd") && document.querySelectorAll("#view .bgrid .bd .sq").length === 225`));
+  check(`${W} Free board has a way back to Games`, await ev(`document.querySelector("#view .bback .bbk")?.getAttribute("href")`) === "#board");
   await click("#bLookOpen"); await sleep(200);
   check(`${W} Board look: Theme for the board list`, await ev(`document.querySelectorAll('#bsheet [data-bset="bTheme"]').length`) > 5, await ev(`document.querySelectorAll('#bsheet [data-bset="bTheme"]').length`) + " buttons");
   await click('#bsheet [data-bset="bStyle"][data-val="wood"]'); await sleep(150);
@@ -57,7 +58,7 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   await go("lists"); await go("scoring");
   // ---- Analyse
   e0 = errors.length;
-  await go("board"); await click("#bAna"); await sleep(400);
+  await go("board/free"); await click("#bAna"); await sleep(400);
   check(`${W} Analyse opens from Free board with the tiles`, await ev(`location.hash === "#board/analyse" && /QUIRE/.test(cellsStr(AZY.cells).replace(/\\./g, ""))`));
   await ev(`(() => { const r = document.querySelector("#anaRack"); r.value = "AEINST?"; r.dispatchEvent(new Event("input")); })()`);
   check(`${W} Analyse lists plays`, await until(`document.querySelectorAll("#anaPlays [data-am]").length >= 10`), await ev(`document.querySelector("#anaPlays")?.textContent.slice(0, 120)`));

@@ -934,9 +934,10 @@ main.wrap:has(> .foc) { max-width: 1400px; }
 .rvprog .small { white-space: nowrap; }
 
 /* the review page */
-.rvnav { display: flex; align-items: center; gap: 6px; }
+.rvnav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rvgap { flex: 1; }
 .rvnav .btn { min-width: 42px; }
-.rvturn { flex: 1; text-align: center; font: 700 .95rem var(--display); }
+.rvturn { min-width: 7.5em; text-align: center; font: 700 .95rem var(--display); }
 .rvtoggle { display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; padding: 4px 0; font: 600 .82rem var(--display); color: var(--muted); cursor: pointer; }
 .rvtoggle i { width: 32px; height: 19px; border-radius: 99px; background: var(--line); position: relative; transition: background .2s; }
 .rvtoggle i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / .3); transition: left .2s; }
@@ -985,13 +986,6 @@ main.wrap:has(> .foc) { max-width: 1400px; }
 .rvtops .wb b { display: block; height: 100%; background: var(--good); }
 .rvtag { font: 700 .58rem var(--display); letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border-radius: 99px; background: var(--accent); color: var(--on-accent, #fff); margin-left: 6px; vertical-align: 1px; }
 .rvtag.best { background: var(--good); color: #fff; }
-.rvsheet { display: grid; grid-template-columns: 1fr 1fr; max-height: 220px; overflow-y: auto; margin: 0 -4px; }
-.rvsheet button { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 5px 6px; border: 0; border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent); background: none; color: var(--ink); font: .84rem var(--body); cursor: pointer; text-align: left; }
-.rvsheet button.on { background: color-mix(in srgb, var(--accent) 16%, transparent); border-radius: 6px; }
-.rvsheet .rvdot { width: 9px; height: 9px; border-radius: 50%; background: var(--gc); flex: none; }
-.rvsheet .rvwho2 { font: 600 .68rem var(--mono); color: var(--muted); width: 2.6em; flex: none; }
-.rvsheet .rvmw { font: 700 .86rem var(--display); letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rvsheet .rvms { margin-left: auto; font: 600 .72rem var(--mono); color: var(--muted); }
 .rvat { font: 600 .66rem var(--mono); color: var(--muted); }
 /* the review redraws on every turn, so its tiles don't replay their pop-in */
 .rvgrid .tile, .rvgrid .tile::after { animation: none !important; }
@@ -999,4 +993,49 @@ main.wrap:has(> .foc) { max-width: 1400px; }
 @media (max-width: 620px) {
   .rvtops > div { grid-template-columns: 16px minmax(0, 1fr) 30px 84px; } .rvtops .lv { display: none; }
   .rvvs .rvw { font-size: 1.05rem; } .rvsums > div { gap: 8px; } .rvsums span b { font-size: 1rem; }
+}
+
+/* the Board tab: the tools row on Games, and one row with a back button on every other page */
+.btools { display: grid; grid-template-columns: auto 1fr 1fr; gap: 8px; align-items: center; }
+.btools > span { font: 700 .66rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding-right: 4px; }
+.btools a { display: flex; flex-direction: column; padding: 8px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); text-decoration: none; line-height: 1.25; }
+.btools a:hover { border-color: var(--accent); }
+.btools b { font: 700 .88rem var(--display); } .btools small { font-size: .72rem; color: var(--muted); }
+.bback { display: flex; align-items: center; gap: 12px; min-height: 36px; }
+.bback b { font: 800 1.15rem var(--display); }
+.bback .btn { margin-left: auto; }
+.bbk { flex: none; font: 700 .86rem var(--display); color: var(--accent); text-decoration: none; padding: 7px 12px 7px 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); white-space: nowrap; }
+.bbk:hover { border-color: var(--accent); }
+.rvbar { display: flex; align-items: stretch; gap: 8px; }
+.rvbar .bbk { display: grid; place-items: center; }
+.rvbar .gscore { flex: 1; min-width: 0; }
+/* the review: a bar for every turn under the board, taller for a bigger mistake */
+.rvstrip { display: flex; gap: 2px; align-items: flex-end; height: 50px; }
+.rvstrip button { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 3px; border: 0; border-radius: 6px; background: none; padding: 2px 0; cursor: pointer; }
+.rvstrip button i { width: 70%; border-radius: 3px 3px 1px 1px; background: var(--gc); min-height: 5px; }
+.rvstrip button span { font: 600 .56rem var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; }
+.rvstrip button.on { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.rvstrip button.on span { color: var(--accent); }
+/* the turn, said in words; the numbers stand out, and what it cost is in the mistake's colour */
+.rvsay { margin: 2px 0 0; font-size: 1.04rem; line-height: 1.55; }
+.rvsay .rvw { font-size: .98em; }
+.rvn { font: 800 1em var(--display); color: var(--accent); }
+.rvlost { font: 800 1.12em var(--display); color: var(--gc); background: color-mix(in srgb, var(--gc) 14%, transparent); padding: 0 5px; border-radius: 5px; }
+.rvok { font-weight: 600; color: color-mix(in srgb, var(--good) 85%, var(--ink)); }
+.rvtophd { display: flex; align-items: center; gap: 8px; margin: 14px 0 4px; }
+.rvtophd .lbl { margin: 0; }
+.rvtophd .lbl .small { letter-spacing: 0; text-transform: none; margin-left: 4px; }
+.rvpager { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+.rvpager .btn { min-width: 30px; padding: 3px 8px; font-size: .95rem; line-height: 1; }
+.rvpager .btn:disabled { opacity: .35; cursor: default; }
+@media (max-width: 620px) {
+  .btools { grid-template-columns: 1fr 1fr; } .btools > span { grid-column: 1 / -1; }
+  .rvnav .rvgap { flex-basis: 100%; height: 0; } .rvsay { font-size: 1rem; }
+  .rvstrip button span { font-size: .48rem; }
+}
+/* the review keeps the board, its turn strip and the arrows on one screen: the board shrinks on a short window */
+@media (min-width: 621px) { .rvgrid { grid-template-columns: minmax(0, max(380px, min(620px, calc(100vh - 300px)))) minmax(300px, 1fr); } }
+@media (max-width: 620px) {
+  .rvgrid .bside .rvturncard { order: -1; }
+  .rvtophd .lbl .small { display: none; }
 }

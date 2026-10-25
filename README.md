@@ -13,9 +13,9 @@ Then open `index.html` in a browser.
 
 ## Board
 
-The Board tab has four parts: **Free board** (place tiles, see the score), **Analyse** (set up any position and rack,
-see every play ranked, and look ahead at the replies) and **Play** (against the computer at four strengths, or two
-people on one screen, with a quick check after the game) and **Games** (below). The computer is our own engine in `js/engine.js`:
+The Board tab opens on **Games** (below). Along the top are the tools: **Analyse** (set up any position and rack,
+see every play ranked, and look ahead at the replies) and **Free board** (place tiles, see the score). **Play** is
+against the computer at four strengths, or two people on one screen. The computer is our own engine in `js/engine.js`:
 it finds every play from a tree of the words, values the kept tiles, and runs in a worker.
 
 ## Game review

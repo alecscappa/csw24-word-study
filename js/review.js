@@ -133,7 +133,7 @@ function rvWatch() {
 // redraw the games list or review page if it's open, keeping the scroll
 function rvRedraw() {
   const h = location.hash;
-  if (h !== "#board/games" && !h.startsWith("#board/rv-")) return;
+  if (h !== "#board" && h !== "#board/games" && !h.startsWith("#board/rv-")) return;
   const y = scrollY; VIEWS.board(h.slice(7)); scrollTo(0, y);
 }
 
@@ -266,43 +266,80 @@ function rvQuick(g, P, k) {
   const e = P.moves[k], key = g.id + ":" + k;
   if (RVS.quick[key] || e.rack.length < 1 || e.rack.length > 7) return RVS.quick[key];
   RVS.quick[key] = { busy: true };
-  ENG.call({ type: "moves", board: e.before, rack: e.rack, limit: 6, find: e.k === "play" ? { tiles: e.t } : e.k === "swap" ? { exch: e.x } : { pass: true } })
+  ENG.call({ type: "moves", board: e.before, rack: e.rack, limit: 40, find: e.k === "play" ? { tiles: e.t } : e.k === "swap" ? { exch: e.x } : { pass: true } })
     .then(res => { RVS.quick[key] = res; if (RVS.id === g.id && RVS.turn === k) rvRedraw(); })
     .catch(err => { RVS.quick[key] = { error: err.message }; });
   return RVS.quick[key];
 }
+// a play as a key that's the same whichever way it's written ("1G .OULT" from Macondo, "1G POULT" from our engine)
+const rvKey = (mv, before) => {
+  const t = rvMoveTiles(mv, before);
+  if (t) return [...t].map(([i, x]) => i + x.ch + (x.b ? "b" : "")).sort().join();
+  const s = String(mv).replace(/[()]/g, "").trim().toUpperCase(), x = s.match(/^(?:EXCH(?:ANGE)?\s+|-)([A-Z?]+)$/);
+  return x ? "swap " + [...x[1]].sort().join("") : "pass";
+};
+const RV_PAGE = 5;
+// the turn in a sentence: what was played and kept, what was better and kept, and what it cost
+function rvSay(P, e, t, quick) {
+  const who = /^you$/i.test(P.names[e.p]) ? "You" : esc(P.names[e.p]), n = v => `<b class="rvn">${v}</b>`;
+  const played = e.k === "play" ? `${rvWord(e.at + " " + e.raw, e.before)} for ${n(e.s)}` : e.k === "swap" ? `a swap of <b class="rvw">${esc(sortRack(e.x))}</b>` : "a pass";
+  const verb = e.k === "play" ? "played" : "made";
+  if (t) {
+    const leaveOf = mv => t.tops.find(p => rvKey(p[0], e.before) === rvKey(mv, e.before))?.[2];
+    const lp = leaveOf(t.played), lb = leaveOf(t.best), keep = l => l ? `, keeping <b class="rvw">${esc(l)}</b>` : "";
+    if (!t.size) return `${who} ${verb} ${played}${keep(lp)}. <span class="rvok">That was the best play.</span>`;
+    const g = rvGrade(t)[1], endgame = t.phase === "ENDGAME" || t.loss == null;
+    const cost = endgame ? (t.spread != null ? `<b class="rvlost g-${g}">${t.spread} point${t.spread === 1 ? "" : "s"}</b> in the endgame` : `points in the endgame`) : `<b class="rvlost g-${g}">${pct(t.loss)}</b> of the chance of winning`;
+    return `${who} ${verb} ${played}${keep(lp)}. Better was ${rvWord(t.best, e.before)} for ${n(t.bs)}${keep(lb)}${t.ps > t.bs ? ` (${n(t.ps - t.bs)} fewer points now, but a better rack)` : ""}. It cost ${cost}.`;
+  }
+  const best = quick?.moves?.[0];
+  if (!best) return "";
+  if (quick.found?.rank === 1) return `${who} ${verb} ${played}. <span class="rvok">That's our engine's top play.</span>`;
+  const bmv = best.tiles.length ? `${mvAt(best)} ${best.word}` : mvWord(best);
+  return `${who} ${verb} ${played}${quick.found ? `, number ${n(quick.found.rank)} of ${quick.total.toLocaleString()}` : ""}. Our engine's best was ${rvWord(bmv, e.before)} for ${n(best.score)}, keeping <b class="rvw">${esc(sortRack(best.leave) || "nothing")}</b>.`;
+}
 function viewReview(id) {
   const g = gameById(id);
-  if (!g) { location.replace("#board/games"); return; }
+  if (!g) { location.replace("#board"); return; }
   if (!g.gcg) {
-    $("#view").innerHTML = `${rvSeg()}<div class="card"><h2 class="lbl">${esc(g.names.join(" "))}</h2>
+    $("#view").innerHTML = `${boardSeg("rv", false)}<div class="card"><h2 class="lbl">${esc(g.names.join(" "))}</h2>
       <p>${g.job ? `Macondo is loading and reviewing this game on the Mac…` : g.err ? `<span class="bad">${esc(g.err)}</span>` : "This Woogles game is fetched by the reviewer on the Mac."}</p>
       <div class="row">${!g.job && rvHelper ? `<button class="btn primary" data-greview="${g.id}">Review on the Mac</button>` : ""}<button class="btn" id="rvDel">Remove</button></div></div>`;
     $("#view").querySelector("[data-greview]")?.addEventListener("click", async () => { await rvStart(g); rvRedraw(); });
-    confirmBtn($("#rvDel"), () => { GAMES = GAMES.filter(x => x !== g); gamesSave(); location.hash = "board/games"; });
+    confirmBtn($("#rvDel"), () => { GAMES = GAMES.filter(x => x !== g); gamesSave(); location.hash = "board"; });
     rvWatch(); return;
   }
   const P = gcgParse(g.gcg), R = g.review, n = P.moves.length;
-  if (RVS.id !== id) Object.assign(RVS, { id, turn: R ? Math.max(0, R.turns.findIndex(t => t.size)) : 0, best: true });
+  if (RVS.id !== id) Object.assign(RVS, { id, turn: R ? Math.max(0, R.turns.findIndex(t => t.size)) : 0, best: true, page: 0, pageOf: -1 });
   RVS.turn = Math.min(Math.max(0, RVS.turn), n - 1);
   const k = RVS.turn, e = P.moves[k], t = R?.turns[k], grade = rvGrade(t);
-  const quick = !t ? rvQuick(g, P, k) : null;
-  const bestMv = t ? t.best : quick?.moves?.[0] ? (quick.moves[0].tiles.length ? `${mvAt(quick.moves[0])} ${quick.moves[0].word}` : mvWord(quick.moves[0])) : null;
-  const showBest = RVS.best && bestMv && bestMv.trim() !== (t?.played || "").trim() && !(quick?.found?.rank === 1);
+  if (RVS.pageOf !== k) { RVS.page = 0; RVS.pageOf = k; }
+  const quick = rvQuick(g, P, k);
+  const qBest = quick?.moves?.[0], qBestMv = qBest ? (qBest.tiles.length ? `${mvAt(qBest)} ${qBest.word}` : mvWord(qBest)) : null;
+  const bestMv = t ? t.best : qBestMv;
+  const showBest = RVS.best && bestMv && (t ? t.size : quick?.found?.rank !== 1);
   const bestTiles = showBest ? rvMoveTiles(bestMv, e.before) : null;
   const news = bestTiles || (e.k === "play" ? new Map(e.t.map(([i, l, b]) => [i, { ch: AZ[l], b: !!b }])) : new Map());
-  // the scores going into this turn
   const before = [0, 1].map(p => { const last = [...P.ev.slice(0, P.ev.indexOf(e))].reverse().find(x => x.p === p); return last ? last.tot : 0; });
   const sumOf = p => R?.sums.find(s => s.who === P.nicks[p]) || R?.sums[p];
   const nextMistake = R ? (() => { for (let j = 1; j <= n; j++) { const q = (k + j) % n; if (R.turns[q]?.size) return q; } return k; })() : k;
-  const tops = t ? t.tops : quick?.moves ? quick.moves.slice(0, 6).map(m => [m.tiles.length ? `${mvAt(m)} ${m.word}` : mvWord(m), m.score, sortRack(m.leave), null, m.eq]) : [];
-  const playedKey = t ? t.played.trim() : null, qRank = quick?.found?.rank;
-  $("#view").innerHTML = `${rvSeg()}
+  // the top plays: Macondo's, looked ahead with their chance of winning, then our engine's ranking for the rest
+  const mine = rvKey(e.k === "play" ? e.at + " " + e.raw : e.k === "swap" ? "-" + e.x : "-", e.before);
+  const rows = (t ? t.tops.map(p => ({ mv: p[0], s: p[1], lv: p[2], win: p[3] })) : []);
+  const seen = new Set(rows.map(r => rvKey(r.mv, e.before)));
+  for (const m of quick?.moves || []) { const mv = m.tiles.length ? `${mvAt(m)} ${m.word}` : m.exch !== undefined ? "-" + m.exch : "-", key = rvKey(mv, e.before);
+    if (!seen.has(key)) { seen.add(key); rows.push({ mv, s: m.score, lv: sortRack(m.leave), eq: m.eq }); } }
+  const pages = Math.max(1, Math.ceil(rows.length / RV_PAGE)); RVS.page = Math.min(RVS.page, pages - 1);
+  const shown = rows.slice(RVS.page * RV_PAGE, RVS.page * RV_PAGE + RV_PAGE), engineOnly = shown.every(r => r.win == null);
+  const score = p => `<div class="${e.p === p ? "on" : ""} p${p}"><span>${esc(P.names[p])}</span><b>${before[p]}</b></div>`;
+  $("#view").innerHTML = `
   <div class="bgrid rvgrid"><div class="gmain">
-    <div class="gscore">${[0, 1].map(p => `<div class="${e.p === p ? "on" : ""} p${p}"><span>${esc(P.names[p])}</span><b>${before[p]}</b></div>`).join(`<div class="gbag"><b>${e.k === "play" || t ? (t ? t.bag : "") : ""}</b>${t ? "in bag" : ""}</div>`)}</div>
+    <div class="rvbar">${boardBack()}<div class="gscore">${score(0)}<div class="gbag"><b>${t ? t.bag : "–"}</b>in bag</div>${score(1)}</div></div>
     <div id="rvBoard" class="${bestTiles ? "rvbest" : ""}">${boardHTML(strCells(e.before), news, -1, 0, false, bestTiles ? {} : { last: new Set(news.keys()) })}</div>
-    <div class="rvnav"><button class="btn" data-rn="0" aria-label="First turn">⏮</button><button class="btn" data-rn="${k - 1}" aria-label="Previous turn">←</button><span class="rvturn">Turn ${k + 1} of ${n}</span><button class="btn" data-rn="${k + 1}" aria-label="Next turn">→</button><button class="btn" data-rn="${n - 1}" aria-label="Last turn">⏭</button></div>
-    <div class="rvnav"><button type="button" class="rvtoggle ${RVS.best ? "on" : ""}" id="rvBest" ${bestMv ? "" : "disabled"}><i></i>Show best play</button><span style="flex:1"></span>${R ? `<button class="btn primary" data-rn="${nextMistake}">Next mistake</button>` : ""}</div>
+    <div class="rvstrip">${P.moves.map((m, j) => { const gr = rvGrade(R?.turns[j]), lost = R?.turns[j]?.loss || 0;
+      return `<button type="button" data-rn="${j}" class="g-${gr ? gr[1] : "none"}${j === k ? " on" : ""}" title="${esc(P.names[m.p])}, turn ${j + 1}: ${esc(m.k === "play" ? m.w.toUpperCase() : m.k)}"><i style="height:${!gr || gr[1] === "opt" ? 5 : Math.min(34, 9 + lost * 400)}px"></i><span>${esc(P.names[m.p][0] || "")}${j + 1}</span></button>`; }).join("")}</div>
+    <div class="rvnav"><button class="btn" data-rn="0" aria-label="First turn">⏮</button><button class="btn" data-rn="${k - 1}" aria-label="Previous turn">←</button><span class="rvturn">Turn ${k + 1} of ${n}</span><button class="btn" data-rn="${k + 1}" aria-label="Next turn">→</button><button class="btn" data-rn="${n - 1}" aria-label="Last turn">⏭</button>
+      <span class="rvgap"></span><button type="button" class="rvtoggle ${RVS.best ? "on" : ""}" id="rvBest" ${bestMv ? "" : "disabled"}><i></i>Best play</button>${R ? `<button class="btn primary" data-rn="${nextMistake}">Next mistake</button>` : ""}</div>
   </div>
   <div class="bside">
     <div class="card">
@@ -315,36 +352,31 @@ function viewReview(id) {
         ${g.err ? `<p class="small bad">${esc(g.err)}</p>` : ""}`}
     </div>
     <div class="card rvturncard">
-      <div class="rvhead"><h2 class="lbl">${esc(P.names[e.p])} · ${e.k === "play" ? "a play" : e.k === "swap" ? "a swap" : "a pass"}</h2>${grade ? `<span class="rvgrade g-${grade[1]}">${grade[0]}</span>` : qRank === 1 ? `<span class="rvgrade g-opt">Engine's top play</span>` : ""}</div>
+      <div class="rvhead"><h2 class="lbl">Turn ${k + 1} · ${esc(P.names[e.p])}</h2>${grade ? `<span class="rvgrade g-${grade[1]}">${grade[0]}</span>` : quick?.found?.rank === 1 ? `<span class="rvgrade g-opt">Engine's top play</span>` : ""}</div>
       ${rvTiles(e.rack)}
-      <div class="rvvs">
-        <div><small>Played</small>${e.k === "play" ? `<b class="rvw">${[...e.w].map(c => c === c.toLowerCase() ? `<i>${c.toUpperCase()}</i>` : c).join("")}</b>` : `<b class="rvw">${e.k === "swap" ? "Swap " + esc(sortRack(e.x)) : "Pass"}</b>`}<span class="small">${e.at || ""} · ${e.k === "play" ? e.s : 0} pts${t?.phony ? ` · <span class="bad">phony</span>` : ""}</span></div>
-        <div class="best"><small>${t ? (t.size ? "Best" : "Macondo agrees") : "Engine's best"}</small>${bestMv ? `${rvWord(bestMv, e.before)}<span class="small">${rvAt(bestMv)} · ${t ? t.bs : quick?.moves?.[0]?.score ?? ""} pts</span>` : `<span class="small">${quick?.error ? esc(quick.error) : "Thinking…"}</span>`}</div>
-      </div>
-      ${t && t.size ? `<p class="rvcost g-${grade[1]}"><b>${t.loss != null && t.phase !== "ENDGAME" ? "−" + pct(t.loss) : t.spread != null ? "−" + t.spread : ""}</b><span>${t.loss != null && t.phase !== "ENDGAME" ? "chance of winning lost" : "points lost in the endgame"}${t.ps > t.bs ? `, though it scored ${t.ps - t.bs} more` : ""}</span></p>` : ""}
-      ${t && (t.missed || t.blown || t.bingo) ? `<p class="small" style="margin:8px 0 0">${[t.missed && "A phony from the other player went unchallenged.", t.blown && "This turned a winning endgame into a loss or a tie.", t.bingo && "There was a bingo."].filter(Boolean).join(" ")}</p>` : ""}
-      ${!t && quick?.found && qRank > 1 ? `<p class="small" style="margin:8px 0 0">Your play was number ${qRank} of ${quick.total.toLocaleString()} by points and leave.</p>` : ""}
-      ${tops.length ? `<h2 class="lbl" style="margin:12px 0 4px">${t ? "Top plays · chance of winning" : "Top plays · points + leave"}</h2>
-      <div class="rvtops">${tops.map((p, j) => { const mine = t ? p[0].trim() === playedKey : quick?.found?.rank === j + 1;
-        return `<div class="${mine ? "mine" : ""}"><span class="n">${j + 1}</span><span>${rvWord(p[0], e.before)} <span class="rvat">${esc(rvAt(p[0]))}</span>${j === 0 ? `<span class="rvtag best">best</span>` : mine ? `<span class="rvtag">yours</span>` : ""}</span><span class="lv">${esc(p[2] || "–")}</span><span class="s">${p[1]}</span>${t ? `<span class="wb"><i><b style="width:${((p[3] ?? 0) * 100).toFixed(0)}%"></b></i>${pct(p[3])}</span>` : `<span class="s">${p[4]?.toFixed(1) ?? ""}</span>`}</div>`; }).join("")}</div>` : ""}
+      <p class="rvsay">${rvSay(P, e, t, quick) || (quick?.error ? esc(quick.error) : "Thinking…")}</p>
+      ${t && (t.missed || t.blown || t.bingo || t.phony) ? `<p class="small" style="margin:6px 0 0">${[t.phony && "That word isn't in CSW24.", t.missed && "A phony from the other player went unchallenged.", t.blown && "This turned a winning endgame into a loss or a tie.", t.bingo && "There was a bingo."].filter(Boolean).join(" ")}</p>` : ""}
+      ${rows.length ? `<div class="rvtophd"><h2 class="lbl">Top plays <span class="small">${engineOnly ? "points + leave" : "chance of winning"}</span></h2>
+        <span class="rvpager"><button type="button" class="btn sm" data-rp="-1" ${RVS.page ? "" : "disabled"} aria-label="Better plays">‹</button><span class="small">${RVS.page * RV_PAGE + 1}–${Math.min(rows.length, RVS.page * RV_PAGE + RV_PAGE)}/${rows.length}</span><button type="button" class="btn sm" data-rp="1" ${RVS.page < pages - 1 ? "" : "disabled"} aria-label="More plays">›</button></span></div>
+      <div class="rvtops">${shown.map((r, j) => { const i = RVS.page * RV_PAGE + j, yours = rvKey(r.mv, e.before) === mine;
+        return `<div class="${yours ? "mine" : ""}"><span class="n">${i + 1}</span><span>${rvWord(r.mv, e.before)} <span class="rvat">${esc(rvAt(r.mv))}</span>${i === 0 ? `<span class="rvtag best">best</span>` : yours ? `<span class="rvtag">yours</span>` : ""}</span><span class="lv">${esc(r.lv || "–")}</span><span class="s">${r.s}</span>${r.win != null ? `<span class="wb"><i><b style="width:${(r.win * 100).toFixed(0)}%"></b></i>${pct(r.win)}</span>` : `<span class="s">${r.eq != null ? r.eq.toFixed(1) : ""}</span>`}</div>`; }).join("")}</div>
+      ${shown.some(r => r.win == null) && t ? `<p class="small" style="margin:6px 0 0">Past Macondo's top ${t.tops.length}, the order is our engine's: points plus the tiles kept, without the look ahead.</p>` : ""}` : ""}
       ${t?.phase === "ENDGAME" && t.final != null ? `<p class="small" style="margin:8px 0 0">The endgame, solved exactly: the best line ends ${t.final > 0 ? "ahead by " + t.final : t.final < 0 ? "behind by " + -t.final : "level"}.</p>` : ""}
       <div class="row" style="margin-top:10px"><button class="btn sm" id="rvAna">Open in Analyse</button></div>
     </div>
-    <div class="card"><h2 class="lbl">Moves</h2><div class="rvsheet">${P.moves.map((m, j) => { const gr = rvGrade(R?.turns[j]);
-      return `<button type="button" data-rt="${j}" class="p${m.p}${j === k ? " on" : ""}"><span class="rvdot g-${gr ? gr[1] : "none"}"></span><span class="rvwho2">${esc(P.names[m.p][0] || "")}${j + 1}</span><span class="rvmw">${m.k === "play" ? esc(m.w.toUpperCase()) : m.k === "swap" ? "Swap" : "Pass"}</span><span class="rvms">${m.k === "play" ? m.s : 0}</span></button>`; }).join("")}</div></div>
     <div class="card"><div class="row"><span class="small" style="margin-right:auto">${srcName[g.src] || ""} · ${new Date(g.at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
       ${R && rvHelper ? `<button class="btn sm" data-greview="${g.id}">Review again</button>` : ""}<button class="btn sm" id="rvGcg">Save .gcg</button><button class="btn sm" id="rvDel">Remove game</button></div></div>
-  </div></div>${bLookSheet()}`;
+  </div></div>`;
   const go = j => { RVS.turn = Math.min(n - 1, Math.max(0, j)); const y = scrollY; viewReview(id); scrollTo(0, y); };
   $("#view").querySelectorAll("[data-rn]").forEach(b => b.onclick = () => go(+b.dataset.rn));
   $("#view").querySelectorAll("[data-rt]").forEach(b => b.addEventListener("click", () => go(+b.dataset.rt)));
+  $("#view").querySelectorAll("[data-rp]").forEach(b => b.onclick = () => { RVS.page += +b.dataset.rp; go(k); });
   $("#rvBest").onclick = () => { RVS.best = !RVS.best; go(k); };
   $("#rvAna").onclick = () => anaOpen(e.before, e.rack);
   $("#view").querySelectorAll("[data-greview]").forEach(b => b.onclick = async () => { await rvStart(g); rvRedraw(); });
   $("#rvGcg").onclick = () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([g.gcg], { type: "text/plain" })); a.download = `${g.names.join("-v-").replace(/[^\w-]+/g, "_")}.gcg`; a.click(); };
-  confirmBtn($("#rvDel"), () => { GAMES = GAMES.filter(x => x !== g); gamesSave(); location.hash = "board/games"; });
+  confirmBtn($("#rvDel"), () => { GAMES = GAMES.filter(x => x !== g); gamesSave(); location.hash = "board"; });
   document.onkeydown = ev => { if (ev.target.matches?.("input, textarea")) return; if (ev.key === "ArrowLeft") go(k - 1); else if (ev.key === "ArrowRight") go(k + 1); else return; ev.preventDefault(); };
-  $("#view .rvsheet .on")?.scrollIntoView({ block: "nearest" });
   if (rvHelper === null) rvCheck().then(rvRedraw);
   rvWatch();
 }
@@ -356,7 +388,7 @@ const tySave = () => store.set("typed", { names: TY.names, log: TY.log, board: T
 function viewType() {
   const T = tyGet(), r = T.pend.size ? scorePlay(strCells(T.board), T.pend) : null;
   const g = { names: T.names, mode: "typed", log: T.log };
-  $("#view").innerHTML = `${rvSeg()}${bLookBar()}
+  $("#view").innerHTML = `${boardSeg("type")}
   <div class="bgrid rvgrid"><div class="gmain">
     <div class="gscore">${[0, 1].map(p => `<div class="${T.turn === p ? "on" : ""} p${p}"><span>${esc(T.names[p])}</span><b>${T.scores[p]}</b></div>`).join(`<div class="gbag"><b>${T.log.length}</b>turns</div>`)}</div>
     <div id="tyBoard">${boardHTML(strCells(T.board), T.pend, T.cur, T.dir, false, { pend: true })}</div>
