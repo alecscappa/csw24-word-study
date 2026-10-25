@@ -3,7 +3,7 @@
 import { spawn } from "node:child_process";
 import os from "node:os"; import path from "node:path"; import { fileURLToPath, pathToFileURL } from "node:url";
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-// opened from disk, like browser.mjs; the engine's worker is built from the page's own text, so it starts here too
+// opened from disk, like browser.mjs; the engine's worker is built from js/engine.js's own text, so it starts here too
 const URL0 = pathToFileURL(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "index.html")).href;
 const prof = path.join(os.tmpdir(), "csw24-bt-" + Date.now());
 const chrome = spawn(CHROME, ["--headless=new", "--remote-debugging-port=9334", "--user-data-dir=" + prof, "--no-first-run", "--allow-file-access-from-files", "about:blank"], { stdio: "ignore" });

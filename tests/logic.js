@@ -7,8 +7,9 @@ global.matchMedia=()=>({matches:false,addEventListener(){}});
 global.document={documentElement:el(),head:el(),body:el(),getElementById:()=>el(),querySelector:()=>el(),querySelectorAll:()=>[],addEventListener(){},createElement:()=>el()};
 global.addEventListener=()=>{}; global.scrollTo=()=>{}; global.MutationObserver=class{observe(){}};
 const path=require('path'), os=require('os'); const ROOT=path.join(__dirname,'..');
-const html=fs.readFileSync(path.join(ROOT,'index.html'),'utf8'); const APP='<script id="app" type="text/plain">', a0=html.indexOf(APP)+APP.length, app=html.slice(a0, html.indexOf('</script>', a0));
-eval(fs.readFileSync(path.join(ROOT,'words.js'),'utf8')); eval(app+`
+// the app's files, in the order js/start.js loads them, each run as its own script as in the page
+const vm=require('vm'), start=fs.readFileSync(path.join(ROOT,'js/start.js'),'utf8'), APP_FILES=JSON.parse(start.match(/const APP_FILES = (\[[^\]]*\])/)[1]);
+eval(fs.readFileSync(path.join(ROOT,'words.js'),'utf8')); global.LEX={html:()=>'',wire(){}}; for(const f of ['js/engine.js',...APP_FILES]) vm.runInThisContext(fs.readFileSync(path.join(ROOT,f),'utf8'),{filename:f}); eval(`
 const db=new DatabaseSync(process.argv[2]||path.join(os.homedir(),'Zyzzyva/lexicons/CSW24.db'),{readOnly:true});
 let fails=0, checks=0; const issues=[];
 const ok=(name,cond,detail='')=>{checks++; if(!cond){fails++; issues.push(name+(detail?' :: '+detail:''));}};
