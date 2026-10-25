@@ -202,12 +202,6 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
 
 /* lists */
-.listgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
-.lcard { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; }
-.lcard:hover { border-color: var(--accent); }
-.lcard b { font: 700 1rem var(--display); }
-.lcard span { color: var(--muted); font-size: .88rem; line-height: 1.4; }
-.lcard i { font: normal .74rem var(--mono); color: var(--muted); }
 .sect { font: 700 .74rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 10px 0 -6px; }
 .stem { display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-top: 1px solid var(--line); }
 .stem:first-of-type { border-top: 0; }
@@ -226,13 +220,8 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .quizv :focus-visible { outline-color: var(--link); }
 .w.got { border-color: var(--good); color: var(--good); }
 .practice { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
-.pprog { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font: .82rem var(--mono); color: var(--muted); }
-.pprog b { color: var(--ink); font-size: 1rem; }
 .pbar { flex: 1 1 120px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
 .pbar div { height: 100%; background: var(--good); }
-.ptiles { display: flex; justify-content: center; padding: 10px 0; }
-.ptiles .tile { width: 52px; height: 52px; font-size: 1.8rem; }
-@media (max-width: 480px) { .ptiles .tile { width: 40px; height: 40px; font-size: 1.35rem; } }
 .r.got .wl { color: var(--good); } .r.miss .wl { color: var(--warn); }
 .w.miss { border-color: var(--warn); color: var(--warn); }
 .seg { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -270,14 +259,6 @@ html::-webkit-scrollbar { display: none; }
 .studyseg { display: flex; background: var(--chip); border: 1px solid var(--line); border-radius: 12px; padding: 3px; }
 .studyseg a { flex: 1; text-align: center; padding: 9px 0; border-radius: 9px; font: 600 .92rem var(--display); color: var(--muted); text-decoration: none; }
 .studyseg a.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .15); }
-.pbtns { display: flex; gap: 8px; }
-.pbtns .btn { flex: 1; text-align: center; font-size: 1.05rem; line-height: 1.2; }
-.pbtns .ib { flex: none; width: 3.4em; display: grid; place-items: center; }
-.pbtns .no { color: var(--warn); border-color: var(--warn); }
-.pbtns .yes { color: var(--good); border-color: var(--good); }
-.pbtns [hidden] { display: none; }
-.pbtns .no.on { background: var(--warn); border-color: var(--warn); color: var(--panel); }
-.pbtns .yes.on { background: var(--good); border-color: var(--good); color: var(--panel); }
 details.more-themes { margin-top: 10px; }
 details.more-themes > summary { cursor: pointer; font: 600 .88rem var(--display); color: var(--link); padding: 6px 0; }
 details.more-themes .swatches { margin-top: 8px; }
@@ -382,14 +363,9 @@ nav.tabs .sh { display: none; }
   .badges .btn { margin-left: 0 !important; }
   .stats { gap: 10px; }
 
-  /* practice: big answer box, three equal buttons */
-  .ptiles { padding: 4px 0; }
-  .pbtns .btn { padding: 13px 8px; }
+  /* practice: big answer box */
   .practice .qinput { font-size: 1.3rem; padding: 12px; text-align: center; }
-  .pprog { gap: 8px 14px; }
 
-  .listgrid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-  .lcard { padding: 12px; }
   .swatches { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
   .seg .btn { flex: 1 1 auto; text-align: center; }
   .qprompt { text-align: center; }
@@ -562,9 +538,6 @@ main.wrap:has(> .foc) { max-width: 1400px; }
   nav.tabs a.on { background: var(--head-ink); color: var(--head); }
 
   /* shared: pills, sideways rows, bottom sheets */
-  .stepper { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 10px; background: var(--chip); }
-  .stepper input { flex: 1; text-align: center; border: 0; background: none; width: 100%; padding: 9px 0; }
-  .stepper button { width: 44px; height: 44px; border: 0; background: none; font-size: 1.3rem; color: var(--muted); cursor: pointer; flex: none; }
 
   /* word page: big header in the theme colour, sections as tabs */
   .wtop { margin: -14px -12px 0; }
@@ -684,13 +657,10 @@ main.wrap:has(> .foc) { max-width: 1400px; }
   box-shadow: 0 10px 24px -8px rgb(0 0 0 / .45), inset 0 1px 0 rgb(255 255 255 / .12); user-select: none; -webkit-user-select: none; }
 .bd .sq { position: relative; display: grid; place-items: center; min-width: 0; border-radius: 3px; cursor: pointer;
   background-color: var(--bs); color: var(--bs-ink); font: 700 2.3cqi/1 var(--display); letter-spacing: .02em; }
-.bd .sq.tw { background-color: var(--btw); color: var(--btw-ink); }
-.bd .sq.dw { background-color: var(--bdw); color: var(--bdw-ink); }
-.bd .sq.tl { background-color: var(--btl); color: var(--btl-ink); }
-.bd .sq.dl { background-color: var(--bdl); color: var(--bdl-ink); }
+/* a bonus square's colours (--sqc, --sqi), also used by the styles below */
 .bd .sq.tw { --sqc: var(--btw); --sqi: var(--btw-ink); } .bd .sq.dw { --sqc: var(--bdw); --sqi: var(--bdw-ink); }
 .bd .sq.tl { --sqc: var(--btl); --sqi: var(--btl-ink); } .bd .sq.dl { --sqc: var(--bdl); --sqi: var(--bdl-ink); }
-/* board styles: how the board is built (Gaps is the plain one above) */
+.bd .sq:is(.tw, .dw, .tl, .dl) { background-color: var(--sqc); color: var(--sqi); }
 /* board styles: how the board is built (Gaps is the plain one above). Each sets --pad (the frame) and --gap (between squares)
    on .bwrap so the A–O and 1–15 labels stay lined up with the squares. */
 .bwrap { --fw: 10px; --gap: 2px; }
@@ -1669,21 +1639,22 @@ function blankMask(w, rc) {
 
 // ---------- groups: shared by Search (group picker), Word lists and Quiz ----------
 // len = which length the list view opens on; special groups are list-only
-const L = (w, a, b) => w.length >= a && w.length <= (b ?? a);
+// a word is a length from a to b (or just a)
+const lenIn = (w, a, b) => w.length >= a && w.length <= (b ?? a);
 const GROUPS = [
   { sect: "Vowel dumps" },
   { id: "vowel", name: "Vowel dumps", len: 4, blurb: "4-letter words with three or more vowels, like AEON, EUOI and OBIA.", test: w => w.length === 4 && vowels(w) >= 3 },
   { id: "vowel5", name: "5-letter vowel dumps", blurb: "Five letters with four or more vowels, like ADIEU, AUDIO and OUIJA.", test: w => w.length === 5 && vowels(w) >= 4 },
-  { id: "vowel67", name: "Five-vowel 6s and 7s", len: 6, blurb: "6 and 7-letter words with five or more vowels, like EULOGIA and AUREOLE.", test: w => L(w, 6, 7) && vowels(w) >= 5 },
+  { id: "vowel67", name: "Five-vowel 6s and 7s", len: 6, blurb: "6 and 7-letter words with five or more vowels, like EULOGIA and AUREOLE.", test: w => lenIn(w, 6, 7) && vowels(w) >= 5 },
   { id: "vowelonly", name: "Vowels only", blurb: "No consonants at all, like AA, EAU, AUE and EUOI.", test: w => /^[AEIOU]+$/.test(w) },
-  { id: "vheavy", name: "Vowel-heavy words", len: 5, blurb: "3 to 8 letters where at least 60% of tiles are vowels.", test: w => L(w, 3, 8) && vowels(w) / w.length >= 0.6 },
+  { id: "vheavy", name: "Vowel-heavy words", len: 5, blurb: "3 to 8 letters where at least 60% of tiles are vowels.", test: w => lenIn(w, 3, 8) && vowels(w) / w.length >= 0.6 },
   { id: "iu", name: "Double I and double U", len: 5, blurb: "Up to 7 letters with two or more Is or Us, the hardest vowels to clear.", test: w => w.length <= 7 && (nOf(w, "I") >= 2 || nOf(w, "U") >= 2) },
-  { id: "triple", name: "Triple-vowel words", len: 5, blurb: "5 to 8 letters with three of the same vowel, like ABACA and BIKINI.", test: w => L(w, 5, 8) && /([AEIOU]).*\1.*\1/.test(w) },
+  { id: "triple", name: "Triple-vowel words", len: 5, blurb: "5 to 8 letters with three of the same vowel, like ABACA and BIKINI.", test: w => lenIn(w, 5, 8) && /([AEIOU]).*\1.*\1/.test(w) },
   { id: "allfive", name: "All five vowels", blurb: "Words with A, E, I, O and U, 9 letters or fewer.", test: w => w.length <= 9 && [..."AEIOU"].every(v => w.includes(v)) },
   { sect: "Consonant dumps" },
   { id: "novowel", name: "No-vowel words", len: 3, blurb: "No A, E, I, O or U, like BRR, CWM, PFFT and CRWTH.", test: w => !/[AEIOU]/.test(w) },
   { id: "noy", name: "No vowels, not even Y", blurb: "Words with no A, E, I, O, U or Y.", test: w => !/[AEIOUY]/.test(w) },
-  { id: "onev", name: "One-vowel 5s and 6s", len: 5, blurb: "5 and 6-letter words with a single vowel, like SCHMO and STRICT.", test: w => L(w, 5, 6) && vowels(w) === 1 },
+  { id: "onev", name: "One-vowel 5s and 6s", len: 5, blurb: "5 and 6-letter words with a single vowel, like SCHMO and STRICT.", test: w => lenIn(w, 5, 6) && vowels(w) === 1 },
   { sect: "Power tiles" },
   { id: "jqxz", name: "JQXZ words", len: 4, blurb: "Any word with J, Q, X or Z. Opens on the 4s.", test: w => /[JQXZ]/.test(w) },
   { id: "jqxzshort", name: "JQXZ 2s to 5s", len: 4, blurb: "Short power-tile words only, 2 to 5 letters.", test: w => w.length <= 5 && /[JQXZ]/.test(w) },
@@ -1694,7 +1665,7 @@ const GROUPS = [
   { id: "qnou", name: "Q without U", blurb: "Every word with a Q and no U, like QI, QAT, QOPH and WAQF.", test: w => w.includes("Q") && !w.includes("U") },
   { id: "twopower", name: "Two power tiles", blurb: "Words with two or more of J, Q, X and Z, like ZAX and JUKEBOX.", test: w => (w.match(/[JQXZ]/g) || []).length >= 2 },
   { id: "heavy", name: "Short heavy hitters", len: 3, blurb: "2 to 4-letter words worth 10 or more points on face value.", test: w => w.length <= 4 && score(w) >= 10 },
-  { id: "shortv", name: "Short V words", len: 3, blurb: "3 and 4-letter words with V. There are no 2-letter V words.", test: w => L(w, 3, 4) && w.includes("V") },
+  { id: "shortv", name: "Short V words", len: 3, blurb: "3 and 4-letter words with V. There are no 2-letter V words.", test: w => lenIn(w, 3, 4) && w.includes("V") },
   { id: "kwyfh", name: "Short K, W, Y, F, H words", len: 3, blurb: "3-letter words using the 4 and 5-point tiles.", test: w => w.length === 3 && /[KWYFH]/.test(w) },
   { sect: "Short words and hooks" },
   { id: "twos", name: "Two-letter words", blurb: "All 127 twos. Learn these first.", test: w => w.length === 2 },
@@ -1709,14 +1680,14 @@ const GROUPS = [
   { id: "stems7", name: "Best 7-letter stems", special: "stems", n: 7, blurb: "7 tiles plus 1 on the board makes an 8. The most productive racks." },
   { id: "p7", name: "Most likely 7s", blurb: "The 1,000 most probable 7-letter words (probability rank 1 to 1,000).", test: (w, e) => w.length === 7 && e.p <= 1000 },
   { id: "p8", name: "Most likely 8s", blurb: "The 1,000 most probable 8-letter words (probability rank 1 to 1,000).", test: (w, e) => w.length === 8 && e.p <= 1000 },
-  { id: "rich", name: "Anagram-rich racks", len: 7, blurb: "7s and 8s whose letters make 5 or more words.", test: w => L(w, 7, 8) && anagrams(w).length >= 5 },
-  { id: "suffix", name: "-ING, -IER, -IEST bingos", len: 7, blurb: "Every 7 and 8-letter word ending in ING, IER or IEST.", test: w => L(w, 7, 8) && /(ING|IER|IEST)$/.test(w) },
-  { id: "prefix", name: "RE-, UN-, OUT-, OVER-, DIS- bingos", len: 7, blurb: "Every 7 and 8-letter word starting with RE, UN, OUT, OVER or DIS.", test: w => L(w, 7, 8) && /^(RE|UN|OUT|OVER|DIS)/.test(w) },
+  { id: "rich", name: "Anagram-rich racks", len: 7, blurb: "7s and 8s whose letters make 5 or more words.", test: w => lenIn(w, 7, 8) && anagrams(w).length >= 5 },
+  { id: "suffix", name: "-ING, -IER, -IEST bingos", len: 7, blurb: "Every 7 and 8-letter word ending in ING, IER or IEST.", test: w => lenIn(w, 7, 8) && /(ING|IER|IEST)$/.test(w) },
+  { id: "prefix", name: "RE-, UN-, OUT-, OVER-, DIS- bingos", len: 7, blurb: "Every 7 and 8-letter word starting with RE, UN, OUT, OVER or DIS.", test: w => lenIn(w, 7, 8) && /^(RE|UN|OUT|OVER|DIS)/.test(w) },
   { sect: "Other" },
   { id: "new", name: "New in CSW24", blurb: "The 1,816 words added in this edition.", test: (w, e) => e.n },
   { id: "palin", name: "Palindromes", blurb: "Words that read the same backwards, like TAT and REDDER.", test: w => w.length >= 3 && w === [...w].reverse().join("") },
 ];
-const G = id => id ? GROUPS.find(g => g.id === id) : undefined;
+const groupOf = id => id ? GROUPS.find(g => g.id === id) : undefined;
 const cache = {};
 const groupWords = g => cache[g.id] ||= (g.special === "stems" ? stems(g.n).map(s => s.stem) : ALL.filter(w => g.test(w, DICT.get(w))));
 function stems(n) {
@@ -2006,7 +1977,7 @@ async function fetchOnline(w) {
 const SEARCH_DEFAULT = { pattern: "", rack: "", mode: "exact", lens: "", min: "", max: "", starts: "", ends: "", contains: "", incl: "", excl: "", def: "", group: "", anas: "", pfrom: "", pto: "", from: "", to: "" };
 let searchState = Object.fromEntries(Object.keys(SEARCH_DEFAULT).map(k => [k, store.get("search", {})[k] ?? SEARCH_DEFAULT[k]]));
 if (store.get("search", {}).top && !searchState.pto) searchState.pto = store.get("search", {}).top;
-if (!G(searchState.group) || G(searchState.group).special) searchState.group = "";
+if (!groupOf(searchState.group) || groupOf(searchState.group).special) searchState.group = "";
 // a search saved before the length chips: its shortest–longest becomes those lengths
 if (searchState.min || searchState.max) { searchState.lens ||= range(+searchState.min || 2, +searchState.max || 15).join(","); searchState.min = searchState.max = ""; }
 // the length chips (Search, Practice and Quiz): the value sits in a hidden input, so forms read it like any field
@@ -2041,7 +2012,7 @@ function runSearch(s) {
   const starts = letters(s.starts), ends = letters(s.ends), contains = letters(s.contains);
   const incl = counts(letters(s.incl)), excl = new Set(letters(s.excl));
   const def = (s.def || "").trim().toLowerCase();
-  const group = s.group ? G(s.group) : null;
+  const group = s.group ? groupOf(s.group) : null;
   const ar = anaRange(s.anas);
   const rl = rack.replace(/\?/g, ""), rb = rack.length - rl.length, rc = counts(rl);
   const masks = rack && rb ? new Map() : null;
@@ -2102,7 +2073,7 @@ function searchSecs(s) {
   return {
     group: `<div class="form">
         <div class="field wide"><label for="s_group">Group</label><select id="s_group"><option value="">Any word</option>${groupOptions(s.group)}</select>
-          <span class="hint" id="groupHint">${esc(G(s.group)?.blurb || "")}</span></div>
+          <span class="hint" id="groupHint">${esc(groupOf(s.group)?.blurb || "")}</span></div>
         <div class="field wide"><span class="flabel">Length</span>${lenPick("s_lens", s.lens)}</div>
       </div>`,
     narrow: `<div class="form">
@@ -2141,7 +2112,7 @@ VIEWS.search = () => {
   const read = () => { for (const k of Object.keys(SEARCH_DEFAULT)) { const el = $("#s_" + k); if (el) searchState[k] = el.value; } store.set("search", searchState); };
   $("#sform").querySelectorAll("details.acc").forEach(d => d.addEventListener("toggle", () => { const o = store.get("searchOpen", { group: true }); o[d.dataset.acc] = d.open; store.set("searchOpen", o); }));
   $("#sform").addEventListener("input", () => { read(); for (const k of ["group", "narrow"]) $("#accn_" + k).textContent = accSummary(k); });
-  $("#s_group").onchange = e => { $("#groupHint").textContent = G(e.target.value)?.blurb || ""; read(); doSearch(); };
+  $("#s_group").onchange = e => { $("#groupHint").textContent = groupOf(e.target.value)?.blurb || ""; read(); doSearch(); };
   $("#sform").addEventListener("submit", ev => { ev.preventDefault(); read(); doSearch(); });
   $("#sClear").onclick = () => { searchState = { ...SEARCH_DEFAULT }; store.set("search", searchState); VIEWS.search(); };
   bindTypeBar();
@@ -2184,7 +2155,7 @@ function bindTypeBar() {
 function accSummary(key) {
   const s = searchState, up = v => String(v || "").toUpperCase();
   const parts = {
-    group: [G(s.group)?.name, lensText(s.lens)],
+    group: [groupOf(s.group)?.name, lensText(s.lens)],
     letters: [s.pattern && patLabel(s.pattern), s.rack && `rack ${up(s.rack)}`],
     narrow: [s.def && `“${s.def}”`, s.starts && `${up(s.starts)}…`, s.ends && `…${up(s.ends)}`, s.contains && `has ${up(s.contains)}`,
       s.incl && `uses ${up(s.incl)}`, s.excl && `no ${up(s.excl)}`, anaText(s.anas).toLowerCase(), likelyText(s.pfrom, s.pto).toLowerCase()],
@@ -2198,7 +2169,7 @@ function doSearch() {
   setTimeout(() => {
     const r = runSearch(s);
     if (r.error) { box.innerHTML = `<p class="empty">${esc(r.error)}</p>`; return; }
-    const g = s.group && G(s.group);
+    const g = s.group && groupOf(s.group);
     const onlyGroup = g && !Object.entries(s).some(([k, v]) => !["mode", "group", "from", "to"].includes(k) && v);
     results(box, r.words, { masks: r.masks, len: onlyGroup ? g.len : 0, range: { from: s.from, to: s.to, save: (from, to) => { searchState.from = from; searchState.to = to; store.set("search", searchState); } } });
   }, 10);
@@ -2208,7 +2179,7 @@ function searchPhone() {
   searchFromBar = false;
   const s = searchState, up = v => String(v || "").toUpperCase();
   const chips = [
-    ["group", G(s.group)?.name, ["group"]], ["narrow", s.def && `“${s.def}”`, ["def"]],
+    ["group", groupOf(s.group)?.name, ["group"]], ["narrow", s.def && `“${s.def}”`, ["def"]],
     ["bar", s.pattern && patLabel(s.pattern), ["pattern"]], ["bar", s.rack && `Rack ${up(s.rack)}${s.mode === "build" ? " · subanagram" : s.mode === "super" ? " · superanagram" : ""}`, ["rack", "mode"]],
     ["group", lensText(s.lens), ["lens"]], ["narrow", s.starts && `${up(s.starts)}…`, ["starts"]], ["narrow", s.ends && `…${up(s.ends)}`, ["ends"]],
     ["narrow", s.contains && `Has ${up(s.contains)}`, ["contains"]], ["narrow", s.incl && `Uses ${up(s.incl)}`, ["incl"]], ["narrow", s.excl && `No ${up(s.excl)}`, ["excl"]], ["narrow", anaText(s.anas), ["anas"]], ["narrow", likelyText(s.pfrom, s.pto), ["pfrom", "pto"]],
@@ -2242,10 +2213,10 @@ function searchPhone() {
   $("#sClear")?.addEventListener("click", () => { searchState = { ...SEARCH_DEFAULT }; store.set("search", searchState); searchPhone(); });
   v.querySelectorAll("[data-reset]").forEach(b => b.onclick = () => {
     for (const k of SEARCH_SECS[b.dataset.reset][1]) { const el = $("#s_" + k); if (el) el.value = SEARCH_DEFAULT[k]; }
-    $("#groupHint").textContent = G($("#s_group").value)?.blurb || ""; syncPick($("#s_group")); v.querySelectorAll(".lenpick").forEach(paintLens); v.querySelectorAll(".likely").forEach(paintLikely); read(); count();
+    $("#groupHint").textContent = groupOf($("#s_group").value)?.blurb || ""; syncPick($("#s_group")); v.querySelectorAll(".lenpick").forEach(paintLens); v.querySelectorAll(".likely").forEach(paintLikely); read(); count();
   });
   $("#sform").addEventListener("input", () => { read(); count(); });
-  $("#s_group").onchange = e => { $("#groupHint").textContent = G(e.target.value)?.blurb || ""; read(); count(); };
+  $("#s_group").onchange = e => { $("#groupHint").textContent = groupOf(e.target.value)?.blurb || ""; read(); count(); };
   // closing the sheet either way applies what's in it
   const apply = () => { read(); sheet("ssheet", false); searchPhone(); };
   $("#sform").addEventListener("submit", ev => { ev.preventDefault(); apply(); });
@@ -2256,7 +2227,7 @@ function searchPhone() {
 
 // ---------- word lists ----------
 VIEWS.lists = (id) => {
-  const g = G(id);
+  const g = groupOf(id);
   if (!g) return listsHome();
   store.set("lastList", g.id);
   $("#view").innerHTML = `<div class="row"><a class="btn sm" href="#lists">← All lists</a><a class="btn sm" href="#" id="toSearch">Open in Search</a></div>
@@ -2283,7 +2254,7 @@ function listsHome() {
   const learnt = x => { const ws = words(x); return [ws.filter(w => L.has(alpha(w))).length, ws.length]; };
   // a sample word for the mini tiles: the first valid example in the blurb, else filled in once the list is built
   const sample = x => x.special === "stems" ? "" : (x.blurb.match(/\b[A-Z]{2,8}\b/g) || []).find(t => DICT.has(t)) || "";
-  const last = G(store.get("lastList"));
+  const last = groupOf(store.get("lastList"));
   let html = `<div class="bigtitle">Word lists</div>`;
   if (last) html += `<div class="cont" data-list="${last.id}"><div class="ct"><small>Continue</small><b>${esc(last.name)}</b><div class="pbar"><div id="pg_cont" style="width:0"></div></div><div class="small" id="cont_n"></div></div>
     ${last.special ? "" : `<button type="button" class="go" data-play="${last.id}" aria-label="Practice ${esc(last.name)}">${ICON_PLAY}</button>`}</div>`;
@@ -2341,7 +2312,7 @@ const MODES = {
 let quizSetup = { source: store.get("stars", []).length ? "stars" : "list:twos", mode: "anagram", ...store.get("quizSetup", {}) };
 // lengths used to be one choice ("" any, "main" the list's own length, or a number)
 if (!Array.isArray(quizSetup.lens)) {
-  const len = quizSetup.len ?? (quizSetup.lenOnly ? "main" : ""), g = G(quizSetup.source.replace("list:", ""));
+  const len = quizSetup.len ?? (quizSetup.lenOnly ? "main" : ""), g = groupOf(quizSetup.source.replace("list:", ""));
   quizSetup.lens = len === "main" ? (g?.len ? [g.len] : []) : +len ? [+len] : [];
   delete quizSetup.len; delete quizSetup.lenOnly;
 }
@@ -2352,7 +2323,7 @@ function quizSources() {
   return [["stars", `Starred words (${getStars().length})`], ["missed", `Missed words (${store.get("missed", []).length})`], ["last", `Last search results (${lastResults.length})`]];
 }
 function sourceWords(src) {
-  const g = G(src.replace("list:", ""));
+  const g = groupOf(src.replace("list:", ""));
   let words = src === "stars" ? getStars() : src === "missed" ? store.get("missed", []) : src === "last" ? lastResults
     : !g ? [] : g.special === "stems" ? stems(g.n).flatMap(s => s.words) : groupWords(g);
   const lens = quizSetup.lens || [];
@@ -2407,7 +2378,7 @@ VIEWS.quiz = () => {
   // live count of the words the chosen options give
   const count = () => { const n = new Set(sourceWords(quizSetup.source).filter(w => DICT.has(w))).size; $("#qmsg").textContent = `${n.toLocaleString()} word${n === 1 ? "" : "s"} to draw from`; };
   // picking a list picks its usual length too
-  $("#qsrc").onchange = e => { quizSetup.source = e.target.value; const g = G(e.target.value.replace("list:", "")); quizSetup.lens = g?.len ? [g.len] : []; store.set("quizSetup", quizSetup); VIEWS.quiz(); };
+  $("#qsrc").onchange = e => { quizSetup.source = e.target.value; const g = groupOf(e.target.value.replace("list:", "")); quizSetup.lens = g?.len ? [g.len] : []; store.set("quizSetup", quizSetup); VIEWS.quiz(); };
   // type any number of questions, or pick one of the usual ones
   const setCount = n => { n = Math.min(500, Math.max(1, parseInt(n) || 20)); saveSettings({ qcount: n }); $("#qcount").value = n; $("#view").querySelectorAll("[data-qn]").forEach(b => b.classList.toggle("on", +b.dataset.qn === n)); };
   $("#qcount").onchange = e => setCount(e.target.value);
@@ -2724,7 +2695,7 @@ VIEWS.practice = () => {
     $("#po_star").onchange = e => { saveSettings({ practice: { ...o, starOnly: e.target.checked } }); VIEWS.practice(); };
     const read = () => { const n = { ...o }; for (const k of ["src", "starts", "ends", "contains", "incl", "excl", "pattern", "anas", "from", "to"]) n[k] = $("#po_" + k).value.trim(); n.lens = lensOf($("#po_lens").value); saveSettings({ practice: n }); VIEWS.practice(); };
     // picking a list picks its usual length too
-    $("#po_src").onchange = () => { const v = $("#po_src").value; if (v) $("#po_lens").value = v.startsWith("g:") ? G(v.slice(2))?.len || "" : ""; read(); }; $("#po_lens").onchange = read; $("#poApply").onclick = read;
+    $("#po_src").onchange = () => { const v = $("#po_src").value; if (v) $("#po_lens").value = v.startsWith("g:") ? groupOf(v.slice(2))?.len || "" : ""; read(); }; $("#po_lens").onchange = read; $("#poApply").onclick = read;
     $("#pOpts").querySelectorAll("input").forEach(i => i.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); read(); } });
     $("#pOpts .likely").addEventListener("likely", read); paintLikely($("#pOpts .likely"));
     $("#poReset").onclick = () => { saveSettings({ practice: { ...PO_DEFAULT } }); VIEWS.practice(); };
@@ -2740,7 +2711,7 @@ const lensLabel = o => o.lens.length ? `${o.lens.join(", ")} letters` : "Any len
 let pSheetOpen = false;
 function practicePlay(pool, o, opts, wire) {
   const v = $("#view"), pq = getPQ().items.length, pr = progress(pool);
-  const src = o.src.startsWith("g:") ? G(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src];
+  const src = o.src.startsWith("g:") ? groupOf(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src];
   const pills = [lensLabel(o), src, o.order !== "rand" && orderText(o.order, o.rev), o.starOnly && "★ only", likelyText(o.from, o.to), anaText(o.anas), `Streak ${P.streak}`, pq && `${pq} to review`].filter(Boolean);
   const top = `<div class="fc-top"><button type="button" class="ib2" id="pExit" aria-label="Leave practice">×</button><div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div>
       <span class="n" title="racks learnt">${pr.racks.toLocaleString()} / ${pr.racksAll.toLocaleString()}</span><button type="button" class="ib2 phone-only" id="pStatsBtn" aria-label="Stats">${icon('<path d="M5 20V11M12 20V4M19 20v-6"/>')}</button><button type="button" class="ib2" id="pOptBtn" aria-label="Options">${icon('<path d="M4 6h16M7 12h10M10 18h4"/>')}</button></div>
@@ -2935,7 +2906,7 @@ function practiceRail(pr, cls) {
 // practice setup: what to practise; Start (or the play button) goes full screen
 function practiceSetup(pool, o, main, more, wire) {
   const pr = progress(pool), going = P.seen || store.get("pcur")?.key === P.key;
-  const src = o.src.startsWith("g:") ? G(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src] || "Any word";
+  const src = o.src.startsWith("g:") ? groupOf(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src] || "Any word";
   $("#view").innerHTML = `<div class="cont" id="pGo"><div class="ct"><small>${going ? "Continue" : "Ready to practise"}</small><b>${esc(src)} · ${lensLabel(o).toLowerCase()}</b>
       <div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div><div class="small">${pr.racks.toLocaleString()} of ${pr.racksAll.toLocaleString()} racks learnt · ${pool.length.toLocaleString()} words</div></div>
       <button type="button" class="go" aria-label="${going ? "Carry on practising" : "Start practice"}">${ICON_PLAY}</button></div>
@@ -3253,9 +3224,11 @@ const bVars = () => {
 const BPRESETS = { dlx: ["Deluxe", { bStyle: "dlx", bPal: "dlxd", bLabels: "words2", bTileCol: "natural", bTile: "wood", bArrows: true }],
   dlxc: ["Deluxe compact", { bStyle: "dlxc", bPal: "dlxa", bLabels: "letters", bTileCol: "natural", bTile: "wood", bArrows: true }] };
 const BMARKS = [["bright", "Brighter"], ["halo", "Soft light"], ["shine", "Shine"], ["lift", "Lifted"], ["tint", "Warm tint"], ["dim", "Others faded"]];
-// Board look: one sheet, opened from the Board tab and from Scoring, saved with the other settings so both follow it
+// Board look: one sheet, opened from the Board tab and from Scoring, saved with the other settings so both follow it.
+// Its ~70 little boards are only built when it's opened: pages just hold an empty place for it
 const bLookBar = () => `<div class="bbar"><button type="button" class="btn sm" id="bLookOpen">Board look</button></div>`;
-function bLookSheet() {
+const bLookSheet = () => `<div class="sheetwrap" id="bsheet" hidden></div>`;
+function bLookSheetFull() {
   const seg = (key, opts) => `<div class="seg">${opts.map(([v, t]) => `<button type="button" class="btn ${String(SET[key]) === String(v) ? "on" : ""}" data-bset="${key}" data-val="${v}">${t}</button>`).join("")}</div>`;
   const ts = (id, n, look) => `<button type="button" class="${SET.bTile === id ? "on" : ""}" data-bset="bTile" data-val="${id}"><div class="tile ts-${look}">A<sub>1</sub></div>${n}</button>`;
   // a 5×5 corner of the board in a style and colours, with one tile on it
@@ -3281,15 +3254,19 @@ function bLookSheet() {
 }
 // wire the button and sheet; redraw is the page's own redraw, and the sheet opens again after it
 function bLookWire(redraw) {
-  const open = () => sheet("bsheet", true), close = () => sheet("bsheet", false);
+  const close = () => sheet("bsheet", false);
+  const open = () => {
+    $("#bsheet").outerHTML = bLookSheetFull();
+    $("#bLookDone").onclick = $("#bsheet .scrim").onclick = close;
+    $("#bsheet").querySelectorAll("[data-bset], [data-bpreset]").forEach(b => b.onclick = () => {
+      const k = b.dataset.bset, v = b.dataset.val;
+      saveSettings(b.dataset.bpreset ? BPRESETS[b.dataset.bpreset][1] : { [k]: k === "bCoords" || k === "bArrows" ? v === "true" : v });
+      const sc = $("#bsheet .sheet").scrollTop;
+      redraw(); open(); $("#bsheet .sheet").scrollTop = sc;
+    });
+    sheet("bsheet", true);
+  };
   $("#bLookOpen").onclick = open;
-  $("#bLookDone").onclick = $("#bsheet .scrim").onclick = close;
-  $("#bsheet").querySelectorAll("[data-bset], [data-bpreset]").forEach(b => b.onclick = () => {
-    const k = b.dataset.bset, v = b.dataset.val;
-    saveSettings(b.dataset.bpreset ? BPRESETS[b.dataset.bpreset][1] : { [k]: k === "bCoords" || k === "bArrows" ? v === "true" : v });
-    const sc = $("#bsheet .sheet").scrollTop;
-    redraw(); open(); $("#bsheet .sheet").scrollTop = sc;
-  });
 }
 // the working for a play: each word's letters (with bonuses), its word bonus and total, then the bingo and the total
 function workHTML(r, checkWords) {
@@ -3315,6 +3292,14 @@ function bkInput() {
     else for (const ch of v.slice(KEEP.length)) bkOnKey(ch);
   });
   return inp;
+}
+// the board's arrow: arrow keys move it (from the star if it isn't out), Space turns it across or down.
+// S is any board state with cur (the square, or -1) and dir (0 across, 1 down); true if the key was one of these
+function cursorKey(S, k) {
+  const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
+  if (d) { const r = (S.cur / 15 | 0) + d[1], c = S.cur % 15 + d[0]; if (S.cur < 0) S.cur = 112; else if (r >= 0 && r < 15 && c >= 0 && c < 15) S.cur = r * 15 + c; return true; }
+  if (k === " " && S.cur >= 0) { S.dir = 1 - S.dir; return true; }
+  return false;
 }
 function boardKeys(onKey) {
   const inp = bkInput();
@@ -3358,14 +3343,8 @@ function viewLook() {
   boardKeys(k => {
     if (k === "Enter") { $("#bPlay")?.click(); return; }
     if (k === "?") { blankNext = true; return; }
-    const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
-    if (arrows[k]) {
-      const [dc, dr] = arrows[k], r = (L.cur / 15 | 0) + dr, c = L.cur % 15 + dc;
-      if (L.cur < 0) L.cur = 112; else if (r >= 0 && r < 15 && c >= 0 && c < 15) L.cur = r * 15 + c;
-      redraw(); return;
-    }
+    if (cursorKey(L, k)) { redraw(); return; }
     if (L.cur < 0) return false;
-    if (k === " ") { L.dir = 1 - L.dir; redraw(); return; }
     if (k === "Backspace") {
       // take back the tile here, or the last one placed before it
       let i = L.cur;
@@ -3606,13 +3585,7 @@ function pWire(S, redraw, enter, locked = () => false) {
     if (k === "Enter") { enter(); return; }
     if (k === "?") { blankNext = true; return; }
     if (k === "Escape") { S.pend = []; S.swap = null; redraw(); return; }
-    const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
-    if (arrows[k]) {
-      const [dc, dr] = arrows[k], r = (S.cur / 15 | 0) + dr, c = S.cur % 15 + dc;
-      if (S.cur < 0) S.cur = 112; else if (r >= 0 && r < 15 && c >= 0 && c < 15) S.cur = r * 15 + c;
-      redraw(); return;
-    }
-    if (k === " ") { if (S.cur >= 0) S.dir = 1 - S.dir; redraw(); return; }
+    if (cursorKey(S, k)) { redraw(); return; }
     if (k === "Backspace") { const p = S.pend.pop(); if (p) S.cur = p.i; redraw(); return; }
     if (!/^[a-z]$/i.test(k)) return false;
     const ch = k.toUpperCase(), free = c => [...S.rack].findIndex((x, ri) => x === c && !S.pend.some(p => p.ri === ri));
@@ -3658,7 +3631,7 @@ function anaRows(A) {
 }
 function anaListHTML(A) {
   if (!A.rack) return `<h2 class="lbl">Plays</h2><p class="empty">Type your rack above to see every play.</p>`;
-  const u = unseenOf(cellsStr(A.cells), A.rack);
+  const u = unseenTiles(cellsStr(A.cells), A.rack);
   if (!u.ok) return `<h2 class="lbl">Plays</h2><p class="empty">${u.err}: check the board and rack.</p>`;
   if (!A.res) return `<h2 class="lbl">Plays</h2><p class="empty">Thinking…</p>`;
   if (A.res.error) return `<h2 class="lbl">Plays</h2><p class="empty">${esc(A.res.error)}. Change the rack to try again.</p>`;
@@ -3674,7 +3647,7 @@ function anaListHTML(A) {
   <div class="simrow">${S?.running ? `<div class="simbar"><i style="width:${(S.it / S.iters * 100).toFixed(1)}%"></i></div><span class="small">${S.it} of ${S.iters} racks</span><button class="btn sm" id="anaStop">Stop</button>`
     : `<button class="btn" id="anaSim" ${A.res.moves.length > 1 ? "" : "disabled"}>${S ? "Look ahead again" : "Look ahead"}</button><span class="small">${S ? `${S.it} racks dealt to the other player` : "Plays out the other player's reply for the top 10"}</span>`}</div>`;
 }
-const anaUnseenHTML = A => { const u = unseenOf(cellsStr(A.cells), A.rack);
+const anaUnseenHTML = A => { const u = unseenTiles(cellsStr(A.cells), A.rack);
   return u.ok ? `${u.n} tiles unseen · ${Math.max(0, u.n - 7)} in the bag${u.n <= 7 ? " · the bag is empty, so the end counts" : ""}` : `<span class="bad">${u.err}</span>`; };
 // a look-ahead that's no longer wanted is stopped, so the worker doesn't keep going
 const anaSimDrop = A => { if (A.sim?.running) ENG.stop(A.sim.job); A.sim = null; };
@@ -3706,7 +3679,7 @@ function viewAnalyse() {
       A.res = res; if (location.hash === "#board/analyse") listDraw();
     }).catch(e => { if (AZY !== A) return; A.res = { moves: [], total: 0, error: e.message }; if (location.hash === "#board/analyse") listDraw(); });
   };
-  const unseenOK = () => unseenOf(cellsStr(A.cells), A.rack).ok;
+  const unseenOK = () => unseenTiles(cellsStr(A.cells), A.rack).ok;
   const listWire = () => {
     const v = $("#anaPlays");
     v.querySelectorAll("[data-am]").forEach(b => b.onclick = () => { A.sel = A.sel === +b.dataset.am ? -1 : +b.dataset.am; redraw(); });
@@ -3747,7 +3720,7 @@ function viewAnalyse() {
     }, 300);
   });
   rk.addEventListener("keydown", ev => { if (ev.key === "Enter") rk.blur(); });
-  $("#anaDeal").onclick = () => { A.rack = shuffle([...unseenOf(cellsStr(A.cells), "").pool]).slice(0, 7).join(""); A.res = null; redraw(); };
+  $("#anaDeal").onclick = () => { A.rack = shuffle([...unseenTiles(cellsStr(A.cells), "").pool]).slice(0, 7).join(""); A.res = null; redraw(); };
   $("#anaEdit").onclick = () => { A.edit = !A.edit; A.cur = -1; redraw(); };
   if ($("#anaBlank")) $("#anaBlank").onclick = () => { A.blank = !A.blank; redraw(); if (coarse.matches && A.cur >= 0) bkInput().focus({ preventScroll: true }); };
   $("#anaFree").onclick = () => { const L = lookGet(); A.cells = L.cells.map(t => t && { ...t }); A.res = null; anaSimDrop(A); redraw(); };
@@ -3767,14 +3740,8 @@ function viewAnalyse() {
     const step = A.dir ? 15 : 1, inLine = (a, b) => b >= 0 && b < 225 && (A.dir || (a / 15 | 0) === (b / 15 | 0));
     const changed = () => { A.res = null; anaSimDrop(A); A.sel = -1; redraw(); };
     if (k === "?") { blankNext = true; return; }
-    const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
-    if (arrows[k]) {
-      const [dc, dr] = arrows[k], r = (A.cur / 15 | 0) + dr, c = A.cur % 15 + dc;
-      if (A.cur < 0) A.cur = 112; else if (r >= 0 && r < 15 && c >= 0 && c < 15) A.cur = r * 15 + c;
-      redraw(); return;
-    }
+    if (cursorKey(A, k)) { redraw(); return; }
     if (A.cur < 0) return false;
-    if (k === " ") { A.dir = 1 - A.dir; redraw(); return; }
     if (k === "Enter") { A.edit = false; A.cur = -1; redraw(); return; }
     if (k === "Backspace" || k === "Delete") {
       if (A.cells[A.cur] || k === "Delete") A.cells[A.cur] = null;
@@ -3789,7 +3756,7 @@ function viewAnalyse() {
   });
 }
 // the tiles not on the board or the rack; err when the board and rack use more of a letter than the set has
-function unseenOf(board, rack) {
+function unseenTiles(board, rack) {
   const n = { ...BAG, "?": 2 };
   for (const ch of board) if (ch !== ".") n[ch === ch.toUpperCase() ? ch : "?"]--;
   for (const ch of rack) n[ch]--;
@@ -3883,7 +3850,7 @@ const logHTML = (g, hl) => g.log.length ? `<div class="glog">${g.log.map((e, n) 
 const scoreHTML = (g, active) => `<div class="gscore">${[0, 1].map(p => `<div class="${active === p ? "on" : ""} p${p}"><span>${esc(g.names[p])}</span><b>${g.scores[p]}</b></div>`).join(`<div class="gbag"><b>${g.bag.length}</b>in bag</div>`)}</div>`;
 // the tiles a player can't see, by letter
 function unseenHTML(board, rack) {
-  const u = unseenOf(board, rack);
+  const u = unseenTiles(board, rack);
   if (!u.n) return `<p class="empty">None: every tile is on the board or your rack.</p>`;
   const c = counts(u.pool.join("")), vw = u.pool.filter(ch => "AEIOU".includes(ch)).length;
   return `<div class="unseen">${[...AZ, "?"].filter(ch => c[ch]).map(ch => `<span>${ch === "?" ? "?" : ch}<i>${c[ch]}</i></span>`).join("")}</div>
