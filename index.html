@@ -885,6 +885,81 @@ main.wrap:has(> .foc) { max-width: 1400px; }
 .blevels { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
 .blevels .btn { flex: none; }
 @media (max-width: 620px) { .bside .card { padding: 12px 14px; } .bq { font-size: 1.15rem; } }
+/* Analyse, Play and the Lab */
+.small.bad, span.bad { color: var(--bad); }
+.arack { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: var(--field-ink); font: 700 1.2rem var(--display); letter-spacing: .12em; text-transform: uppercase; }
+.arack.gname { letter-spacing: 0; text-transform: none; font-size: 1rem; }
+.alhead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.alhead .lbl { margin: 0; }
+.alist { display: flex; flex-direction: column; font: .84rem/1.35 var(--mono); }
+.alist .alh, .alist .alr { display: grid; grid-template-columns: 1.6em minmax(0, 1fr) 2.6em 4.6em 3.6em; gap: 6px; align-items: center; padding: 6px 4px; text-align: right; }
+.alist.withsim .alh, .alist.withsim .alr { grid-template-columns: 1.6em minmax(0, 1fr) 2.4em 4.2em 3.4em 3.4em; }
+.alist:not(:has(.alh)) .alr { grid-template-columns: 1.6em minmax(0, 1fr) 2.6em; }
+.alist .alh { font: 700 .66rem var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding-top: 0; }
+.alist .alh span:nth-child(2), .alist .alr .aw { text-align: left; }
+.alist .alr { border: 0; border-top: 1px dashed var(--line); background: none; color: var(--ink); font: inherit; cursor: pointer; border-radius: 0; }
+.alist .alr:hover { background: var(--chip); }
+.alist .alr.on { background: color-mix(in srgb, var(--accent) 14%, var(--panel)); border-radius: 6px; border-top-color: transparent; }
+.alist .alr > span:first-child { color: var(--muted); text-align: left; }
+.alist .aw { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alist .aw b { font: 700 .95rem var(--display); letter-spacing: .03em; }
+.alist .aw i { font-style: normal; color: var(--muted); font-size: .76rem; }
+.alist .lv { letter-spacing: .06em; color: var(--muted); }
+.alwork { padding: 4px 6px 10px; }
+.simrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.simbar { flex: 1; min-width: 80px; height: 8px; border-radius: 4px; background: var(--chip); overflow: hidden; }
+.simbar i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+.gmain { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.gscore { display: flex; align-items: stretch; gap: 8px; }
+.gscore > div:not(.gbag) { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); min-width: 0; }
+.gscore > div span { font: 600 .9rem var(--display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gscore > div b { font: 800 1.4rem var(--display); font-variant-numeric: tabular-nums; }
+.gscore > div.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.gscore .gbag { display: grid; place-items: center; padding: 0 4px; font: .66rem var(--mono); color: var(--muted); text-align: center; }
+.gscore .gbag b { font: 700 1rem var(--display); color: var(--ink); }
+.prack { padding: 10px 6px 9px; }
+.prack .tiles { --sz: min(50px, calc((100vw - 76px) / 7 - 5px)); }
+.prack .tile { width: var(--sz); height: var(--sz); font-size: calc(var(--sz) * .58); border: 0; padding: 0; cursor: pointer; transition: translate .12s, opacity .12s; }
+.prack .tile.sel { translate: 0 -7px; outline: 3px solid var(--accent); outline-offset: 1px; }
+.prack .tile.swap { translate: 0 -9px; outline: 2px dashed var(--bad); outline-offset: 2px; filter: saturate(.6) brightness(.9); }
+.prack .tile.back { background: color-mix(in srgb, var(--tile-edge) 70%, #000); box-shadow: inset 0 0 0 2px rgb(255 255 255 / .08); }
+.gbtns { display: grid; grid-template-columns: 1.6fr repeat(4, 1fr); gap: 6px; }
+.gbtns:has(#gSwapGo), .gbtns:has(#pzNext), .gbtns:has(#pzGo) { grid-template-columns: 1.6fr repeat(2, 1fr); }
+.gbtns:has(#pzNext) { grid-template-columns: 1fr; }
+.gbtns .btn { min-height: 46px; text-align: center; justify-content: center; padding-inline: 4px; }
+.bd .tile.pend { outline: 2px solid var(--accent); outline-offset: -2px; }
+.bd .tile.last { box-shadow: inset 0 calc(-1 * var(--lip)) 0 var(--tile-edge), 0 0 0 2px color-mix(in srgb, var(--accent) 80%, #fff); }
+.bq.thinking { animation: think 1.2s ease-in-out infinite alternate; }
+@keyframes think { from { opacity: 1; } to { opacity: .45; } }
+.glog { display: flex; flex-direction: column; font: .82rem/1.4 var(--mono); max-height: 360px; overflow-y: auto; }
+.glog > div { display: grid; grid-template-columns: 1.3em 3em minmax(0, 1fr) 2.6em 2.8em; gap: 6px; padding: 4px 0; border-top: 1px dashed var(--line); align-items: baseline; }
+.glog > div:first-child { border-top: 0; }
+.glog > div > span:first-child { font: 800 .74rem var(--display); color: var(--on-accent); background: var(--accent); border-radius: 4px; text-align: center; }
+.glog > div.p1 > span:first-child { background: var(--link); color: var(--panel); }
+.glog > div > span:nth-child(3) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--display); font-weight: 700; letter-spacing: .03em; }
+.glog > div.off > span:nth-child(3) { text-decoration: line-through; color: var(--bad); }
+.glog b, .glog .small { text-align: right; }
+.unseen { display: flex; flex-wrap: wrap; gap: 4px; }
+.unseen span { display: inline-flex; align-items: baseline; gap: 2px; padding: 2px 6px; border-radius: 5px; background: var(--chip); border: 1px solid var(--line); font: 700 .9rem var(--display); }
+.unseen i { font: 600 .66rem var(--mono); font-style: normal; color: var(--muted); }
+.lgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding: 4px 0 8px; }
+.lgrid button { aspect-ratio: 1; border: 0; border-radius: 6px; background: var(--tile); color: var(--accent); font: 800 1.3rem var(--display); box-shadow: inset 0 -2px 0 var(--tile-edge); cursor: pointer; }
+.grev { display: flex; flex-direction: column; }
+.grev button { display: grid; grid-template-columns: 2.4em minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 4px; border: 0; border-top: 1px dashed var(--line); background: none; color: var(--ink); text-align: left; font: .82rem/1.35 var(--mono); cursor: pointer; }
+.grev button:hover { background: var(--chip); }
+.grev button b { font: 700 .92rem var(--display); }
+.grev button i { font-style: normal; color: var(--muted); }
+.grev button > span:last-child { font: 700 .95rem var(--display); }
+.grev button.top > span:last-child { color: var(--good); } .grev button.big > span:last-child { color: var(--bad); }
+.gsetup .fs { margin-top: 16px; }
+.cvracks { display: flex; flex-direction: column; gap: 8px; }
+.cvracks > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tgrid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; }
+.tgrid button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 6px; border: 0; border-radius: 7px; background: var(--tile); color: var(--tile-ink); box-shadow: inset 0 -3px 0 var(--tile-edge); cursor: pointer; }
+.tgrid b { font: 800 1.3rem/1 var(--display); }
+.tgrid i { font: 600 .7rem var(--mono); font-style: normal; opacity: .75; }
+.tgrid button.gone { opacity: .3; }
+@media (max-width: 620px) { .tgrid { grid-template-columns: repeat(7, 1fr); } .gscore > div b { font-size: 1.2rem; } .glog { max-height: 260px; } }
 </style>
 </head>
 <body>
@@ -944,6 +1019,326 @@ if (location.protocol === "https:" && "serviceWorker" in navigator) navigator.se
   app.textContent = document.getElementById("app").textContent;
   document.body.append(app);
 })();
+</script>
+<script id="engine" type="text/plain">
+// The computer player: finds every play on a board for a rack, and weighs them. It runs in a worker (see engineWorker
+// in the app) so the page stays smooth while it thinks. Boards come in as 225 characters, row by row: "." for an
+// empty square, a capital for a tile and a small letter for a blank. Racks are capitals with "?" for a blank.
+const E = (() => {
+  const VAL = [1, 3, 3, 2, 1, 4, 2, 4, 1, 8, 5, 1, 3, 1, 1, 3, 10, 1, 1, 1, 1, 4, 4, 8, 4, 10];
+  const BAGN = [9, 2, 2, 4, 12, 2, 3, 2, 9, 1, 1, 4, 2, 6, 8, 2, 1, 6, 4, 6, 4, 2, 2, 1, 2, 1], BLANKS = 2;
+  // bonus squares: letter and word multipliers, the same both ways round as the board is symmetric
+  const LM = new Uint8Array(225).fill(1), WM = new Uint8Array(225).fill(1);
+  {
+    const q = { tw: [[0, 0], [0, 7]], dw: [[1, 1], [2, 2], [3, 3], [4, 4], [7, 7]], tl: [[1, 5], [5, 5]], dl: [[0, 3], [2, 6], [3, 7], [6, 6]] };
+    for (const [k, l] of Object.entries(q)) for (const [r, c] of l) for (const [a, b] of [[r, c], [c, r]]) for (const R of [a, 14 - a]) for (const C of [b, 14 - b]) {
+      const i = R * 15 + C;
+      if (k === "tw") WM[i] = 3; else if (k === "dw") WM[i] = 2; else if (k === "tl") LM[i] = 3; else LM[i] = 2;
+    }
+  }
+  // ---- the words, as a tree: each node keeps a bit for each letter it goes on to, where its children start, and
+  // whether a word ends there. Children sit side by side in letter order, so a child is found by counting bits
+  let MASK, BASE, END;
+  const pop = x => { x -= (x >>> 1) & 0x55555555; x = (x & 0x33333333) + ((x >>> 2) & 0x33333333); return (((x + (x >>> 4)) & 0x0f0f0f0f) * 0x01010101) >>> 24; };
+  const kid = (n, c) => { const m = MASK[n]; return m >>> c & 1 ? BASE[n] + pop(m & ((1 << c) - 1)) : -1; };
+  function load(words) {
+    words = words.filter(w => /^[A-Z]{2,15}$/.test(w)).sort();
+    let n = 1;
+    for (let i = 0; i < words.length; i++) { const w = words[i], p = words[i - 1] || ""; let k = 0; while (k < w.length && w[k] === p[k]) k++; n += w.length - k; }
+    MASK = new Uint32Array(n); BASE = new Int32Array(n); END = new Uint8Array(n);
+    let next = 1;
+    const build = (node, lo, hi, d) => {
+      let i = lo;
+      while (i < hi && words[i].length === d) { END[node] = 1; i++; }
+      const gs = [];
+      let m = 0;
+      for (let j = i; j < hi;) { const c = words[j].charCodeAt(d) - 65; let k = j; while (k < hi && words[k].charCodeAt(d) - 65 === c) k++; gs.push(c, j, k); m |= 1 << c; j = k; }
+      MASK[node] = m; const b = BASE[node] = next; next += gs.length / 3;
+      for (let g = 0; g < gs.length; g += 3) build(b + g / 3, gs[g + 1], gs[g + 2], d + 1);
+    };
+    build(0, 0, words.length, 0);
+    return words.length;
+  }
+  const isWord = w => { let n = 0; for (let i = 0; i < w.length && n >= 0; i++) n = kid(n, w.charCodeAt(i) - 65); return n >= 0 && END[n] === 1; };
+
+  // ---- leaves: what the tiles you keep are worth for next turn, in points. Rough single-tile values (the blank and
+  // S are gold, Q and V are lumps), less for doubles and for too many vowels or consonants, a little for good pairs
+  const LV = { "?": 25, A: 1, B: -2, C: .5, D: .5, E: 3.5, F: -2, G: -2, H: .5, I: -.5, J: -2.5, K: -2, L: -.5, M: 0, N: .5, O: -1.5, P: -.5, Q: -7.5, R: 1.5,
+    S: 8, T: 0, U: -3, V: -5.5, W: -3.5, X: 3, Y: -.5, Z: 3 };
+  const PAIRS = { ER: 1.5, ES: 1.5, ST: 1, IN: .5, RS: 1, DE: .5, ING: 4, EST: 2, ERS: 1.5, QU: 3, AE: -.5 };
+  const leaveMemo = new Map();
+  function leave(t) {
+    if (!t) return 0;
+    const k = [...t].sort().join("");
+    let v = leaveMemo.get(k);
+    if (v !== undefined) return v;
+    v = 0;
+    const cnt = {};
+    let vow = 0, con = 0;
+    for (const ch of k) { v += LV[ch]; cnt[ch] = (cnt[ch] || 0) + 1; if (ch === "?") continue; "AEIOU".includes(ch) ? vow++ : con++; }
+    for (const [ch, n] of Object.entries(cnt)) if (n > 1 && ch !== "?") v -= (n - 1) * ("AEIOU".includes(ch) ? 4 : ch === "S" ? 2.5 : 3) * (n > 2 ? 1.5 : 1);
+    const d = Math.abs(vow - con);
+    if (d > 1) v -= (d - 1) * 2.5;
+    if (k.length >= 2 && !vow && !cnt["?"]) v -= 2;
+    if (k.length >= 3 && !con && !cnt["?"]) v -= 2;
+    if (cnt.Q && !cnt.U && !cnt["?"]) v -= 4;
+    for (const [p, b] of Object.entries(PAIRS)) if ([...p].every(ch => cnt[ch] >= (p.split(ch).length - 1))) v += b;
+    leaveMemo.set(k, v);
+    return v;
+  }
+
+  // ---- finding plays (Appel and Jacobson's way): along every row, from each anchor (an empty square next to a
+  // tile), build a left part from the rack, then run right through the board's tiles, only ever along real words.
+  // Down plays are the same with the board turned over its diagonal.
+  const ALLC = (1 << 26) - 1;
+  function parse(board) {
+    const L = new Int8Array(225).fill(-1), B = new Uint8Array(225);
+    for (let i = 0; i < 225; i++) { const ch = board[i]; if (ch && ch !== ".") { const u = ch.toUpperCase(); L[i] = u.charCodeAt(0) - 65; B[i] = ch !== u ? 1 : 0; } }
+    return { L, B };
+  }
+  function genAll(board, rack) {
+    const { L, B } = parse(board);
+    const empty = !L.some(x => x >= 0);
+    const rc = new Int8Array(27);
+    for (const ch of rack) ch === "?" ? rc[26]++ : rc[ch.charCodeAt(0) - 65]++;
+    const out = [], seen = new Set();
+    // on an empty board a down play is just an across one turned round
+    for (let dir = 0; dir < (empty ? 1 : 2); dir++) {
+      // the board seen along the play: across as it is, down turned over
+      const at = dir ? i => (i % 15) * 15 + (i / 15 | 0) : i => i;
+      const bl = new Int8Array(225), bb = new Uint8Array(225);
+      for (let i = 0; i < 225; i++) { bl[i] = L[at(i)]; bb[i] = B[at(i)]; }
+      // cross-checks: the letters that make a word with the tiles above and below, and those tiles' points
+      const cross = new Int32Array(225), cscore = new Int16Array(225).fill(-1), anchor = new Uint8Array(225);
+      for (let i = 0; i < 225; i++) {
+        if (bl[i] >= 0) continue;
+        const r = i / 15 | 0, c = i % 15;
+        const up = r > 0 && bl[i - 15] >= 0, dn = r < 14 && bl[i + 15] >= 0;
+        if ((c > 0 && bl[i - 1] >= 0) || (c < 14 && bl[i + 1] >= 0) || up || dn) anchor[i] = 1;
+        if (!up && !dn) { cross[i] = ALLC; continue; }
+        let s = i, sum = 0; while (s >= 15 && bl[s - 15] >= 0) s -= 15;
+        let n = 0;
+        for (let j = s; j < i; j += 15) { sum += bb[j] ? 0 : VAL[bl[j]]; n = n >= 0 ? kid(n, bl[j]) : -1; }
+        let m = 0;
+        if (n >= 0) for (let ch = 0; ch < 26; ch++) {
+          let k = kid(n, ch); if (k < 0) continue;
+          for (let j = i + 15; j < 225 && bl[j] >= 0 && k >= 0; j += 15) k = kid(k, bl[j]);
+          if (k >= 0 && END[k]) m |= 1 << ch;
+        }
+        for (let j = i + 15; j < 225 && bl[j] >= 0; j += 15) sum += bb[j] ? 0 : VAL[bl[j]];
+        cross[i] = m; cscore[i] = sum;
+      }
+      if (empty) anchor[112] = 1;
+      // the play being built: squares (in this view), letters, blanks
+      const pS = new Int16Array(15), pL = new Int8Array(15), pB = new Uint8Array(15);
+      let np = 0;
+      // single tiles turn up both ways round, so each play is kept once
+      const record = (start, end, main, wm, crossSum) => {
+        const score = main * wm + crossSum + (np === 7 ? 50 : 0);
+        const tiles = [];
+        for (let k = 0; k < np; k++) tiles.push([at(pS[k]), pL[k], pB[k]]);
+        tiles.sort((a, b) => a[0] - b[0]);
+        const key = tiles.map(t => t[0] + ":" + t[1] + t[2]).join(",");
+        if (seen.has(key)) return;
+        seen.add(key);
+        // the word, with blanks in small letters
+        let shown = "";
+        for (let j = start; j <= end; j++) {
+          const t = tiles.find(t => t[0] === at(j));
+          shown += t ? (t[2] ? String.fromCharCode(97 + t[1]) : String.fromCharCode(65 + t[1])) : (bb[j] ? String.fromCharCode(97 + bl[j]) : String.fromCharCode(65 + bl[j]));
+        }
+        out.push({ dir, start: at(start), word: shown, tiles, score, n: np });
+      };
+      // run right from square i (in this view) with the tree at node n; a word is kept when the square after it is
+      // empty or off the board, it uses a rack tile and it reaches the anchor
+      const extend = (row, i, n, anchorI, start, main, wm, crossSum) => {
+        if (i > row * 15 + 14) { if (END[n] && np && i > anchorI) record(start, i - 1, main, wm, crossSum); return; }
+        if (bl[i] >= 0) {
+          const k = kid(n, bl[i]);
+          if (k >= 0) extend(row, i + 1, k, anchorI, start, main + (bb[i] ? 0 : VAL[bl[i]]), wm, crossSum);
+          return;
+        }
+        if (END[n] && np && i > anchorI) record(start, i - 1, main, wm, crossSum);
+        const m = MASK[n] & cross[i];
+        if (!m) return;
+        const lm = LM[at(i)], w = WM[at(i)];
+        for (let ch = 0; ch < 26; ch++) {
+          if (!(m >>> ch & 1)) continue;
+          const k = kid(n, ch);
+          for (let blank = 0; blank < 2; blank++) {
+            if (blank ? !rc[26] : !rc[ch]) continue;
+            blank ? rc[26]-- : rc[ch]--;
+            const v = blank ? 0 : VAL[ch] * lm;
+            pS[np] = i; pL[np] = ch; pB[np] = blank; np++;
+            extend(row, i + 1, k, anchorI, start, main + v, wm * w, cscore[i] >= 0 ? crossSum + (cscore[i] + v) * w : crossSum);
+            np--;
+            blank ? rc[26]++ : rc[ch]++;
+          }
+        }
+      };
+      // left parts: up to `limit` tiles from the rack on the empty squares before the anchor
+      const left = (row, anchorI, n, len, limit) => {
+        // place the left part's tiles (in pS from 0..len-1, letters known) and score them, then run right
+        let main = 0;
+        for (let k = 0; k < len; k++) { pS[k] = anchorI - len + k; main += pB[k] ? 0 : VAL[pL[k]] * LM[at(pS[k])]; }
+        let wm = 1; for (let k = 0; k < len; k++) wm *= WM[at(pS[k])];
+        extend(row, anchorI, n, anchorI, anchorI - len, main, wm, 0);
+        if (len >= limit) return;
+        const m = MASK[n];
+        for (let ch = 0; ch < 26; ch++) {
+          if (!(m >>> ch & 1)) continue;
+          const k = kid(n, ch);
+          for (let blank = 0; blank < 2; blank++) {
+            if (blank ? !rc[26] : !rc[ch]) continue;
+            blank ? rc[26]-- : rc[ch]--;
+            pL[len] = ch; pB[len] = blank; np = len + 1;
+            left(row, anchorI, k, len + 1, limit);
+            np = len;
+            blank ? rc[26]++ : rc[ch]++;
+          }
+        }
+      };
+      for (let row = 0; row < 15; row++) for (let c = 0; c < 15; c++) {
+        const i = row * 15 + c;
+        if (!anchor[i]) continue;
+        if (c > 0 && bl[i - 1] >= 0) {
+          // tiles already on the left: they are the left part
+          let s = i - 1; while (s % 15 > 0 && bl[s - 1] >= 0) s--;
+          let n = 0, main = 0;
+          for (let j = s; j < i && n >= 0; j++) { n = kid(n, bl[j]); main += bb[j] ? 0 : VAL[bl[j]]; }
+          np = 0;
+          if (n >= 0) extend(row, i, n, i, s, main, 1, 0);
+        } else {
+          let limit = 0; while (c - limit - 1 >= 0 && bl[i - limit - 1] < 0 && !anchor[i - limit - 1]) limit++;
+          if (empty) limit = Math.min(limit, 6);
+          np = 0;
+          left(row, i, 0, 0, limit);
+        }
+      }
+    }
+    return out;
+  }
+
+  // ---- weighing plays. Equity = points now + what the kept tiles are worth. Near the end the leave matters less;
+  // once the bag is empty, going out earns twice the other rack, and tiles stuck on your rack cost you
+  const rackLeft = (rack, tiles) => {
+    const a = [...rack];
+    for (const [, l, b] of tiles) { const ch = b ? "?" : String.fromCharCode(65 + l); const k = a.indexOf(ch); if (k >= 0) a.splice(k, 1); }
+    return a.join("");
+  };
+  const pts = s => [...s].reduce((t, ch) => t + (ch === "?" ? 0 : VAL[ch.charCodeAt(0) - 65]), 0);
+  function equityOf(m, bag, oppRack) {
+    if (bag > 0) return m.score + leave(m.leave) * (bag < 7 ? .6 : 1);
+    if (!m.leave) return m.score + 2 * pts(oppRack || "");
+    return m.score - 2 * pts(m.leave) - 6;
+  }
+  // every play, the exchanges and a pass, best first. unseen = tiles you can't see (the bag and the other rack)
+  function moves(board, rack, bag, unseen = "") {
+    const ms = genAll(board, rack);
+    for (const m of ms) { m.leave = rackLeft(rack, m.tiles); m.eq = equityOf(m, bag, bag ? "" : unseen); }
+    if (bag >= 7) {
+      // each different set of tiles to keep, once
+      const r = [...rack].sort(), seenX = new Set();
+      for (let mask = 0; mask < (1 << r.length) - 1; mask++) {
+        let keep = "", out = "";
+        for (let k = 0; k < r.length; k++) mask >>> k & 1 ? keep += r[k] : out += r[k];
+        if (seenX.has(keep)) continue; seenX.add(keep);
+        ms.push({ exch: out, leave: keep, score: 0, eq: leave(keep) - 1.5, n: 0, tiles: [] });
+      }
+    }
+    ms.push({ pass: true, leave: rack, score: 0, eq: bag > 0 ? leave(rack) - 30 : -2 * pts(rack) - 12, n: 0, tiles: [] });
+    ms.sort((a, b) => b.eq - a.eq || b.score - a.score);
+    return ms;
+  }
+  // tiles nobody has seen: a full bag less the board and the rack
+  function unseenOf(board, rack) {
+    const n = [...BAGN, BLANKS];
+    for (const ch of board) if (ch !== ".") ch === ch.toUpperCase() ? n[ch.charCodeAt(0) - 65]-- : n[26]--;
+    for (const ch of rack) ch === "?" ? n[26]-- : n[ch.charCodeAt(0) - 65]--;
+    let s = ""; n.forEach((k, i) => { for (let j = 0; j < k; j++) s += i === 26 ? "?" : String.fromCharCode(65 + i); });
+    return s;
+  }
+  const put = (board, m) => { const a = board.split(""); for (const [i, l, b] of m.tiles) a[i] = String.fromCharCode((b ? 97 : 65) + l); return a.join(""); };
+  const shuffleStr = s => { const a = s.split(""); for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a.join(""); };
+  // a look ahead: for the best few plays, deal the other player random racks from the unseen tiles and take their
+  // best reply. Each play is tried against the same racks, so the comparison is fair. value = equity - their reply
+  function* simulate(board, rack, bag, cands, iters) {
+    const unseen = unseenOf(board, rack), tally = cands.map(() => ({ sum: 0, n: 0 }));
+    for (let it = 0; it < iters; it++) {
+      const deal = shuffleStr(unseen);
+      cands.forEach((m, ci) => {
+        if (m.pass || m.exch) {
+          // after an exchange or a pass the board doesn't change, so the reply is the same
+          const opp = deal.slice(0, 7), best = moves(board, opp, Math.max(0, bag - 7), "")[0];
+          tally[ci].sum += m.eq - (best ? best.score + (bag > 7 ? leave(best.leave) * .3 : 0) : 0); tally[ci].n++;
+          return;
+        }
+        // the other rack comes from what's left after you draw
+        const draw = Math.min(m.n, bag), opp = deal.slice(draw, draw + 7);
+        if (!opp) { tally[ci].sum += m.eq; tally[ci].n++; return; }
+        const nb = put(board, m), left = Math.max(0, bag - draw - opp.length);
+        const best = moves(nb, opp, left, m.leave + deal.slice(0, draw))[0];
+        tally[ci].sum += m.eq - (best ? best.score + (left > 0 ? leave(best.leave) * .3 : 0) : 0); tally[ci].n++;
+      });
+      yield { it: it + 1, vals: tally.map(t => t.n ? t.sum / t.n : 0) };
+    }
+  }
+  // a made-up position for the Lab: a few turns of the computer playing itself, then a fresh rack from what's left
+  // (with a bingo somewhere on the board, if asked)
+  const FULL = BAGN.map((n, i) => String.fromCharCode(65 + i).repeat(n)).join("") + "??";
+  function puzzle(turns, needBingo) {
+    for (let tries = 0; tries < 40; tries++) {
+      let board = ".".repeat(225), bag = shuffleStr(FULL), p = 0;
+      const racks = [bag.slice(0, 7), bag.slice(7, 14)]; bag = bag.slice(14);
+      for (let t = 0; t < turns; t++) {
+        const m = moves(board, racks[p], bag.length, "").find(m => m.n);
+        if (!m) break;
+        board = put(board, m);
+        const need = 7 - m.leave.length; racks[p] = m.leave + bag.slice(0, need); bag = bag.slice(need); p = 1 - p;
+      }
+      const pool = unseenOf(board, "");
+      for (let d = 0; d < (needBingo ? 80 : 1); d++) {
+        const rack = shuffleStr(pool).slice(0, 7), ms = genAll(board, rack);
+        if (!ms.length || (needBingo && !ms.some(m => m.n === 7))) continue;
+        for (const m of ms) m.leave = rackLeft(rack, m.tiles);
+        ms.sort((a, b) => b.score - a.score);
+        return { board, rack, top: ms.slice(0, 40), scores: ms.map(m => m.score), bingos: ms.filter(m => m.n === 7).slice(0, 60) };
+      }
+    }
+    return null;
+  }
+  // one request from the app; post sends the answer (more: true for progress), stopped says the app gave up on it
+  const tkey = m => m.pass ? "pass" : m.exch ? "x" + [...m.exch].sort().join("") : m.tiles.map(t => t.join(":")).sort().join(",");
+  function serve(q, post, stopped) {
+    const reply = (r, more) => post({ ...r, id: q.id, more: !!more });
+    try {
+      if (q.type === "load") return reply({ n: load(q.words.split("\n")) });
+      if (q.type === "puzzle") return reply({ puzzle: puzzle(q.turns, q.bingo) });
+      const unseen = q.unseen ?? unseenOf(q.board, q.rack), bag = q.bag ?? Math.max(0, unseen.length - 7);
+      if (q.type === "moves") {
+        const all = moves(q.board, q.rack, bag, unseen);
+        let found = null;
+        if (q.find) { const k = tkey(q.find), i = all.findIndex(m => tkey(m) === k); if (i >= 0) found = { rank: i + 1, move: all[i] }; }
+        return reply({ moves: q.limit ? all.slice(0, q.limit) : all, total: all.length, bag, unseen, found });
+      }
+      if (q.type === "sim") {
+        const it = simulate(q.board, q.rack, bag, q.cands, q.iters);
+        let last = { it: 0, vals: q.cands.map(m => m.eq) };
+        const step = () => {
+          if (stopped(q.id)) return reply(last);
+          const t = Date.now(); let r;
+          while (!(r = it.next()).done) { last = r.value; if (Date.now() - t > 90) break; }
+          if (r.done) return reply(last);
+          reply(last, true); setTimeout(step, 0);
+        };
+        return step();
+      }
+      reply({ error: "unknown request" });
+    } catch (e) { reply({ error: String(e && e.stack || e) }); }
+  }
+  return { load, isWord, moves, simulate, leave, unseenOf, put, genAll, puzzle, serve, VAL };
+})();
+if (typeof module !== "undefined") module.exports = E;
 </script>
 <script id="app" type="text/plain">
 const VALUES = {A:1,B:3,C:3,D:2,E:1,F:4,G:2,H:4,I:1,J:8,K:5,L:1,M:3,N:1,O:1,P:3,Q:10,R:1,S:1,T:1,U:1,V:4,W:4,X:8,Y:4,Z:10};
@@ -2811,7 +3206,8 @@ function scorePlay(cells, news) {
   return { words, bingo, total: words.reduce((s, w) => s + w.score, 0) + bingo };
 }
 // badges: the play's direction (0 across, 1 down) to show the bonus of new tiles on bonus squares on a tab (Count), or false
-function boardHTML(cells, news = new Map(), cur = -1, dir = 0, badges = false) {
+// marks: last (squares of the last play, outlined) and pend (new tiles are a play being made, so they're tinted)
+function boardHTML(cells, news = new Map(), cur = -1, dir = 0, badges = false, marks = {}) {
   // which side of square i the tab goes on: the first of the play's two sides that's an empty square on the board
   const side = i => {
     const free = (j, ok) => ok && !cells[j] && !news.has(j), r = i / 15 | 0, c = i % 15;
@@ -2826,7 +3222,7 @@ function boardHTML(cells, news = new Map(), cur = -1, dir = 0, badges = false) {
     const edge = k ? (r === 0 ? " et" : r === 14 ? " eb" : "") + (c === 0 ? " el" : c === 14 ? " er" : "") : "";
     const label = dlx && k && lab[k] ? `<i class="l">${lab[k]}</i><i class="s">${blab[k]}</i>` : lab[k] || "";
     h += `<div class="sq ${k}${edge}${i === 112 ? " st" : ""}${i === cur ? " cur" + (dir ? " dn" : "") : ""}" data-i="${i}"${dlx ? ` style="--r:${r};--c:${c}"` : ""}>${t
-      ? `<div class="tile${news.has(i) ? " new" : ""}${t.b ? " blank" : ""}">${t.ch}${t.b ? "" : `<sub>${VALUES[t.ch]}</sub>`}${badges !== false && k && news.has(i) ? `<i class="bb ${k} ${side(i)}">${blab[k]}</i>` : ""}</div>`
+      ? `<div class="tile${news.has(i) ? " new" + (marks.pend ? " pend" : "") : ""}${marks.last?.has(i) ? " last" : ""}${t.b ? " blank" : ""}">${t.ch}${t.b ? "" : `<sub>${VALUES[t.ch]}</sub>`}${badges !== false && k && news.has(i) ? `<i class="bb ${k} ${side(i)}">${blab[k]}</i>` : ""}</div>`
       : `<span>${i === 112 ? (dlx ? DSTAR : "★") : label}</span>`}</div>`;
   }
   const bts = SET.bTile !== "same" && TILE_STYLES[SET.bTile] ? ` data-bts="${SET.bTile}"` : "";
@@ -2909,7 +3305,7 @@ function bkInput() {
   inp = $("#bkIn"); inp.value = KEEP;
   inp.addEventListener("input", () => {
     const v = inp.value; inp.value = KEEP;
-    if (!bkOnKey || !/^#(board|scoring)/.test(location.hash)) return;
+    if (!bkOnKey || !/^#(board|scoring|lab)/.test(location.hash)) return;
     if (v.length < KEEP.length) bkOnKey("Backspace");
     else for (const ch of v.slice(KEEP.length)) bkOnKey(ch);
   });
@@ -2932,7 +3328,7 @@ const lookSave = () => { store.set("board", { cells: LOOK.cells, moves: LOOK.mov
 function viewLook() {
   const L = lookGet(), r = scorePlay(L.cells, L.news), used = L.cells.filter(Boolean).length + L.news.size;
   const main = r && !r.error && r.words[0];
-  $("#view").innerHTML = `${bLookBar()}
+  $("#view").innerHTML = `${boardSeg("")}${bLookBar()}
   <div class="bgrid"><div>${boardHTML(L.cells, L.news, L.cur, L.dir)}</div>
   <div class="bside">
     <div class="card"><h2 class="lbl">This play</h2>${!r ? `<p class="empty">Tap a square and type to place tiles. Tap the same square again to go down instead of across.</p>`
@@ -2941,7 +3337,7 @@ function viewLook() {
       <div class="row" style="margin-top:12px"><button class="btn primary" id="bPlay" ${r && !r.error ? "" : "disabled"}>Play</button><button class="btn ${L.blank ? "on" : ""}" id="bBlank" aria-pressed="${L.blank}" title="The next letter is a blank (or type ? first)">Blank</button><button class="btn" id="bUndo" ${L.news.size || L.moves.length ? "" : "disabled"}>${L.news.size ? "Take back" : "Undo last play"}</button></div></div>
     <div class="card"><h2 class="lbl">Plays</h2>${L.moves.length ? `<div class="bmoves">${L.moves.map((m, n) => `<div class="${m.ok ? "" : "bad"}"><span>${n + 1}</span><span>${m.at}</span><span>${m.w}</span><b>${m.s}</b></div>`).join("")}</div>
       <div class="btotal"><span>Total</span><b>${L.moves.reduce((s, m) => s + m.s, 0)}</b></div>` : `<p class="empty">Plays you make on this board are listed here.</p>`}
-      <div class="row" style="margin-top:12px"><span class="small" style="margin-right:auto">${100 - used} tiles left in the bag</span><button class="btn sm" id="bClear" ${used ? "" : "disabled"}>Clear board</button></div></div>
+      <div class="row" style="margin-top:12px"><span class="small" style="margin-right:auto">${100 - used} tiles left in the bag</span><button class="btn sm" id="bAna" ${used ? "" : "disabled"}>Analyse</button><button class="btn sm" id="bClear" ${used ? "" : "disabled"}>Clear board</button></div></div>
   </div></div>${bLookSheet()}`;
   const redraw = () => { lookSave(); const sy = window.scrollY; viewLook(); window.scrollTo(0, sy); };
   bLookWire(redraw);
@@ -2997,6 +3393,7 @@ function viewLook() {
     else { const m = L.moves.pop(); if (m) { for (const i of m.t) L.cells[i] = null; } }
     redraw();
   };
+  $("#bAna").onclick = () => anaOpen(cellsStr(L.cells), "");
   confirmBtn($("#bClear"), () => { LOOK = { cells: Array(225).fill(null), moves: [], news: new Map(), cur: -1, dir: 0, blank: false }; redraw(); });
 }
 
@@ -3089,8 +3486,678 @@ function viewCount() {
   };
   confirmBtn($("#bReset"), () => { store.set("boardStats", {}); VIEWS.scoring(); });
 }
-// Count used to be #board/count; old links go to Scoring
-VIEWS.board = arg => arg === "count" ? location.replace("#scoring") : viewLook();
+// ---------- the computer: the engine script (above the app) runs in a worker so the page stays smooth while it thinks.
+// If a worker can't start, the same code runs here instead ----------
+const ENG = (() => {
+  let port = null, seq = 0;
+  const jobs = new Map();
+  const got = m => { const j = jobs.get(m.id); if (!j) return; if (m.more) return j.prog?.(m); jobs.delete(m.id); m.error ? j.no(new Error(m.error)) : j.ok(m); };
+  const boot = () => {
+    if (port) return;
+    const src = $("#engine").textContent;
+    try {
+      const w = new Worker(URL.createObjectURL(new Blob([src, "\nconst stopped = new Set();\nonmessage = e => e.data.type === 'stop' ? stopped.add(e.data.of) : E.serve(e.data, m => postMessage(m), id => stopped.has(id));"], { type: "text/javascript" })));
+      w.onmessage = e => got(e.data);
+      w.onerror = e => console.error("engine", e.message);
+      port = q => w.postMessage(q);
+    } catch {
+      const Eng = new Function(src + "\nreturn E;")(), stopped = new Set();
+      port = q => q.type === "stop" ? stopped.add(q.of) : setTimeout(() => Eng.serve(q, m => setTimeout(() => got(m)), id => stopped.has(id)));
+    }
+    port({ id: 0, type: "load", words: ALL.join("\n") });
+  };
+  return {
+    // q: { type: "moves" | "sim" | "puzzle", ... }; prog gets the progress of a look-ahead. The promise has the job's id
+    call(q, prog) { boot(); const id = ++seq, p = new Promise((ok, no) => { jobs.set(id, { ok, no, prog }); port({ ...q, id }); }); p.id = id; return p; },
+    stop(id) { if (port) port({ type: "stop", of: id }); }
+  };
+})();
+const FULLBAG = Object.entries(BAG).map(([ch, n]) => ch.repeat(n)).join("") + "??";
+// boards as 225 characters ("." empty, a small letter for a blank) and as the cells boardHTML draws
+const cellsStr = (cells, news) => cells.map((t, i) => { t = news?.get(i) || t; return t ? (t.b ? t.ch.toLowerCase() : t.ch) : "."; }).join("");
+const strCells = s => [...s].map(ch => ch === "." ? null : { ch: ch.toUpperCase(), b: ch !== ch.toUpperCase() });
+const tilesNews = tiles => new Map(tiles.map(([i, l, b]) => [i, { ch: AZ[l], b: !!b }]));
+const putTiles = (board, tiles) => { const a = [...board]; for (const [i, l, b] of tiles) a[i] = b ? AZ[l].toLowerCase() : AZ[l]; return a.join(""); };
+const rackMinus = (rack, tiles) => { const a = [...rack]; for (const [, l, b] of tiles) { const k = a.indexOf(b ? "?" : AZ[l]); if (k >= 0) a.splice(k, 1); } return a.join(""); };
+const rackPts = r => [...r].reduce((s, ch) => s + (VALUES[ch] || 0), 0);
+const sortRack = r => [...r].sort((a, b) => (a === "?") - (b === "?") || (a < b ? -1 : 1)).join("");
+// a play's name: where (8H across, H8 down), the word (blanks in small letters), a swap or a pass
+const mvAt = m => m.tiles?.length ? bAt(m.start, m.dir) : "";
+const mvWord = m => m.pass ? "Pass" : m.exch !== undefined ? `Swap ${sortRack(m.exch)}` : m.word;
+const signed = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1).replace(/\.0$/, "");
+const wait = ms => new Promise(r => setTimeout(r, ms));
+// the board tab's switch: Free board · Analyse · Play
+const boardSeg = k => `<nav class="studyseg">${[["", "Free board"], ["analyse", "Analyse"], ["play", "Play"]].map(([h, n]) =>
+  `<a href="#board${h ? "/" + h : ""}" class="${h === k ? "on" : ""}">${n}</a>`).join("")}</nav>`;
+
+// ---------- placing tiles from a rack (Play and the Lab). S: { board, rack, pend: [{ i, ri, ch, b }], cur, dir, sel, swap }.
+// Tap a square then tap tiles or type; or tap a tile then a square. A placed tile goes back with a tap ----------
+const pNews = S => new Map(S.pend.map(p => [p.i, { ch: p.ch, b: p.b }]));
+const pFree = (S, i) => S.board[i] === "." && !S.pend.some(p => p.i === i);
+const pInLine = (S, a, b) => b >= 0 && b < 225 && (S.dir || (a / 15 | 0) === (b / 15 | 0));
+const pTiles = S => S.pend.map(p => [p.i, p.ch.charCodeAt(0) - 65, p.b ? 1 : 0]);
+function pPlace(S, ri, i, ch) {
+  S.pend.push({ i, ri, ch, b: S.rack[ri] === "?" });
+  S.sel = -1;
+  const step = S.dir ? 15 : 1;
+  let n = i + step;
+  while (pInLine(S, i, n) && !pFree(S, n)) n += step;
+  S.cur = pInLine(S, i, n) ? n : -1;
+}
+// the next square along from the arrow that's free, or -1
+function pNextFree(S) {
+  if (S.cur < 0) return -1;
+  let i = S.cur; const step = S.dir ? 15 : 1;
+  while (pInLine(S, S.cur, i) && !pFree(S, i)) i += step;
+  return pInLine(S, S.cur, i) ? i : -1;
+}
+let blankPick = null;
+const blankSheet = () => sheetHTML("blankpick", `<h3>Blank stands for<button type="button" id="bpX">Cancel</button></h3><div class="lgrid">${[...AZ].map(ch => `<button type="button" data-bp="${ch}">${ch}</button>`).join("")}</div>`);
+function askBlank(fn) {
+  blankPick = fn; sheet("blankpick", true);
+}
+function pRack(S, hidden) {
+  if (hidden) return `<div class="rack wood-${SET.rackLook || "oak"} prack"><div class="tiles" style="--n:7">${[...S.rack].map(() => `<div class="tile back"></div>`).join("")}</div></div>`;
+  return `<div class="rack wood-${SET.rackLook || "oak"} prack"><div class="tiles" style="--n:7">${[...S.rack].map((ch, ri) => {
+    const used = S.pend.some(p => p.ri === ri);
+    return `<button type="button" class="tile${used ? " used" : ""}${S.sel === ri ? " sel" : ""}${S.swap?.has(ri) ? " swap" : ""}${ch === "?" ? " blank" : ""}" data-ri="${ri}" aria-label="${ch === "?" ? "Blank" : ch}">${ch === "?" ? "" : `${ch}<sub>${VALUES[ch]}</sub>`}</button>`;
+  }).join("")}</div></div>`;
+}
+// wire the board, rack and keys. redraw draws the page again; enter is the Play button. locked: no placing just now
+function pWire(S, redraw, enter, locked = () => false) {
+  const v = $("#view");
+  v.querySelector(".bd")?.addEventListener("click", ev => {
+    const sq = ev.target.closest(".sq"); if (!sq || locked()) return;
+    const i = +sq.dataset.i, k = S.pend.findIndex(p => p.i === i);
+    if (k >= 0) { S.pend.splice(k, 1); S.cur = i; }
+    else if (S.sel >= 0 && pFree(S, i)) {
+      const ri = S.sel;
+      if (S.rack[ri] === "?") { askBlank(ch => { pPlace(S, ri, i, ch); redraw(); }); return; }
+      pPlace(S, ri, i, S.rack[ri]);
+    } else if (i === S.cur) S.dir = 1 - S.dir;
+    else S.cur = i;
+    redraw();
+    if (coarse.matches && S.cur >= 0) bkInput().focus({ preventScroll: true });
+  });
+  v.querySelectorAll(".prack [data-ri]").forEach(b => b.onclick = () => {
+    if (locked()) return;
+    const ri = +b.dataset.ri;
+    if (S.swap) { S.swap.has(ri) ? S.swap.delete(ri) : S.swap.add(ri); return redraw(); }
+    const k = S.pend.findIndex(p => p.ri === ri);
+    if (k >= 0) { S.pend.splice(k, 1); return redraw(); }
+    const at = pNextFree(S);
+    if (at >= 0) {
+      if (S.rack[ri] === "?") return askBlank(ch => { pPlace(S, ri, at, ch); redraw(); });
+      pPlace(S, ri, at, S.rack[ri]);
+    } else S.sel = S.sel === ri ? -1 : ri;
+    redraw();
+  });
+  v.querySelectorAll("[data-bp]").forEach(b => b.onclick = () => { sheet("blankpick", false); const f = blankPick; blankPick = null; f?.(b.dataset.bp); });
+  if ($("#bpX")) $("#bpX").onclick = $("#blankpick .scrim").onclick = () => { blankPick = null; sheet("blankpick", false); };
+  let blankNext = false;
+  boardKeys(k => {
+    if (locked()) return false;
+    if (k === "Enter") { enter(); return; }
+    if (k === "?") { blankNext = true; return; }
+    if (k === "Escape") { S.pend = []; S.swap = null; redraw(); return; }
+    const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    if (arrows[k]) {
+      const [dc, dr] = arrows[k], r = (S.cur / 15 | 0) + dr, c = S.cur % 15 + dc;
+      if (S.cur < 0) S.cur = 112; else if (r >= 0 && r < 15 && c >= 0 && c < 15) S.cur = r * 15 + c;
+      redraw(); return;
+    }
+    if (k === " ") { if (S.cur >= 0) S.dir = 1 - S.dir; redraw(); return; }
+    if (k === "Backspace") { const p = S.pend.pop(); if (p) S.cur = p.i; redraw(); return; }
+    if (!/^[a-z]$/i.test(k)) return false;
+    const ch = k.toUpperCase(), free = c => [...S.rack].findIndex((x, ri) => x === c && !S.pend.some(p => p.ri === ri));
+    let ri = blankNext ? -1 : free(ch);
+    if (ri < 0) ri = free("?");
+    blankNext = false;
+    if (S.cur < 0 && pFree(S, 112)) S.cur = 112;
+    const at = pNextFree(S);
+    if (ri < 0 || at < 0) return;
+    pPlace(S, ri, at, ch);
+    redraw();
+  });
+}
+// the pending play's score and working, or why it isn't a play yet
+function pPreview(S) {
+  if (!S.pend.length) return null;
+  const r = scorePlay(strCells(S.board), pNews(S));
+  if (!r || r.error) return r;
+  r.phony = r.words.filter(w => !DICT.has(w.word)).map(w => w.word);
+  return r;
+}
+
+// ---------- Analyse: set up any board, give a rack, and see every play ranked; a look ahead weighs the best few
+// against the other player's replies ----------
+let AZY = null;
+const anaGet = () => {
+  if (AZY) return AZY;
+  const s = store.get("ana", {});
+  return AZY = { cells: s.board ? strCells(s.board) : Array(225).fill(null), rack: s.rack || "", cur: -1, dir: 0, blank: false, res: null, sel: -1, sim: null, sort: "eq", more: false, edit: !s.board };
+};
+const anaSave = () => store.set("ana", { board: cellsStr(AZY.cells), rack: AZY.rack });
+function anaOpen(board, rack) {
+  AZY = null; store.set("ana", { board, rack: rack || "" }); anaGet().edit = false;
+  location.hash = "board/analyse";
+}
+function anaRows(A) {
+  if (!A.res) return [];
+  let rows = A.res.moves.map((m, i) => ({ m, i, sim: A.sim?.idx.includes(i) ? A.sim.vals[A.sim.idx.indexOf(i)] : null }));
+  if (A.sort === "score") rows = [...rows].sort((a, b) => b.m.score - a.m.score);
+  if (A.sort === "sim" && A.sim) rows = rows.filter(r => r.sim !== null).sort((a, b) => b.sim - a.sim);
+  return rows;
+}
+function anaListHTML(A) {
+  if (!A.rack) return `<h2 class="lbl">Plays</h2><p class="empty">Type your rack above to see every play.</p>`;
+  const u = unseenOf(cellsStr(A.cells), A.rack);
+  if (!u.ok) return `<h2 class="lbl">Plays</h2><p class="empty">${u.err}: check the board and rack.</p>`;
+  if (!A.res) return `<h2 class="lbl">Plays</h2><p class="empty">Thinking…</p>`;
+  const rows = anaRows(A), show = rows.slice(0, A.more ? 80 : 15), S = A.sim;
+  const sel = A.sel >= 0 ? A.res.moves[A.sel] : null, r = sel?.tiles.length ? scorePlay(A.cells, tilesNews(sel.tiles)) : null;
+  return `<div class="alhead"><h2 class="lbl">Plays <span class="small">${A.res.total.toLocaleString()} found</span></h2>
+    <div class="seg">${[["eq", "Best"], ["score", "Points"], ...(S ? [["sim", "Look-ahead"]] : [])].map(([k, n]) => `<button type="button" class="btn sm ${A.sort === k ? "on" : ""}" data-asort="${k}">${n}</button>`).join("")}</div></div>
+  <div class="alist${S ? " withsim" : ""}"><div class="alh"><span></span><span>Play</span><span>Pts</span><span>Leave</span><span title="points plus what the kept tiles are worth">Value</span>${S ? `<span title="value less the other player's best reply, on average">Ahead</span>` : ""}</div>
+  ${show.map((x, n) => `<button type="button" class="alr${x.i === A.sel ? " on" : ""}" data-am="${x.i}"><span>${n + 1}</span><span class="aw"><b>${esc(mvWord(x.m))}</b> <i>${mvAt(x.m)}</i></span><span>${x.m.score}</span><span class="lv">${sortRack(x.m.leave) || "–"}</span><span>${x.m.eq.toFixed(1)}</span>${S ? `<span>${x.sim === null ? "" : x.sim.toFixed(1)}</span>` : ""}</button>
+    ${x.i === A.sel ? `<div class="alwork">${r && !r.error ? workHTML(r) : sel.exch !== undefined ? `<p class="small">Put back ${sortRack(sel.exch)}, keep ${sortRack(sel.leave) || "nothing"}.</p>` : `<p class="small">Keep the rack and pass.</p>`}
+      <div class="row" style="margin-top:8px">${sel.tiles.length ? `<button class="btn sm primary" id="anaPut">Put it on the board</button>` : ""}</div></div>` : ""}`).join("")}</div>
+  ${rows.length > 15 ? `<button type="button" class="btn sm" id="anaMore" style="margin-top:8px">${A.more ? "Fewer" : "More plays"}</button>` : ""}
+  <div class="simrow">${S?.running ? `<div class="simbar"><i style="width:${(S.it / S.iters * 100).toFixed(1)}%"></i></div><span class="small">${S.it} of ${S.iters} racks</span><button class="btn sm" id="anaStop">Stop</button>`
+    : `<button class="btn" id="anaSim" ${A.res.moves.length > 1 ? "" : "disabled"}>${S ? "Look ahead again" : "Look ahead"}</button><span class="small">${S ? `${S.it} racks dealt to the other player` : "Plays out the other player's reply for the top 10"}</span>`}</div>`;
+}
+function viewAnalyse() {
+  const A = anaGet(), board = cellsStr(A.cells), unseen = unseenOf(board, A.rack), sel = A.sel >= 0 && A.res ? A.res.moves[A.sel] : null;
+  const news = sel?.tiles.length ? tilesNews(sel.tiles) : new Map();
+  $("#view").innerHTML = `${boardSeg("analyse")}${bLookBar()}
+  <div class="bgrid"><div id="anaBoard">${boardHTML(A.cells, news, A.edit ? A.cur : -1, A.dir, sel?.tiles.length ? sel.dir : false)}</div>
+  <div class="bside">
+    <div class="card"><h2 class="lbl">Your rack</h2>
+      <div class="row"><input id="anaRack" class="arack" value="${A.rack}" maxlength="7" placeholder="AEINRST · ? is a blank" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-label="Your rack">
+        <button class="btn" id="anaDeal" title="Seven random tiles from the unseen ones">Random</button></div>
+      <p class="small" style="margin:8px 0 0">${unseen.ok ? `${unseen.n} tiles unseen · ${Math.max(0, unseen.n - 7)} in the bag${unseen.n <= 7 ? " · the bag is empty, so the end counts" : ""}` : `<span class="bad">${unseen.err}</span>`}</p></div>
+    <div class="card" id="anaPlays">${anaListHTML(A)}</div>
+    <div class="card"><h2 class="lbl">The board</h2>
+      ${A.edit ? `<p class="small" style="margin:0 0 10px">Tap a square and type to put tiles down, any order, no rules. ? then a letter is a blank. Backspace takes a tile off.</p>` : ""}
+      <div class="row"><button class="btn ${A.edit ? "on" : ""}" id="anaEdit" aria-pressed="${A.edit}">${A.edit ? "Done setting up" : "Set up tiles"}</button>${A.edit ? `<button class="btn ${A.blank ? "on" : ""}" id="anaBlank">Blank</button>` : ""}
+        <button class="btn" id="anaFree">Copy Free board</button><button class="btn" id="anaClear" ${A.cells.some(Boolean) ? "" : "disabled"}>Clear</button></div></div>
+  </div></div>${bLookSheet()}`;
+  const redraw = () => { anaSave(); const sy = window.scrollY; viewAnalyse(); window.scrollTo(0, sy); };
+  bLookWire(redraw);
+  const listDraw = () => { $("#anaPlays").innerHTML = anaListHTML(A); listWire(); };
+  const find = () => {
+    A.res = null; A.sel = -1; A.sim = null; if (A.sort === "sim") A.sort = "eq";
+    if (!A.rack || !unseenOK()) return;
+    const key = cellsStr(A.cells) + A.rack;
+    ENG.call({ type: "moves", board: cellsStr(A.cells), rack: A.rack, limit: 300 }).then(res => {
+      if (key !== cellsStr(A.cells) + A.rack || AZY !== A) return;
+      A.res = res; if (location.hash === "#board/analyse") listDraw();
+    });
+  };
+  const unseenOK = () => unseenOf(cellsStr(A.cells), A.rack).ok;
+  const listWire = () => {
+    const v = $("#anaPlays");
+    v.querySelectorAll("[data-am]").forEach(b => b.onclick = () => { A.sel = A.sel === +b.dataset.am ? -1 : +b.dataset.am; redraw(); });
+    v.querySelectorAll("[data-asort]").forEach(b => b.onclick = () => { A.sort = b.dataset.asort; listDraw(); });
+    if ($("#anaMore")) $("#anaMore").onclick = () => { A.more = !A.more; listDraw(); };
+    if ($("#anaPut")) $("#anaPut").onclick = () => {
+      const m = A.res.moves[A.sel];
+      for (const [i, t] of tilesNews(m.tiles)) A.cells[i] = t;
+      A.rack = m.leave; A.sel = -1; A.res = null; redraw();
+    };
+    if ($("#anaSim")) $("#anaSim").onclick = () => {
+      const idx = A.res.moves.slice(0, 10).map((_, i) => i), iters = 300;
+      const S = A.sim = { idx, vals: idx.map(i => A.res.moves[i].eq), it: 0, iters, running: true }, res = A.res;
+      const job = ENG.call({ type: "sim", board: cellsStr(A.cells), rack: A.rack, cands: idx.map(i => res.moves[i]), iters }, p => {
+        if (A.sim !== S) return; S.vals = p.vals; S.it = p.it; if (location.hash === "#board/analyse") listDraw();
+      });
+      S.job = job.id;
+      job.then(p => { if (A.sim !== S) return; S.vals = p.vals; S.it = p.it; S.running = false; A.sort = "sim"; if (location.hash === "#board/analyse") listDraw(); });
+      listDraw();
+    };
+    if ($("#anaStop")) $("#anaStop").onclick = () => ENG.stop(A.sim.job);
+  };
+  listWire();
+  if (!A.res && A.rack) find();
+  const rk = $("#anaRack");
+  let t = 0;
+  rk.addEventListener("input", () => {
+    const v = rk.value.toUpperCase().replace(/[^A-Z?]/g, "").slice(0, 7);
+    if (rk.value !== v) rk.value = v;
+    clearTimeout(t); t = setTimeout(() => { if (v === A.rack) return; A.rack = v; anaSave(); A.res = null; A.sim = null; A.sel = -1; redraw(); }, 300);
+  });
+  rk.addEventListener("keydown", ev => { if (ev.key === "Enter") rk.blur(); });
+  $("#anaDeal").onclick = () => { A.rack = shuffle([...unseenOf(cellsStr(A.cells), "").pool]).slice(0, 7).join(""); A.res = null; redraw(); };
+  $("#anaEdit").onclick = () => { A.edit = !A.edit; A.cur = -1; redraw(); };
+  if ($("#anaBlank")) $("#anaBlank").onclick = () => { A.blank = !A.blank; redraw(); if (coarse.matches && A.cur >= 0) bkInput().focus({ preventScroll: true }); };
+  $("#anaFree").onclick = () => { const L = lookGet(); A.cells = L.cells.map(t => t && { ...t }); A.res = null; A.sim = null; redraw(); };
+  confirmBtn($("#anaClear"), () => { A.cells = Array(225).fill(null); A.res = null; A.sim = null; A.edit = true; redraw(); });
+  // setting up: letters go straight onto the board where the arrow is
+  $("#anaBoard").addEventListener("click", ev => {
+    const sq = ev.target.closest(".sq"); if (!sq) return;
+    if (!A.edit) { A.edit = true; }
+    const i = +sq.dataset.i;
+    if (i === A.cur) A.dir = 1 - A.dir; else A.cur = i;
+    A.sel = -1; redraw();
+    if (coarse.matches) bkInput().focus({ preventScroll: true });
+  });
+  let blankNext = false;
+  boardKeys(k => {
+    if (!A.edit) return false;
+    const step = A.dir ? 15 : 1, inLine = (a, b) => b >= 0 && b < 225 && (A.dir || (a / 15 | 0) === (b / 15 | 0));
+    const changed = () => { A.res = null; A.sim = null; A.sel = -1; redraw(); };
+    if (k === "?") { blankNext = true; return; }
+    const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    if (arrows[k]) {
+      const [dc, dr] = arrows[k], r = (A.cur / 15 | 0) + dr, c = A.cur % 15 + dc;
+      if (A.cur < 0) A.cur = 112; else if (r >= 0 && r < 15 && c >= 0 && c < 15) A.cur = r * 15 + c;
+      redraw(); return;
+    }
+    if (A.cur < 0) return false;
+    if (k === " ") { A.dir = 1 - A.dir; redraw(); return; }
+    if (k === "Enter") { A.edit = false; A.cur = -1; redraw(); return; }
+    if (k === "Backspace" || k === "Delete") {
+      if (A.cells[A.cur] || k === "Delete") A.cells[A.cur] = null;
+      else { const p = A.cur - step; if (inLine(A.cur, p)) { A.cur = p; A.cells[p] = null; } }
+      changed(); return;
+    }
+    if (!/^[a-z]$/i.test(k)) return false;
+    A.cells[A.cur] = { ch: k.toUpperCase(), b: A.blank || blankNext };
+    blankNext = false; A.blank = false;
+    const n = A.cur + step; if (inLine(A.cur, n)) A.cur = n;
+    changed();
+  });
+}
+// the tiles not on the board or the rack; err when the board and rack use more of a letter than the set has
+function unseenOf(board, rack) {
+  const n = { ...BAG, "?": 2 };
+  for (const ch of board) if (ch !== ".") n[ch === ch.toUpperCase() ? ch : "?"]--;
+  for (const ch of rack) n[ch]--;
+  const over = Object.entries(n).filter(([, k]) => k < 0).map(([ch]) => ch === "?" ? "blanks" : ch + "s");
+  const pool = Object.entries(n).flatMap(([ch, k]) => Array(Math.max(0, k)).fill(ch));
+  return over.length ? { ok: false, err: `More ${over.join(", ")} than a set has`, n: pool.length, pool } : { ok: true, n: pool.length, pool };
+}
+
+// ---------- games: two seats, a bag, racks and a log. Shared by Play and the Lab's computer-v-computer ----------
+const LEVELS = { easy: ["Beginner", "Short words, often not the best"], club: ["Club", "Good plays, sometimes not the best"], expert: ["Expert", "The best play for points and leave"],
+  champ: ["Champion", "Looks ahead at your replies before it plays"] };
+function gNew(o) {
+  const g = { mode: o.mode, level: o.level || "expert", levels: o.levels, rule: o.rule || "reject", names: o.names, bag: shuffle([...FULLBAG]).join(""), racks: ["", ""],
+    board: ".".repeat(225), scores: [0, 0], turn: o.first ?? rnd(2), log: [], zeros: 0, over: false, cover: o.mode === "friend", hints: 0 };
+  gDraw(g, 0); gDraw(g, 1);
+  return g;
+}
+function gDraw(g, p) { const n = Math.min(7 - g.racks[p].length, g.bag.length); g.racks[p] += g.bag.slice(0, n); g.bag = g.bag.slice(n); }
+const gBefore = (g, p) => ({ board: g.board, rack: g.racks[p], bag: g.bag });
+function gNext(g, p) { if (g.zeros >= 6) gEnd(g, -1); else { g.turn = 1 - p; if (g.mode === "friend") g.cover = true; } }
+function gPlay(g, p, m) {
+  const before = gBefore(g, p);
+  g.board = putTiles(g.board, m.tiles); g.racks[p] = rackMinus(g.racks[p], m.tiles); g.scores[p] += m.score; gDraw(g, p);
+  g.log.push({ p, k: "play", w: m.word, at: m.at, s: m.score, t: m.tiles, before, tot: g.scores[p], phony: m.phony || "" });
+  g.zeros = 0;
+  // going out ends the game, though in a friends' game with challenges the other player gets to challenge first
+  if (!g.racks[p] && !g.bag) { if (g.mode === "friend" && g.rule === "chal") { g.outWait = true; g.turn = 1 - p; g.cover = true; } else gEnd(g, p); }
+  else gNext(g, p);
+}
+function gSwap(g, p, out) {
+  const before = gBefore(g, p), a = [...g.racks[p]];
+  for (const ch of out) a.splice(a.indexOf(ch), 1);
+  g.racks[p] = a.join(""); gDraw(g, p);
+  g.bag = shuffle([...g.bag + out]).join("");
+  g.log.push({ p, k: "swap", x: out, before, tot: g.scores[p] }); g.zeros++;
+  gNext(g, p);
+}
+function gPass(g, p) { g.log.push({ p, k: "pass", before: gBefore(g, p), tot: g.scores[p] }); g.zeros++; gNext(g, p); }
+// a challenge by player c of the last play: a phony comes off (a turn lost); a good play costs the challenger 5
+function gChallenge(g, c) {
+  const e = g.log.at(-1);
+  if (!e || e.k !== "play" || e.p === c) return;
+  if (e.phony) {
+    g.board = e.before.board; g.racks[e.p] = e.before.rack; g.bag = e.before.bag; g.scores[e.p] -= e.s;
+    e.k = "off"; e.tot = g.scores[e.p]; g.zeros++; g.outWait = false;
+    if (g.zeros >= 6) gEnd(g, -1);
+  } else {
+    g.scores[c] -= 5; e.held = true;
+    g.log.push({ p: c, k: "chal", w: e.w, s: -5, tot: g.scores[c] });
+    if (g.outWait) { g.outWait = false; gEnd(g, e.p); }
+  }
+}
+// the end: going out earns twice the other rack; after six scoreless turns each player loses what's on their rack
+function gEnd(g, out) {
+  if (out >= 0) { const v = 2 * rackPts(g.racks[1 - out]); g.scores[out] += v; g.log.push({ p: out, k: "out", s: v, x: g.racks[1 - out], tot: g.scores[out] }); }
+  else for (const p of [0, 1]) { const v = rackPts(g.racks[p]); g.scores[p] -= v; g.log.push({ p, k: "left", s: -v, x: g.racks[p], tot: g.scores[p] }); }
+  g.over = true; g.cover = false; g.outWait = false;
+}
+// what the engine's play means for a game
+function gDo(g, p, m) {
+  if (m.pass) gPass(g, p);
+  else if (m.exch !== undefined) gSwap(g, p, m.exch);
+  else gPlay(g, p, { tiles: m.tiles, word: m.word, at: mvAt(m), score: m.score });
+}
+// the computer's choice at each level
+async function cpuPick(g, p, level) {
+  const rack = g.racks[p], res = await ENG.call({ type: "moves", board: g.board, rack, bag: g.bag.length, limit: level === "easy" ? 0 : 40 });
+  const ms = res.moves;
+  if (level === "easy") {
+    const plays = ms.filter(m => m.n && m.n <= 4);
+    if (plays.length) return plays[Math.floor(plays.length * (.2 + Math.random() * .5))];
+  }
+  if (level === "club") { const top = ms.slice(0, 8); return top[Math.floor(Math.random() ** 2 * top.length)]; }
+  if (level === "champ" && g.bag.length && ms.length > 1) {
+    const cands = ms.slice(0, 6), r = await ENG.call({ type: "sim", board: g.board, rack, bag: g.bag.length, cands, iters: 40 });
+    let b = 0; r.vals.forEach((v, i) => { if (v > r.vals[b]) b = i; });
+    return cands[b];
+  }
+  return ms[0];
+}
+function logLine(g, e) {
+  const nm = g.names[e.p], hide = g.mode === "friend" && e.k === "swap";
+  return e.k === "play" ? `${nm} played ${e.w} at ${e.at} for ${e.s}${e.held ? " (challenged, it's good)" : ""}`
+    : e.k === "swap" ? `${nm} swapped ${hide ? e.x.length + " tiles" : sortRack(e.x)}` : e.k === "pass" ? `${nm} passed`
+    : e.k === "off" ? `${nm}'s ${e.w} was challenged off` : e.k === "chal" ? `${nm} challenged ${e.w}: it's good, so −5`
+    : e.k === "out" ? `${nm} went out: +${e.s}, twice ${sortRack(e.x)}` : `${nm} is left with ${sortRack(e.x) || "nothing"}: ${e.s}`;
+}
+const logHTML = (g, hl) => g.log.length ? `<div class="glog">${g.log.map((e, n) => `<div class="p${e.p}${e.k === "off" ? " off" : ""}${hl === n ? " on" : ""}">
+  <span>${g.names[e.p][0]}</span><span>${e.at || ""}</span><span>${e.k === "play" || e.k === "off" ? esc(e.w) : e.k === "swap" ? (g.mode === "friend" ? "Swap" : "Swap " + sortRack(e.x)) : e.k === "pass" ? "Pass" : e.k === "chal" ? "Challenge" : e.k === "out" ? "Out " + sortRack(e.x) : "Left " + (sortRack(e.x) || "–")}</span>
+  <b>${e.k === "play" ? e.s : e.k === "off" ? "0" : e.k === "swap" || e.k === "pass" ? "0" : (e.s > 0 ? "+" : "") + e.s}</b><span class="small">${e.tot}</span></div>`).join("")}</div>` : `<p class="empty">No plays yet.</p>`;
+const scoreHTML = (g, active) => `<div class="gscore">${[0, 1].map(p => `<div class="${active === p ? "on" : ""} p${p}"><span>${esc(g.names[p])}</span><b>${g.scores[p]}</b></div>`).join(`<div class="gbag"><b>${g.bag.length}</b>in bag</div>`)}</div>`;
+// the tiles a player can't see, by letter
+function unseenHTML(board, rack) {
+  const u = unseenOf(board, rack);
+  if (!u.n) return `<p class="empty">None: every tile is on the board or your rack.</p>`;
+  const c = counts(u.pool.join("")), vw = u.pool.filter(ch => "AEIOU".includes(ch)).length;
+  return `<div class="unseen">${[...AZ, "?"].filter(ch => c[ch]).map(ch => `<span>${ch === "?" ? "?" : ch}<i>${c[ch]}</i></span>`).join("")}</div>
+    <p class="small" style="margin:8px 0 0">${u.n} tiles · ${vw} vowels, ${u.n - vw - (c["?"] || 0)} consonants${c["?"] ? `, ${c["?"]} blank${c["?"] > 1 ? "s" : ""}` : ""}</p>`;
+}
+
+// ---------- Play: a game against the computer, or two people passing one phone or computer ----------
+let GAME = store.get("game", null);
+const GUI = { board: "", rack: "", pend: [], cur: -1, dir: 0, sel: -1, swap: null, key: "", err: "", think: false, review: null, hl: -1 };
+const gSave = () => store.set("game", GAME);
+// the seat whose rack is on show: yours against the computer, the player to move between friends
+const gMe = () => GAME.mode === "cpu" ? 0 : GAME.over ? (GAME.log.at(-1)?.p ?? 0) : GAME.turn;
+function viewPlay() {
+  if (!GAME) return playSetup();
+  const me = gMe(), key = GAME.log.length + ":" + GAME.turn + ":" + GAME.racks[me];
+  if (GUI.key !== key) Object.assign(GUI, { pend: [], cur: -1, sel: -1, swap: null, key, err: "" });
+  GUI.board = GAME.board; GUI.rack = GAME.racks[me];
+  const myTurn = !GAME.over && GAME.turn === me && !GUI.think, cover = GAME.mode === "friend" && GAME.cover && !GAME.over;
+  const r = pPreview(GUI), last = [...GAME.log].reverse().find(e => e.k === "play");
+  const lastSet = new Set(last && !GUI.pend.length ? last.t.map(t => t[0]) : []);
+  const lastE = GAME.log.at(-1), err = GUI.err;
+  GUI.err = "";
+  let status;
+  if (GAME.over) {
+    const [a, b] = GAME.scores, w = a === b ? -1 : a > b ? 0 : 1;
+    status = `<p class="bq">${w < 0 ? "A draw" : GAME.mode === "cpu" ? (w === 0 ? "You won" : "The computer won") : esc(GAME.names[w]) + " won"}, ${Math.max(a, b)}–${Math.min(a, b)}</p>
+      ${GAME.resigned !== undefined ? `<p class="small">${esc(GAME.names[GAME.resigned])} resigned.</p>` : ""}
+      <div class="row" style="margin-top:12px"><button class="btn primary" id="gReview">${GUI.review ? "Review again" : "Review the game"}</button><button class="btn" id="gNew2">New game</button></div>`;
+  } else if (cover) {
+    const canChal = GAME.rule === "chal" && lastE?.k === "play" && lastE.p !== GAME.turn && !lastE.held;
+    status = `<p class="bq">${esc(GAME.names[GAME.turn])}'s turn</p>${lastE ? `<p class="small" style="margin:4px 0 0">${esc(logLine(GAME, lastE))}</p>` : ""}
+      <div class="row" style="margin-top:12px">${canChal ? `<button class="btn" id="gChal">Challenge ${esc(lastE.w)}</button>` : ""}<button class="btn primary" id="gShow">${GAME.outWait ? "Accept, and end the game" : `Show ${esc(GAME.names[GAME.turn])}'s rack`}</button></div>`;
+  } else if (GUI.think) status = `<p class="bq thinking">The computer is thinking…</p>${lastE ? `<p class="small">${esc(logLine(GAME, lastE))}</p>` : ""}`;
+  else {
+    status = `<p class="bq">${GAME.mode === "cpu" ? "Your turn" : esc(GAME.names[GAME.turn]) + "'s turn"}</p>`;
+    if (err) status += `<p class="bres wrong">${esc(err)}</p>`;
+    else if (r?.error) status += `<p class="small" style="margin-top:6px">${r.error}</p>`;
+    else if (r) status += `<div style="margin-top:8px">${workHTML(r, true)}</div>${r.phony.length ? `<p class="small bad" style="margin:6px 0 0">${r.phony.join(", ")} ${r.phony.length > 1 ? "aren't words" : "isn't a word"}${GAME.rule === "chal" ? ", but you can still try it" : ""}</p>` : ""}`;
+    else if (GUI.swap) status += `<p class="small" style="margin-top:6px">Tap the tiles to put back, then Swap.</p>`;
+    else if (lastE) status += `<p class="small" style="margin-top:6px">${esc(logLine(GAME, lastE))}</p>`;
+    else status += `<p class="small" style="margin-top:6px">Tap a square, then tap tiles or type. The first play goes through the star.</p>`;
+  }
+  const playable = r && !r.error && (GAME.rule === "chal" || !r.phony.length);
+  $("#view").innerHTML = `${boardSeg("play")}${bLookBar()}
+  <div class="bgrid"><div class="gmain">
+    ${scoreHTML(GAME, GAME.over ? -1 : GAME.turn)}
+    <div id="gBoard">${boardHTML(strCells(GAME.board), pNews(GUI), myTurn && !cover ? GUI.cur : -1, GUI.dir, false, { last: lastSet, pend: true })}</div>
+    ${pRack(GUI, cover)}
+    ${GAME.over || cover ? "" : `<div class="gbtns">${GUI.swap
+      ? `<button class="btn primary" id="gSwapGo" ${GUI.swap.size ? "" : "disabled"}>Swap ${GUI.swap.size || ""}</button><button class="btn" id="gSwapX">Cancel</button>`
+      : `<button class="btn primary" id="gPlay" ${myTurn && playable ? "" : "disabled"}>Play${r && !r.error ? " " + r.total : ""}</button>
+        <button class="btn" id="gRecall" ${myTurn ? "" : "disabled"}>${GUI.pend.length ? "Recall" : "Shuffle"}</button>
+        <button class="btn" id="gSwap" ${myTurn && GAME.bag.length >= 7 ? "" : "disabled"} title="${GAME.bag.length >= 7 ? "Put tiles back and draw new ones" : "Swapping needs 7 tiles in the bag"}">Swap</button>
+        <button class="btn" id="gPass" ${myTurn ? "" : "disabled"}>Pass</button>
+        <button class="btn" id="gHint" ${myTurn ? "" : "disabled"} title="Puts the computer's best play on the board">Hint</button>`}</div>`}
+  </div>
+  <div class="bside">
+    <div class="card">${status}</div>
+    ${GUI.review ? `<div class="card" id="gRev">${reviewHTML()}</div>` : ""}
+    <div class="card"><h2 class="lbl">Plays</h2>${logHTML(GAME, GUI.hl)}</div>
+    ${cover ? "" : `<div class="card"><h2 class="lbl">Tiles you can't see</h2>${unseenHTML(GAME.board, GAME.racks[me])}</div>`}
+    <div class="card"><div class="row"><span class="small" style="margin-right:auto">${GAME.mode === "cpu" ? `Computer: ${LEVELS[GAME.level][0]}` : "Two players"} · ${GAME.rule === "chal" ? "challenges" : "phonies refused"}${GAME.hints ? ` · ${GAME.hints} hint${GAME.hints > 1 ? "s" : ""}` : ""}</span>
+      ${cover ? "" : `<button class="btn sm" id="gAna">Analyse this position</button>`}${GAME.over ? "" : `<button class="btn sm" id="gResign">Resign</button>`}<button class="btn sm" id="gNew">New game</button></div></div>
+  </div></div>${bLookSheet()}${blankSheet()}`;
+  const redraw = () => { gSave(); const sy = window.scrollY; viewPlay(); window.scrollTo(0, sy); };
+  bLookWire(redraw);
+  pWire(GUI, redraw, () => $("#gPlay")?.click(), () => !myTurn || cover);
+  const on = (id, f) => { const b = $("#" + id); if (b) b.onclick = f; };
+  on("gPlay", () => {
+    const r = pPreview(GUI); if (!r || r.error) return;
+    const p = GAME.turn, m = { tiles: pTiles(GUI), word: r.words[0].parts.map(x => x.b ? x.ch.toLowerCase() : x.ch).join(""), at: bAt(r.words[0].start, r.words[0].dir), score: r.total, phony: r.phony.join(" ") };
+    if (r.phony.length && GAME.rule !== "chal") { GUI.err = `${r.phony.join(", ")} isn't in CSW24`; return redraw(); }
+    if (r.phony.length && GAME.mode === "cpu") {
+      // the computer always challenges a phony: it comes off and the turn is lost
+      GAME.log.push({ p, k: "off", w: m.word, at: m.at, s: m.score, t: m.tiles, before: gBefore(GAME, p), tot: GAME.scores[p] }); GAME.zeros++; gNext(GAME, p);
+    } else gPlay(GAME, p, m);
+    redraw(); cpuGo();
+  });
+  on("gRecall", () => { if (GUI.pend.length) GUI.pend = []; else { GAME.racks[me] = shuffle([...GAME.racks[me]]).join(""); GUI.key = ""; } redraw(); });
+  on("gSwap", () => { GUI.pend = []; GUI.swap = new Set(); redraw(); });
+  on("gSwapX", () => { GUI.swap = null; redraw(); });
+  on("gSwapGo", () => { const out = [...GUI.swap].map(ri => GUI.rack[ri]).join(""); GUI.swap = null; gSwap(GAME, GAME.turn, out); redraw(); cpuGo(); });
+  confirmBtn($("#gPass"), () => { gPass(GAME, GAME.turn); redraw(); cpuGo(); });
+  on("gHint", async () => {
+    const res = await ENG.call({ type: "moves", board: GAME.board, rack: GAME.racks[me], bag: GAME.bag.length, limit: 1 }), m = res.moves[0];
+    GAME.hints++; GUI.pend = []; GUI.swap = null;
+    if (m.tiles.length) {
+      const used = new Set();
+      for (const [i, l, b] of m.tiles) { const ch = b ? "?" : AZ[l], ri = [...GUI.rack].findIndex((x, k) => x === ch && !used.has(k)); used.add(ri); GUI.pend.push({ i, ri, ch: AZ[l], b: !!b }); }
+      GUI.err = "";
+    } else GUI.err = m.pass ? "The computer would pass here." : `The computer would swap ${sortRack(m.exch)}.`;
+    redraw();
+  });
+  on("gShow", () => { if (GAME.outWait) { const e = [...GAME.log].reverse().find(e => e.k === "play"); gEnd(GAME, e.p); } GAME.cover = false; redraw(); });
+  on("gChal", () => { gChallenge(GAME, GAME.turn); redraw(); });
+  on("gAna", () => anaOpen(GAME.board, GAME.over ? "" : GAME.racks[me]));
+  confirmBtn($("#gResign"), () => { GAME.resigned = GAME.mode === "cpu" ? 0 : GAME.turn; GAME.over = true; GAME.cover = false; redraw(); });
+  const fresh = () => { GAME = null; GUI.review = null; GUI.hl = -1; store.set("game", null); redraw(); };
+  GAME.over ? on("gNew", fresh) : confirmBtn($("#gNew"), fresh);
+  on("gNew2", fresh);
+  on("gReview", () => runReview());
+  wireReview();
+  cpuGo();
+}
+// the computer moves when it's its turn (and the page is on Play)
+async function cpuGo() {
+  if (!GAME || GAME.mode !== "cpu" || GAME.over || GAME.turn !== 1 || GUI.think) return;
+  const g = GAME, t0 = Date.now();
+  GUI.think = true; if (location.hash === "#board/play") viewPlay();
+  try {
+    const m = await cpuPick(g, 1, g.level);
+    await wait(Math.max(0, 700 - (Date.now() - t0)));
+    if (GAME !== g) return;
+    gDo(g, 1, m);
+  } finally { GUI.think = false; }
+  gSave();
+  if (location.hash === "#board/play") { const sy = window.scrollY; viewPlay(); window.scrollTo(0, sy); }
+}
+function playSetup() {
+  const o = { mode: "cpu", level: "expert", rule: "reject", first: "me", n1: "", n2: "", ...store.get("gameOpts", {}) };
+  const seg = (k, opts) => `<div class="seg">${opts.map(([v, t]) => `<button type="button" class="btn ${o[k] === v ? "on" : ""}" data-gk="${k}" data-gv="${v}">${t}</button>`).join("")}</div>`;
+  $("#view").innerHTML = `${boardSeg("play")}<div class="card gsetup"><h3 class="title" style="margin-top:0">New game</h3>
+    <div class="fs"><h2 class="lbl">Play against</h2>${seg("mode", [["cpu", "The computer"], ["friend", "A friend, on this screen"]])}</div>
+    ${o.mode === "cpu" ? `<div class="fs"><h2 class="lbl">How strong</h2>${seg("level", Object.entries(LEVELS).map(([k, [n]]) => [k, n]))}<p class="small" style="margin:6px 0 0">${LEVELS[o.level][1]}.</p></div>
+      <div class="fs"><h2 class="lbl">Who starts</h2>${seg("first", [["me", "Me"], ["cpu", "The computer"], ["rand", "Draw for it"]])}</div>`
+    : `<div class="fs"><h2 class="lbl">Names</h2><div class="row"><input class="arack gname" id="gN1" value="${esc(o.n1)}" placeholder="Player 1" maxlength="14"><input class="arack gname" id="gN2" value="${esc(o.n2)}" placeholder="Player 2" maxlength="14"></div></div>
+      <div class="fs"><h2 class="lbl">Who starts</h2>${seg("first", [["me", "Player 1"], ["cpu", "Player 2"], ["rand", "Draw for it"]])}</div>`}
+    <div class="fs"><h2 class="lbl">Words not in CSW24</h2>${seg("rule", [["reject", "Refused"], ["chal", "Allowed, can be challenged"]])}
+      <p class="small" style="margin:6px 0 0">${o.rule === "chal" ? (o.mode === "cpu" ? "The computer challenges every phony: it comes off and you lose the turn." : "The next player can challenge. A phony comes off; a good word costs the challenger 5.") : "A play with a word that isn't in the list can't be made."}</p></div>
+    <button class="btn primary block" id="gStart">Start</button></div>`;
+  const keep = () => { if ($("#gN1")) { o.n1 = $("#gN1").value.trim(); o.n2 = $("#gN2").value.trim(); } store.set("gameOpts", o); };
+  $("#view").querySelectorAll("[data-gk]").forEach(b => b.onclick = ev => { ev.stopPropagation(); keep(); o[b.dataset.gk] = b.dataset.gv; store.set("gameOpts", o); playSetup(); });
+  $("#gStart").onclick = () => {
+    keep();
+    GAME = gNew({ mode: o.mode, level: o.level, rule: o.rule, first: o.first === "me" ? 0 : o.first === "cpu" ? 1 : rnd(2),
+      names: o.mode === "cpu" ? ["You", "Computer"] : [o.n1 || "Player 1", o.n2 || "Player 2"] });
+    GUI.review = null; GUI.hl = -1; gSave(); viewPlay();
+  };
+}
+// after the game: each of your plays against the computer's best from the same rack
+async function runReview() {
+  const g = GAME, seats = g.mode === "cpu" ? [0] : [0, 1];
+  const turns = g.log.map((e, n) => ({ e, n })).filter(({ e }) => seats.includes(e.p) && e.before && ["play", "swap", "pass", "off"].includes(e.k));
+  GUI.review = { rows: [], done: 0, of: turns.length };
+  viewPlay();
+  for (const { e, n } of turns) {
+    const find = e.k === "play" ? { tiles: e.t } : e.k === "swap" ? { exch: e.x } : { pass: true };
+    const res = await ENG.call({ type: "moves", board: e.before.board, rack: e.before.rack, bag: e.before.bag.length, limit: 1, find });
+    if (GAME !== g) return;
+    const best = res.moves[0], mine = e.k === "off" ? null : res.found?.move;
+    GUI.review.rows.push({ n, p: e.p, e, best, lost: mine ? best.eq - mine.eq : null, rank: res.found?.rank, total: res.total });
+    GUI.review.done++;
+    if (location.hash === "#board/play" && $("#gRev")) { $("#gRev").innerHTML = reviewHTML(); wireReview(); }
+  }
+}
+function reviewHTML() {
+  const R = GUI.review, g = GAME;
+  const lost = R.rows.filter(r => r.lost !== null), sum = lost.reduce((s, r) => s + Math.max(0, r.lost), 0), tops = lost.filter(r => r.rank === 1).length;
+  return `<h2 class="lbl">Review ${R.done < R.of ? `<span class="small">${R.done} of ${R.of}…</span>` : ""}</h2>
+    ${R.done ? `<p class="small" style="margin:0 0 8px">${tops} of ${R.rows.length} were the computer's top play · about ${sum.toFixed(0)} points of value left on the table</p>` : ""}
+    <div class="grev">${R.rows.map(r => `<button type="button" data-rv="${r.n}" class="${r.rank === 1 ? "top" : r.lost > 10 || r.lost === null ? "big" : ""}">
+      <span>${g.names[r.p][0]}${r.n + 1}</span><span><b>${esc(r.e.k === "play" || r.e.k === "off" ? r.e.w : r.e.k === "swap" ? "Swap " + sortRack(r.e.x) : "Pass")}</b>${r.e.k === "off" ? " (phony)" : ""}<br><i>best: ${esc(mvWord(r.best))} ${mvAt(r.best)} ${r.best.tiles.length ? r.best.score : ""}</i></span>
+      <span>${r.rank === 1 ? "✓" : r.lost === null ? "–" : signed(-r.lost)}</span></button>`).join("")}</div>
+    <p class="small" style="margin:8px 0 0">Tap a turn to open it in Analyse.</p>`;
+}
+function wireReview() {
+  $("#view").querySelectorAll("[data-rv]").forEach(b => b.onclick = () => { const e = GAME.log[+b.dataset.rv]; anaOpen(e.before.board, e.before.rack); });
+}
+
+// ---------- Lab: extras that aren't on the tab bar (#lab). Top play and Bingo hunt puzzles, the computer playing
+// itself, and a tile tracker for games on a real board ----------
+const LABS = [["top", "Top play"], ["bingo", "Bingo hunt"], ["cvc", "Watch"], ["track", "Tile tracker"]];
+const labSeg = k => `<nav class="studyseg labseg">${LABS.map(([h, n]) => `<a href="#lab/${h}" class="${h === k ? "on" : ""}">${n}</a>`).join("")}</nav>`;
+VIEWS.lab = arg => {
+  const k = LABS.some(([h]) => h === arg) ? arg : store.get("labLast", "top");
+  store.set("labLast", k);
+  ({ top: labPuzzle, bingo: labPuzzle, cvc: labCvc, track: labTrack })[k](k);
+};
+let PZ = null;
+const pzStats = () => ({ top: { n: 0, best: 0, pts: 0, max: 0 }, bingo: { n: 0, found: 0 }, ...store.get("labStats", {}) });
+function labPuzzle(mode) {
+  if (!PZ || PZ.mode !== mode) {
+    PZ = { mode, loading: true };
+    ENG.call({ type: "puzzle", turns: 2 + rnd(mode === "bingo" ? 6 : 10), bingo: mode === "bingo" }).then(res => {
+      if (PZ?.mode !== mode || !PZ.loading) return;
+      const z = res.puzzle;
+      if (!z) { PZ = null; if (location.hash.startsWith("#lab")) labPuzzle(mode); return; }
+      PZ = { mode, ...z, S: { board: z.board, rack: z.rack, pend: [], cur: -1, dir: 0, sel: -1, swap: null }, done: null, show: -1 };
+      if (location.hash.startsWith("#lab")) labPuzzle(mode);
+    });
+  }
+  const st = pzStats(), Z = PZ;
+  const intro = mode === "top" ? "Find the highest-scoring play on this board." : "There's a bingo (all seven tiles) somewhere. Find one.";
+  if (Z.loading) { $("#view").innerHTML = `${labSeg(mode)}<div class="card"><p class="empty">Setting up a board…</p></div>`; return; }
+  const r = pPreview(Z.S), D = Z.done, shown = D && Z.show >= 0 ? (mode === "top" ? Z.top : Z.bingos)[Z.show] : null;
+  const list = mode === "top" ? Z.top.slice(0, 10) : Z.bingos.slice(0, 20);
+  $("#view").innerHTML = `${labSeg(mode)}${bLookBar()}
+  <div class="bgrid"><div class="gmain">
+    <div id="gBoard">${boardHTML(strCells(Z.board), shown ? tilesNews(shown.tiles) : pNews(Z.S), D ? -1 : Z.S.cur, Z.S.dir, shown ? shown.dir : false, { pend: !shown })}</div>
+    ${pRack(Z.S)}
+    <div class="gbtns">${D ? `<button class="btn primary" id="pzNext">Next board</button>` : `<button class="btn primary" id="pzGo" ${r && !r.error ? "" : "disabled"}>Check${r && !r.error ? " " + r.total : ""}</button>
+      <button class="btn" id="pzRecall">${Z.S.pend.length ? "Recall" : "Shuffle"}</button><button class="btn" id="pzGive">Show me</button>`}</div>
+  </div>
+  <div class="bside">
+    <div class="card"><p class="bq">${mode === "top" ? "Top play" : "Bingo hunt"}</p><p class="small" style="margin:4px 0 0">${intro}</p>
+      ${D ? `<p class="bres ${D.good ? "right" : "wrong"}">${esc(D.text)}</p>` : r?.error ? `<p class="small" style="margin-top:8px">${r.error}</p>` : r ? `<div style="margin-top:8px">${workHTML(r, true)}</div>` : ""}</div>
+    ${D ? `<div class="card"><h2 class="lbl">${mode === "top" ? "Top plays" : `Bingos <span class="small">${Z.bingos.length}${Z.bingos.length >= 60 ? "+" : ""}</span>`}</h2><div class="alist">${list.map((m, i) =>
+      `<button type="button" class="alr${Z.show === i ? " on" : ""}" data-pz="${i}"><span>${i + 1}</span><span class="aw"><b>${esc(m.word)}</b> <i>${mvAt(m)}</i></span><span>${m.score}</span></button>`).join("")}</div>
+      <p class="small" style="margin:8px 0 0">Tap one to see it on the board.</p></div>` : ""}
+    <div class="card btally">${mode === "top" ? `<div><b>${st.top.best}/${st.top.n}</b>top play</div><div><b>${st.top.max ? Math.round(st.top.pts / st.top.max * 100) + "%" : "–"}</b>of the top scores</div>`
+      : `<div><b>${st.bingo.found}/${st.bingo.n}</b>found</div>`}<button class="btn sm" id="pzReset" style="margin-left:auto;align-self:center">Reset</button></div>
+    <div class="card"><div class="row"><span class="small" style="margin-right:auto">The Lab is hidden: open it at #lab.</span><button class="btn sm" id="pzAna">Analyse this board</button></div></div>
+  </div></div>${bLookSheet()}${blankSheet()}`;
+  const redraw = () => { const sy = window.scrollY; labPuzzle(mode); window.scrollTo(0, sy); };
+  bLookWire(redraw);
+  pWire(Z.S, redraw, () => $("#pzGo")?.click(), () => !!D);
+  const on = (id, f) => { const b = $("#" + id); if (b) b.onclick = f; };
+  const finish = (good, text, mine) => {
+    const s = pzStats();
+    if (mode === "top") { s.top.n++; if (good) s.top.best++; s.top.pts += mine || 0; s.top.max += Z.top[0].score; } else { s.bingo.n++; if (good) s.bingo.found++; }
+    store.set("labStats", s); Z.done = { good, text }; Z.show = good ? -1 : 0; redraw();
+  };
+  on("pzGo", () => {
+    const r = pPreview(Z.S); if (!r || r.error) return;
+    if (r.phony.length) return finish(false, `${r.phony.join(", ")} isn't a word. The top play is ${Z.top[0].word} for ${Z.top[0].score}.`, 0);
+    if (mode === "top") {
+      const better = new Set(Z.scores.filter(s => s > r.total)).size, best = Z.top[0];
+      finish(r.total >= best.score, r.total >= best.score ? `Yes! ${r.total} is the top score.` : `${r.total} is the #${better + 1} score. The top play is ${best.word} at ${mvAt(best)} for ${best.score}.`, r.total);
+    } else finish(Z.S.pend.length === 7, Z.S.pend.length === 7 ? `Yes! ${r.words[0].word} for ${r.total}.` : `That's not a bingo. ${Z.bingos[0].word} at ${mvAt(Z.bingos[0])} is one.`);
+  });
+  on("pzGive", () => finish(false, mode === "top" ? `The top play is ${Z.top[0].word} at ${mvAt(Z.top[0])} for ${Z.top[0].score}.` : `${Z.bingos[0].word} at ${mvAt(Z.bingos[0])} is one.`, 0));
+  on("pzRecall", () => { if (Z.S.pend.length) Z.S.pend = []; else Z.S.rack = shuffle([...Z.S.rack]).join(""); redraw(); });
+  on("pzNext", () => { PZ = null; redraw(); });
+  on("pzAna", () => anaOpen(Z.board, Z.rack));
+  $("#view").querySelectorAll("[data-pz]").forEach(b => b.onclick = () => { Z.show = Z.show === +b.dataset.pz ? -1 : +b.dataset.pz; redraw(); });
+  confirmBtn($("#pzReset"), () => { const s = pzStats(); s[mode] = mode === "top" ? { n: 0, best: 0, pts: 0, max: 0 } : { n: 0, found: 0 }; store.set("labStats", s); redraw(); });
+}
+// two computers playing; pick their levels and the speed
+let CV = null;
+function labCvc() {
+  CV ||= { levels: store.get("cvcLevels", ["expert", "club"]), speed: 900, g: null, run: false };
+  const g = CV.g, last = g && [...g.log].reverse().find(e => e.k === "play");
+  const pick = p => `<div class="seg">${Object.entries(LEVELS).map(([k, [n]]) => `<button type="button" class="btn sm ${CV.levels[p] === k ? "on" : ""}" data-cl="${p}" data-cv="${k}">${n}</button>`).join("")}</div>`;
+  $("#view").innerHTML = `${labSeg("cvc")}${bLookBar()}
+  <div class="bgrid"><div class="gmain">
+    ${g ? scoreHTML(g, g.over ? -1 : g.turn) : ""}
+    <div id="gBoard">${boardHTML(strCells(g ? g.board : ".".repeat(225)), new Map(), -1, 0, false, { last: new Set(last ? last.t.map(t => t[0]) : []) })}</div>
+  </div>
+  <div class="bside">
+    <div class="card"><h2 class="lbl">Left</h2>${pick(0)}<h2 class="lbl" style="margin-top:12px">Right</h2>${pick(1)}
+      <h2 class="lbl" style="margin-top:12px">Speed</h2><div class="seg">${[[1800, "Slow"], [900, "Steady"], [250, "Fast"], [0, "Flat out"]].map(([v, n]) => `<button type="button" class="btn sm ${CV.speed === v ? "on" : ""}" data-cs="${v}">${n}</button>`).join("")}</div>
+      <div class="row" style="margin-top:14px"><button class="btn primary" id="cvGo">${CV.run ? "Pause" : g && !g.over ? "Carry on" : "Start a game"}</button>${g ? `<button class="btn" id="cvNew">New game</button><button class="btn" id="cvAna">Analyse this position</button>` : ""}</div>
+      ${g?.over ? `<p class="bres">${g.scores[0] === g.scores[1] ? "A draw" : esc(g.names[g.scores[0] > g.scores[1] ? 0 : 1]) + " won"}, ${Math.max(...g.scores)}–${Math.min(...g.scores)}</p>` : ""}</div>
+    ${g ? `<div class="card"><h2 class="lbl">Racks</h2><div class="cvracks">${[0, 1].map(p => `<div><span class="small">${esc(g.names[p])}</span><div class="tiles mini">${[...g.racks[p]].map(ch => `<div class="tile">${ch === "?" ? "" : `${ch}<sub>${VALUES[ch]}</sub>`}</div>`).join("") || `<span class="small">empty</span>`}</div></div>`).join("")}</div></div>
+      <div class="card"><h2 class="lbl">Plays</h2>${logHTML(g)}</div>` : ""}
+  </div></div>${bLookSheet()}`;
+  const redraw = () => { const sy = window.scrollY; labCvc(); window.scrollTo(0, sy); };
+  bLookWire(redraw);
+  $("#view").querySelectorAll("[data-cl]").forEach(b => b.onclick = () => { CV.levels[+b.dataset.cl] = b.dataset.cv; store.set("cvcLevels", CV.levels); if (CV.g && !CV.run) CV.g.names = cvNames(); redraw(); });
+  $("#view").querySelectorAll("[data-cs]").forEach(b => b.onclick = () => { CV.speed = +b.dataset.cs; redraw(); });
+  $("#cvGo").onclick = () => { if (CV.run) { CV.run = false; return redraw(); } if (!CV.g || CV.g.over) CV.g = gNew({ mode: "cvc", names: cvNames(), first: 0 }); CV.run = true; redraw(); cvLoop(); };
+  if ($("#cvNew")) $("#cvNew").onclick = () => { CV.g = gNew({ mode: "cvc", names: cvNames(), first: 0 }); CV.run = true; redraw(); cvLoop(); };
+  if ($("#cvAna")) $("#cvAna").onclick = () => { CV.run = false; anaOpen(CV.g.board, CV.g.over ? "" : CV.g.racks[CV.g.turn]); };
+}
+const cvNames = () => CV.levels.map((l, p) => `${LEVELS[l][0]}${CV.levels[0] === CV.levels[1] ? " " + (p + 1) : ""}`);
+let cvBusy = false;
+async function cvLoop() {
+  if (cvBusy) return; cvBusy = true;
+  try {
+    while (CV.run && CV.g && !CV.g.over) {
+      const g = CV.g, p = g.turn, m = await cpuPick(g, p, CV.levels[p]);
+      if (CV.g !== g || !CV.run) break;
+      gDo(g, p, m);
+      if (location.hash === "#lab/cvc") labCvc();
+      await wait(CV.speed);
+    }
+  } finally { cvBusy = false; }
+  if (CV.g?.over) { CV.run = false; if (location.hash === "#lab/cvc") labCvc(); }
+}
+// tap each tile as it goes down on a real board (and the ones on your rack): what's left is what you can't see
+function labTrack() {
+  const T = { used: {}, hist: [], ...store.get("track", {}) }, full = { ...BAG, "?": 2 };
+  const left = ch => full[ch] - (T.used[ch] || 0), n = [...AZ, "?"].reduce((s, ch) => s + left(ch), 0), vw = [..."AEIOU"].reduce((s, ch) => s + left(ch), 0);
+  $("#view").innerHTML = `${labSeg("track")}<div class="card"><p class="bq">Tile tracker</p><p class="small" style="margin:4px 0 12px">For a game on a real board: tap each tile as it's played, and the tiles on your rack. What's left is the bag and the other rack.</p>
+    <div class="tgrid">${[...AZ, "?"].map(ch => `<button type="button" data-tt="${ch}" class="${left(ch) ? "" : "gone"}"><b>${ch}</b><i>${left(ch)}</i></button>`).join("")}</div>
+    <div class="btally" style="margin-top:14px"><div><b>${n}</b>unseen</div><div><b>${Math.max(0, n - 7)}</b>in the bag</div><div><b>${vw}</b>vowels</div><div><b>${n - vw - left("?")}</b>consonants</div><div><b>${left("?")}</b>blanks</div></div>
+    <div class="row" style="margin-top:14px"><button class="btn" id="ttUndo" ${T.hist.length ? "" : "disabled"}>Undo ${T.hist.at(-1) || ""}</button><button class="btn" id="ttReset" ${T.hist.length ? "" : "disabled"}>Start again</button></div></div>`;
+  const save = () => { store.set("track", T); labTrack(); };
+  $("#view").querySelectorAll("[data-tt]").forEach(b => b.onclick = () => { const ch = b.dataset.tt; if (!left(ch)) return; T.used[ch] = (T.used[ch] || 0) + 1; T.hist.push(ch); save(); });
+  $("#ttUndo").onclick = () => { const ch = T.hist.pop(); if (ch) T.used[ch]--; save(); };
+  confirmBtn($("#ttReset"), () => { T.used = {}; T.hist = []; save(); });
+}
+// the Board tab: Free board (Look), Analyse, Play. Count used to be #board/count; old links go to Scoring
+VIEWS.board = arg => arg === "count" ? location.replace("#scoring") : arg === "analyse" ? viewAnalyse() : arg === "play" ? viewPlay() : viewLook();
 
 // ---------- routing ----------
 function route() {
