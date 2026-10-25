@@ -1061,3 +1061,9 @@ main.wrap:has(> .foc) { max-width: 1400px; }
 .lmk i.extra { color: var(--bad); text-decoration: line-through; }
 .lmk em { font-style: normal; color: var(--muted); }
 .lcard .rows { text-align: left; }
+.lkopts { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-top: 8px; }
+.lkopts select { max-width: 100%; }
+/* a pattern letter taken (a green pulse) or refused (a shake) */
+.qinput.lgood { animation: lgood .35s; } .qinput.lbad { animation: shake .35s; }
+@keyframes lgood { 40% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 45%, transparent); border-color: var(--good); } }
+.lfound { justify-content: center; }

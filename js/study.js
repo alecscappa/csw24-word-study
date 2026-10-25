@@ -142,7 +142,7 @@ async function fetchOnline(w) {
 
 // ---------- search ----------
 // lens = the lengths picked with the chips; min and max are still understood (Practice uses them) but not shown
-const SEARCH_DEFAULT = { pattern: "", rack: "", mode: "exact", lens: "", min: "", max: "", starts: "", ends: "", contains: "", incl: "", excl: "", def: "", group: "", anas: "", pfrom: "", pto: "", from: "", to: "" };
+const SEARCH_DEFAULT = { pattern: "", rack: "", mode: "exact", lens: "", min: "", max: "", starts: "", ends: "", contains: "", incl: "", excl: "", def: "", group: "", anas: "", pfrom: "", pto: "", pby: "rank", plax: "", from: "", to: "" };
 let searchState = Object.fromEntries(Object.keys(SEARCH_DEFAULT).map(k => [k, store.get("search", {})[k] ?? SEARCH_DEFAULT[k]]));
 if (store.get("search", {}).top && !searchState.pto) searchState.pto = store.get("search", {}).top;
 if (!groupOf(searchState.group) || groupOf(searchState.group).special) searchState.group = "";
@@ -206,15 +206,17 @@ function runSearch(s) {
     if (def && !e.d.toLowerCase().includes(def)) continue;
     out.push(w);
   }
-  return { words: likelyRange(out, s.pfrom, s.pto), masks };
+  return { words: likelyRange(out, s.pfrom, s.pto, s.pby, s.plax), masks };
 }
 
 // "Most likely words" (Search and Practice): All, a usual amount, or ranks from–to, all on one line.
 // Ranks count in probability order within each length of the words found, so 100 with 7s and 8s keeps the top 100 of each
 const LIKELY = [30, 50, 100, 500];
-const likelyField = (pre, from, to) => `<div class="field wide"><span class="flabel">Most likely words</span><div class="numpick likely">
+const likelyField = (pre, from, to, by = "rank", lax = false) => `<div class="field wide"><span class="flabel">Probability rank</span><div class="numpick likely">
     <button type="button" class="btn sm ${+from > 1 || +to ? "" : "on"}" data-lk="0">All</button>${LIKELY.map(n => `<button type="button" class="btn sm ${!(+from > 1) && +to === n ? "on" : ""}" data-lk="${n}">${n}</button>`).join("")}
-    <span class="lkr"><span class="small">or</span><input id="${pre}from" value="${esc(from || "")}" placeholder="1" inputmode="numeric" aria-label="From rank"><span class="small">to</span><input id="${pre}to" value="${esc(to || "")}" placeholder="all" inputmode="numeric" aria-label="To rank"></span></div></div>`;
+    <span class="lkr"><span class="small">or</span><input id="${pre}from" value="${esc(from || "")}" placeholder="1" inputmode="numeric" aria-label="From rank"><span class="small">to</span><input id="${pre}to" value="${esc(to || "")}" placeholder="all" inputmode="numeric" aria-label="To rank"></span></div>
+    <div class="lkopts"><select id="${pre}by" aria-label="Count the ranks"><option value="rank" ${by !== "place" ? "selected" : ""}>Each word's own rank</option><option value="place" ${by === "place" ? "selected" : ""}>Place in these results</option></select>
+      <label class="check small"><input type="checkbox" id="${pre}lax" ${lax ? "checked" : ""}> Lax (keep ties at the edges)</label></div></div>`;
 const paintLikely = box => { const [f, t] = box.querySelectorAll("input"); box.querySelectorAll("[data-lk]").forEach(b => b.classList.toggle("on", +b.dataset.lk ? !(+f.value > 1) && +t.value === +b.dataset.lk : !(+f.value > 1) && !+t.value)); };
 document.addEventListener("click", ev => {
   const b = ev.target.closest(".likely [data-lk]"); if (!b) return;
@@ -223,15 +225,31 @@ document.addEventListener("click", ev => {
   t.dispatchEvent(new Event("input", { bubbles: true })); box.dispatchEvent(new Event("likely", { bubbles: true }));
 });
 document.addEventListener("input", ev => { const box = ev.target.closest?.(".likely"); if (box) paintLikely(box); });
-function likelyRange(words, from, to) {
+// a probability range, counted within each length. by "rank": the word's own rank among every word of its length
+// (#100 to #300 of the 7s, keeping those that match); by "place": its place among these words, most likely first.
+// lax: words exactly as likely as the ones at the edges come too, so a range never splits a tie (Zyzzyva's "lax")
+const ranked = {};
+const wordAtRank = (n, r) => (ranked[n] ||= [...BYLEN[n]].sort((a, b) => DICT.get(a).p - DICT.get(b).p))[r - 1];
+function likelyRange(words, from, to, by = "rank", lax = false) {
   from = parseInt(from) || 0; to = parseInt(to) || 0;
   if (from && to && to < from) [from, to] = [to, from];
   if (!(from > 1 || to)) return words;
-  const by = {}; for (const w of words) (by[w.length] ||= []).push(w);
-  const keep = new Set(Object.values(by).flatMap(ws => ws.sort(sorters.prob).slice(Math.max(1, from) - 1, to || undefined)));
+  const lo = Math.max(1, from), hi = to || Infinity, keep = new Set(), groups = {};
+  for (const w of words) (groups[w.length] ||= []).push(w);
+  for (const [n, ws] of Object.entries(groups)) {
+    const list = by === "place" ? [...ws].sort(sorters.prob) : ws, rank = (w, i) => by === "place" ? i + 1 : DICT.get(w).p;
+    const edge = r => { const w = by === "place" ? list[r - 1] : wordAtRank(+n, r); return w ? draws(alpha(w)) : null; };
+    const dLo = lax ? edge(lo) : null, dHi = lax && hi !== Infinity ? edge(hi) : null;
+    list.forEach((w, i) => {
+      const r = rank(w, i);
+      if (r >= lo && r <= hi) keep.add(w);
+      else if (lax && (r < lo ? dLo : dHi) === draws(alpha(w))) keep.add(w);
+    });
+  }
   return words.filter(w => keep.has(w));
 }
-const likelyText = (from, to) => +from > 1 ? `Ranks ${from}–${to || "all"}` : +to ? `${to} most likely` : "";
+const likelyText = (from, to, by = "rank", lax) => (+from > 1 ? (by === "place" ? `Places ${from}–${to || "all"}` : `#${from}–${to ? "#" + to : "end"}`)
+  : +to ? (by === "place" ? `${to} most likely here` : `Top ${to} of each length`) : "") + (lax && (+from > 1 || +to) ? " (lax)" : "");
 // anagrams: how many words the rack makes, typed as 3, 2-4 or 5+
 const anaRange = v => { const m = String(v || "").match(/^\s*(\d+)\s*(?:([-–]\s*(\d+))|(\+))?\s*$/); if (!m) return null; const lo = +m[1], hi = m[4] ? Infinity : m[3] ? +m[3] : lo; return lo > hi ? [hi, lo] : [lo, hi]; };
 const anaText = v => { const r = anaRange(v); return r ? `${r[1] === Infinity ? r[0] + "+" : r[0] === r[1] ? r[0] : r[0] + "–" + r[1]} anagram${r[0] === 1 && r[1] === 1 ? "" : "s"}` : ""; };
@@ -252,11 +270,11 @@ function searchSecs(s) {
         ${f("incl", "Must include", "e.g. VV")}
         ${f("excl", "Must exclude", "e.g. AEIOU")}
         ${f("anas", "Anagrams", "e.g. 3, 2-4 or 5+")}
-        ${likelyField("s_p", s.pfrom, s.pto)}
+        ${likelyField("s_p", s.pfrom, s.pto, s.pby, s.plax)}
       </div>`,
   };
 }
-const SEARCH_SECS = { group: ["Group and length", ["group", "lens"]], narrow: ["Filters", ["def", "starts", "ends", "contains", "incl", "excl", "anas", "pfrom", "pto"]] };
+const SEARCH_SECS = { group: ["Group and length", ["group", "lens"]], narrow: ["Filters", ["def", "starts", "ends", "contains", "incl", "excl", "anas", "pfrom", "pto", "pby", "plax"]] };
 VIEWS.search = () => {
   if (phone()) return searchPhone();
   const s = searchState, secs = searchSecs(s);
@@ -277,7 +295,7 @@ VIEWS.search = () => {
   </div>
   ${typeBar()}
   <div class="card" id="sres"><p class="empty">Pick a group or fill in any options, then press Search. Hooks show either side of each word; red lowercase letters are blanks.</p></div>`;
-  const read = () => { for (const k of Object.keys(SEARCH_DEFAULT)) { const el = $("#s_" + k); if (el) searchState[k] = el.value; } store.set("search", searchState); };
+  const read = () => { for (const k of Object.keys(SEARCH_DEFAULT)) { const el = $("#s_" + k); if (el) searchState[k] = el.type === "checkbox" ? (el.checked ? "1" : "") : el.value; } store.set("search", searchState); };
   $("#sform").querySelectorAll("details.acc").forEach(d => d.addEventListener("toggle", () => { const o = store.get("searchOpen", { group: true }); o[d.dataset.acc] = d.open; store.set("searchOpen", o); }));
   $("#sform").addEventListener("input", () => { read(); for (const k of ["group", "narrow"]) $("#accn_" + k).textContent = accSummary(k); });
   $("#s_group").onchange = e => { $("#groupHint").textContent = groupOf(e.target.value)?.blurb || ""; read(); doSearch(); };
@@ -326,7 +344,7 @@ function accSummary(key) {
     group: [groupOf(s.group)?.name, lensText(s.lens)],
     letters: [s.pattern && patLabel(s.pattern), s.rack && `rack ${up(s.rack)}`],
     narrow: [s.def && `“${s.def}”`, s.starts && `${up(s.starts)}…`, s.ends && `…${up(s.ends)}`, s.contains && `has ${up(s.contains)}`,
-      s.incl && `uses ${up(s.incl)}`, s.excl && `no ${up(s.excl)}`, anaText(s.anas).toLowerCase(), likelyText(s.pfrom, s.pto).toLowerCase()],
+      s.incl && `uses ${up(s.incl)}`, s.excl && `no ${up(s.excl)}`, anaText(s.anas).toLowerCase(), likelyText(s.pfrom, s.pto, s.pby, s.plax).toLowerCase()],
   }[key];
   return parts.filter(Boolean).join(" · ");
 }
@@ -350,7 +368,7 @@ function searchPhone() {
     ["group", groupOf(s.group)?.name, ["group"]], ["narrow", s.def && `“${s.def}”`, ["def"]],
     ["bar", s.pattern && patLabel(s.pattern), ["pattern"]], ["bar", s.rack && `Rack ${up(s.rack)}${s.mode === "build" ? " · subanagram" : s.mode === "super" ? " · superanagram" : ""}`, ["rack", "mode"]],
     ["group", lensText(s.lens), ["lens"]], ["narrow", s.starts && `${up(s.starts)}…`, ["starts"]], ["narrow", s.ends && `…${up(s.ends)}`, ["ends"]],
-    ["narrow", s.contains && `Has ${up(s.contains)}`, ["contains"]], ["narrow", s.incl && `Uses ${up(s.incl)}`, ["incl"]], ["narrow", s.excl && `No ${up(s.excl)}`, ["excl"]], ["narrow", anaText(s.anas), ["anas"]], ["narrow", likelyText(s.pfrom, s.pto), ["pfrom", "pto"]],
+    ["narrow", s.contains && `Has ${up(s.contains)}`, ["contains"]], ["narrow", s.incl && `Uses ${up(s.incl)}`, ["incl"]], ["narrow", s.excl && `No ${up(s.excl)}`, ["excl"]], ["narrow", anaText(s.anas), ["anas"]], ["narrow", likelyText(s.pfrom, s.pto, s.pby, s.plax), ["pfrom", "pto", "pby", "plax"]],
   ].filter(c => c[1]);
   const secs = searchSecs(s);
   $("#view").innerHTML = `<div class="filterbar"><div class="hscroll">
@@ -361,7 +379,7 @@ function searchPhone() {
     <div class="card" id="sres"><p class="empty">Type letters in the search bar, or tap + Group or + Filters. Hooks show either side of each word; red lowercase letters are blanks.</p></div>
     ${sheetHTML("ssheet", `<form id="sform" autocomplete="off">${Object.entries(SEARCH_SECS).map(([k, [t]]) => `<div data-sec="${k}"><h3>${t}<button type="button" data-reset="${k}">Reset</button></h3>${secs[k]}</div>`).join("")}
       <button class="btn primary block" type="submit" id="sGo">Show results</button></form>`)}`;
-  const read = () => { for (const k of Object.keys(SEARCH_DEFAULT)) { const el = $("#s_" + k); if (el) searchState[k] = el.value; } store.set("search", searchState); };
+  const read = () => { for (const k of Object.keys(SEARCH_DEFAULT)) { const el = $("#s_" + k); if (el) searchState[k] = el.type === "checkbox" ? (el.checked ? "1" : "") : el.value; } store.set("search", searchState); };
   // live count on the sheet's button
   let ct;
   const count = () => { clearTimeout(ct); ct = setTimeout(() => {
@@ -499,6 +517,10 @@ const letterSet = s => [...new Set(String(s || "").toUpperCase().replace(/[^A-Z]
 const gapTile = `<div class="tile gap">?</div>`, aTile = c => `<div class="tile">${c}<sub>${VALUES[c]}</sub></div>`;
 const gapHTML = pat => `<div class="tiles gapt">${[...pat].map(c => c === "?" ? gapTile : aTile(c)).join("")}</div>`;
 const hookHTML = w => `<div class="tiles gapt">${gapTile}${[...w].map(aTile).join("")}${gapTile}</div>`;
+// a pattern card while you play: each letter that fits makes a word, shown as it's found; dots for the rest
+const patChips = (pat, found) => `<div class="found lfound">${fitsOf(pat).map(c => { const w = pat.replace("?", c); return found.includes(c) ? `<a class="w got" href="#w/${w}">${w}</a>` : `<span class="w blank">${"•".repeat(w.length)}</span>`; }).join("")}</div>`;
+// one letter typed into a pattern box: a fitting new letter is taken (true), anything else is refused (false)
+const flashBox = (el, good) => { el.classList.remove("lgood", "lbad"); void el.offsetWidth; el.classList.add(good ? "lgood" : "lbad"); };
 // what you typed against the answer: letters you got, letters you missed, and letters that don't fit
 const letterMarks = (typed, want) => { const t = new Set(letterSet(typed)), w = new Set(want);
   return `<span class="lmk">${[...new Set([...want, ...t])].sort().map(c => `<i class="${w.has(c) ? (t.has(c) ? "hit" : "miss") : "extra"}">${c}</i>`).join("") || "<em>none</em>"}</span>`; };
@@ -616,7 +638,7 @@ function drawQuestion() {
   const typing = `autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"`;
   if (mode === "anagram") { prompt = `<div class="slots" id="qslots"></div>`; input = `<div class="rows" id="found" style="margin-top:8px"></div>`; }
   if (mode === "phony") prompt = `<div class="qprompt">${q.show}</div>`;
-  if (mode === "pattern") { prompt = gapHTML(q.show); input = `<input class="qinput" id="qp" placeholder="the letters that fit" ${typing}><p class="small" style="margin:6px 0 0">Any order, then press ✓.</p>`; }
+  if (mode === "pattern") { prompt = gapHTML(q.show); input = `<input class="qinput" id="qp" placeholder="type a letter" ${typing}><p class="q" id="qpleft" style="margin:10px 0 4px"></p><div id="qpchips"></div>`; }
   if (mode === "hooks") { prompt = hookHTML(q.w); input = `<div class="pair"><input class="qinput" id="qf" placeholder="front hooks" ${typing}><input class="qinput" id="qb" placeholder="back hooks" ${typing}></div><p class="small" style="margin:6px 0 0">Leave blank if none, then press ✓.</p>`; }
   if (mode === "def") { prompt = `<div class="qdef">${esc(e.d)}</div><p class="small" style="margin:0">${q.w.length} letters · <a href="#" id="hint">show tiles</a></p><div id="hintBox"></div>`; input = `<input class="qinput" id="qa" placeholder="The word" ${typing}><p class="small" style="margin:6px 0 0">The right word is taken as you type.</p>`; }
   const rack = mode === "anagram" ? `${rackHTML("qrack")}<div class="rackbtns"><button type="button" class="btn" id="qShuf" aria-label="Shuffle">${icon(ICON_SHUF)}</button><button type="button" class="btn" id="qBack" aria-label="Take back a letter">${icon(ICON_BACK)}</button></div>` : "";
@@ -645,7 +667,7 @@ function drawQuestion() {
   };
   Q.marks();
   $("#qAlt").onclick = () => Q.answered ? Q.mark(!Q.ok) : mode === "phony" ? check("phony") : check(undefined, false);
-  $("#qMain").onclick = () => Q.answered ? next() : mode === "phony" ? check("valid") : check(undefined, mode === "anagram" ? true : undefined);
+  $("#qMain").onclick = () => Q.answered ? next() : mode === "phony" ? check("valid") : check(undefined, mode === "anagram" || mode === "pattern" ? true : undefined);
   // × leaves the quiz without ending it; the setup page then has a card to carry on
   $("#qquit").onclick = () => { Q.paused = true; saveQ(); VIEWS.quiz(); window.scrollTo(0, 0); };
   $("#hint")?.addEventListener("click", ev => { ev.preventDefault(); $("#hintBox").innerHTML = tilesHTML(alpha(q.w), true); });
@@ -666,6 +688,18 @@ function drawQuestion() {
     $("#qShuf").onclick = board.shuffle; $("#qBack").onclick = board.back;
   }
   // take a correct answer the moment it is typed; with several anagrams, clear the box after each one
+  // patterns: a letter at a time, each one that fits shows its word; all found ends the question
+  const patDraw = () => { if (mode !== "pattern") return; const want = fitsOf(q.show), f = Q.found.length;
+    $("#qpleft").textContent = Q.answered ? "" : `${want.length} letter${want.length === 1 ? " fits" : "s fit"} · ${f} found · ${want.length - f} left`; $("#qpchips").innerHTML = Q.answered ? "" : patChips(q.show, Q.found.join("")); };
+  $("#qp")?.addEventListener("input", ev => {
+    const t = ev.target.value.toUpperCase().replace(/[^A-Z]/g, ""), want = fitsOf(q.show); ev.target.value = "";
+    if (Q.answered || !t) return;
+    let good = false, bad = false;
+    for (const c of t) { if (want.includes(c) && !Q.found.includes(c)) { Q.found.push(c); good = true; } else if (!Q.found.includes(c)) bad = true; }
+    flashBox(ev.target, good && !bad); saveQ(); patDraw();
+    if (Q.found.length === want.length) check();
+  });
+  patDraw();
   $("#qa")?.addEventListener("input", ev => {
     if (Q.answered) return;
     const v = ev.target.value.toUpperCase().replace(/[^A-Z]/g, "");
@@ -723,8 +757,9 @@ function check(ans, force) {
     reveal = `<span class="small">front</span> ${letterMarks($("#qf").value, letterSet(e.fh))} <span class="small">back</span> ${letterMarks($("#qb").value, letterSet(e.bh))}`;
   } else if (mode === "pattern") {
     const want = fitsOf(q.show).join("");
-    ok = letterSet($("#qp").value) === want;
-    reveal = `<span class="small">fits</span> ${letterMarks($("#qp").value, want)}`;
+    ok = letterSet(Q.found.join("")) === want;
+    reveal = `<span class="small">fits</span> ${letterMarks(Q.found.join(""), want)}`;
+    $("#qpleft").textContent = ""; $("#qpchips").innerHTML = "";
   } else {
     const g = $("#qa").value.toUpperCase().replace(/[^A-Z]/g, "");
     ok = g === q.w || (g.length === q.w.length && DICT.get(g)?.d === e.d);
@@ -784,7 +819,7 @@ const saveP = () => store.set("psess", { key: P.key, streak: P.streak, solved: P
 // ok: the card's mark once it's marked (null before)
 const saveCard = () => store.set("pcur", { key: P.key, letters: P.letters, found: P.found, ok: P.verdict ? P.verdict.ok : null });
 // practice options: where words come from + the same filters as Search
-const PO_DEFAULT = { mode: "anagram", src: "", lens: [7], top: "", starts: "", ends: "", contains: "", incl: "", excl: "", pattern: "", from: "", to: "", anas: "", order: "rand", rev: false };
+const PO_DEFAULT = { mode: "anagram", by: "rank", lax: false, src: "", lens: [7], top: "", starts: "", ends: "", contains: "", incl: "", excl: "", pattern: "", from: "", to: "", anas: "", order: "rand", rev: false };
 // the saved options, with a single length from before the length chips turned into a list
 function practiceOpts() {
   const sp = SET.practice || {}, o = { ...PO_DEFAULT, ...sp };
@@ -808,7 +843,7 @@ function practicePool(o) {
   if (mine) { const set = new Set(mine); pool = pool.filter(w => set.has(w)); }
   if (o.starOnly) { const set = new Set(getStars()); pool = pool.filter(w => set.has(w)); }
   // optional rank range, counted in probability order within each length (e.g. ranks 1–50 or 30–80)
-  pool = likelyRange(pool, o.from, o.to);
+  pool = likelyRange(pool, o.from, o.to, o.by, o.lax);
   return (poolCache = { key, pool, error: r.error }).pool;
 }
 const leftText = () => { const n = P.want.length, f = P.found.length; return n === 1 ? (f ? "Found it" : "1 word") : `${n} words · ${f} found · ${n - f} left`; };
@@ -916,7 +951,7 @@ VIEWS.practice = () => {
         ${tf("incl", "Must include", "e.g. Z")}${tf("excl", "Must exclude", "e.g. S")}${tf("pattern", "Pattern", "e.g. .A.E*")}
         ${tf("anas", "Anagrams", "e.g. 3, 2-4 or 5+")}
       </div>
-      <div style="margin-top:14px">${likelyField("po_", o.from, o.to)}</div>
+      <div style="margin-top:14px">${likelyField("po_", o.from, o.to, o.by, o.lax)}</div>
       <div class="row" style="margin-top:16px">
         <span style="margin-left:auto"></span><button class="btn sm" id="poApply">Apply</button><button class="btn sm" id="poReset">Reset options</button><button class="btn sm" id="poForget">Reset learnt for these words</button>
       </div>
@@ -932,11 +967,12 @@ VIEWS.practice = () => {
     wireOrder();
     $("#view").querySelectorAll("[data-pmode]").forEach(b => b.onclick = () => { saveSettings({ practice: { ...o, mode: b.dataset.pmode } }); VIEWS.practice(); });
     $("#po_star").onchange = e => { saveSettings({ practice: { ...o, starOnly: e.target.checked } }); VIEWS.practice(); };
-    const read = () => { const n = { ...o }; for (const k of ["src", "starts", "ends", "contains", "incl", "excl", "pattern", "anas", "from", "to"]) n[k] = $("#po_" + k).value.trim(); n.lens = lensOf($("#po_lens").value); saveSettings({ practice: n }); VIEWS.practice(); };
+    const read = () => { const n = { ...o }; for (const k of ["src", "starts", "ends", "contains", "incl", "excl", "pattern", "anas", "from", "to", "by"]) n[k] = $("#po_" + k).value.trim(); n.lax = $("#po_lax").checked; n.lens = lensOf($("#po_lens").value); saveSettings({ practice: n }); VIEWS.practice(); };
     // picking a list picks its usual length too
     $("#po_src").onchange = () => { const v = $("#po_src").value; if (v === "my:last") keepLast(); if (v) $("#po_lens").value = v.startsWith("g:") ? groupOf(v.slice(2))?.len || "" : ""; read(); }; $("#po_lens").onchange = read; $("#poApply").onclick = read;
     $("#pOpts").querySelectorAll("input").forEach(i => i.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); read(); } });
     $("#pOpts .likely").addEventListener("likely", read); paintLikely($("#pOpts .likely"));
+    $("#po_by").onchange = $("#po_lax").onchange = read;
     $("#poReset").onclick = () => { saveSettings({ practice: { ...PO_DEFAULT } }); VIEWS.practice(); };
     confirmBtn($("#poForget"), () => { const ks = new Set(cardsOf(pool, o.mode).map(c => cardKey(o.mode, c))); store.set("plearnt", [...getLearnt()].filter(a => !ks.has(a))); VIEWS.practice(); });
   };
@@ -951,7 +987,7 @@ let pSheetOpen = false;
 function practicePlay(pool, o, opts, wire) {
   const v = $("#view"), pq = getPQ().items.length, pr = progress(pool, o.mode);
   const src = o.src.startsWith("g:") ? groupOf(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src];
-  const pills = [o.mode !== "anagram" && PMODES.find(m => m[0] === o.mode)?.[1], lensLabel(o), src, o.order !== "rand" && orderText(o.order, o.rev), o.starOnly && "★ only", likelyText(o.from, o.to), anaText(o.anas), `Streak ${P.streak}`, pq && `${pq} to review`].filter(Boolean);
+  const pills = [o.mode !== "anagram" && PMODES.find(m => m[0] === o.mode)?.[1], lensLabel(o), src, o.order !== "rand" && orderText(o.order, o.rev), o.starOnly && "★ only", likelyText(o.from, o.to, o.by, o.lax), anaText(o.anas), `Streak ${P.streak}`, pq && `${pq} to review`].filter(Boolean);
   const top = `<div class="fc-top"><button type="button" class="ib2" id="pExit" aria-label="Leave practice">×</button><div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div>
       <span class="n" title="${pr.unit} learnt">${pr.racks.toLocaleString()} / ${pr.racksAll.toLocaleString()}</span><button type="button" class="ib2 phone-only" id="pStatsBtn" aria-label="Stats">${icon('<path d="M5 20V11M12 20V4M19 20v-6"/>')}</button><button type="button" class="ib2" id="pOptBtn" aria-label="Options">${icon('<path d="M4 6h16M7 12h10M10 18h4"/>')}</button></div>
     <div class="hscroll ppills">${pills.map(p => `<button type="button" class="pill" data-popt>${esc(p)}</button>`).join("")}</div>`;
@@ -1062,11 +1098,15 @@ function practiceLetters(pool, o, top, sh, wireTop, pr) {
       <p class="q">${mode === "hooks" ? "Which letters go on the front, and the back?" : "Which letters fit the gap?"}${review ? ` · <b style="color:var(--warn)">review</b>` : ""}</p>
       ${mode === "hooks" ? hookHTML(card) : gapHTML(card)}
       <form id="lform" class="lform">${mode === "hooks" ? `<label><span>Front</span><input class="qinput" id="lf" value="${esc(typed.f)}" placeholder="none" ${typing}></label><label><span>Back</span><input class="qinput" id="lb" value="${esc(typed.b)}" placeholder="none" ${typing}></label>`
-        : `<label><span>Letters</span><input class="qinput" id="lf" value="${esc(typed.f)}" placeholder="any order" ${typing}></label>`}<button type="submit" hidden></button></form>
+        : `<label><span>Type a letter</span><input class="qinput" id="lf" placeholder="one at a time" ${typing}></label>`}<button type="submit" hidden></button></form>
+      ${mode === "pattern" ? `<p class="q" id="lleft" style="margin:10px 0 4px"></p><div id="lchips"></div>` : ""}
       <div id="lres"></div></div>
     <div class="thumb"><div class="acts"><button type="button" class="btn mk" id="pAlt"></button><button type="button" class="btn mk" id="pMain"></button></div></div></div>
     ${practiceRail(pr, "prail")}</div>` + sh;
-  const read = () => { typed = { f: $("#lf").value, b: $("#lb")?.value || "" }; };
+  // patterns are typed a letter at a time (each one that fits is kept); hooks are read from their two boxes
+  const read = () => { if (mode !== "pattern") typed = { f: $("#lf").value, b: $("#lb")?.value || "" }; };
+  const chipsDraw = () => { if (mode !== "pattern") return; const n = want.f.length, f = typed.f.length;
+    $("#lleft").textContent = ok !== null ? "" : `${n} letter${n === 1 ? " fits" : "s fit"} · ${f} found · ${n - f} left`; $("#lchips").innerHTML = ok !== null ? "" : patChips(card, typed.f); };
   const marks = () => {
     const a = $("#pAlt"), m = $("#pMain");
     a.className = `btn mk ${ok === false ? "yes" : "no"}`; a.innerHTML = `${ok === false ? "✓" : "✗"}${kb("1")}`;
@@ -1080,18 +1120,27 @@ function practiceLetters(pool, o, top, sh, wireTop, pr) {
       <p class="lans">${mode === "hooks" ? `<span>Front</span>${letterMarks(typed.f, want.f)}<span>Back</span>${letterMarks(typed.b, want.b)}` : `<span>Fits</span>${letterMarks(typed.f, want.f)}`}</p>
       <div class="rows">${words.map(w => rowHTML(w)).join("")}</div>`;
   };
-  const finish = force => { read(); const right = letterSet(typed.f) === want.f && (mode !== "hooks" || letterSet(typed.b) === want.b); ok = force === undefined ? right : force; save(); show(); marks(); };
+  const finish = force => { read(); const right = letterSet(typed.f) === want.f && (mode !== "hooks" || letterSet(typed.b) === want.b); ok = force === undefined ? right : force; save(); show(); marks(); chipsDraw(); };
   const nextCard = () => { commitPractice(); VIEWS.practice(); };
   $("#lform").addEventListener("submit", ev => { ev.preventDefault(); ok === null ? finish() : nextCard(); });
-  v.querySelectorAll("#lform input").forEach(i => i.addEventListener("input", () => { read(); if (ok === null) save(); }));
+  if (mode === "pattern") $("#lf").addEventListener("input", ev => {
+    const typedNow = ev.target.value.toUpperCase().replace(/[^A-Z]/g, ""); ev.target.value = "";
+    if (ok !== null || !typedNow) return;
+    let good = false, bad = false;
+    for (const c of typedNow) { if (want.f.includes(c) && !typed.f.includes(c)) { typed.f += c; good = true; } else if (!typed.f.includes(c)) bad = true; }
+    flashBox(ev.target, good && !bad); save(); chipsDraw();
+    if (typed.f.length === want.f.length) finish(true);
+  });
+  else v.querySelectorAll("#lform input").forEach(i => i.addEventListener("input", () => { read(); if (ok === null) save(); }));
   $("#pAlt").onclick = () => { if (ok === null) finish(false); else { ok = !ok; save(); show(); marks(); } };
-  $("#pMain").onclick = () => ok === null ? finish() : nextCard();
+  // ✓ before the end: "knew it" for a pattern (as with anagrams); for hooks it checks the boxes
+  $("#pMain").onclick = () => ok === null ? finish(mode === "pattern" ? true : undefined) : nextCard();
   document.onkeydown = ev => {
     if (pSheetOpen || pkOpen || ev.metaKey || ev.ctrlKey || ev.altKey || ev.target.closest?.("input, select, textarea")) return;
     if (ev.key === "1") $("#pAlt").click();
     else if (ev.key === "2" || ev.key === "Enter") { ev.preventDefault(); $("#pMain").click(); }
   };
-  marks(); show(); wireTop();
+  marks(); show(); chipsDraw(); wireTop();
   if (ok === null && !phone()) $("#lf").focus();
 }
 const ICON_PLAY = '<svg viewBox="0 0 24 24" class="play" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
