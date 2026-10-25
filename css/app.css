@@ -897,3 +897,106 @@ main.wrap:has(> .foc) { max-width: 1400px; }
 .tgrid i { font: 600 .7rem var(--mono); font-style: normal; opacity: .75; }
 .tgrid button.gone { opacity: .3; }
 @media (max-width: 620px) { .tgrid { grid-template-columns: repeat(7, 1fr); } .gscore > div b { font-size: 1.2rem; } .glog { max-height: 260px; } }
+
+/* ---------- Games and Review (js/review.js). Grades: best play, then small / medium / large mistakes ---------- */
+:root { --g-opt: var(--good); --g-sm: color-mix(in srgb, #c49a22 80%, var(--ink)); --g-md: color-mix(in srgb, #dd6c18 85%, var(--ink)); --g-lg: var(--bad); }
+.g-opt { --gc: var(--g-opt); } .g-sm { --gc: var(--g-sm); } .g-md { --gc: var(--g-md); } .g-lg { --gc: var(--g-lg); } .g-none { --gc: var(--line); }
+.rvhead { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.rvhead .lbl { margin: 0; }
+.rvhead > :last-child:not(:first-child) { margin-left: auto; }
+.rvmac { display: inline-flex; align-items: center; gap: 6px; font: 600 .74rem var(--display); color: var(--muted); }
+.rvmac::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); opacity: .6; }
+.rvmac.on::before { background: var(--good); opacity: 1; box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
+.rvadd { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 4px 0 6px; }
+.rvaddb { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 12px; background: color-mix(in srgb, var(--panel) 60%, transparent); color: var(--ink); text-decoration: none; cursor: pointer; font: inherit; }
+.rvaddb:hover { border-color: var(--accent); }
+.rvaddb b { font: 700 .9rem var(--display); }
+.rvaddb span { font-size: .74rem; color: var(--muted); }
+.rvwoog { display: flex; gap: 8px; margin: 6px 0; }
+.rvwoog[hidden] { display: none; }
+.rvwoog input { flex: 1; text-transform: none; }
+.rvrow { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+.rvlist .rvrow:first-child { border-top: 0; }
+.rvwhen { text-align: center; font-size: .72rem; color: var(--muted); line-height: 1.2; text-decoration: none; }
+.rvwhen b { display: block; font: 800 1.15rem/1 var(--display); color: var(--ink); }
+.rvwho { display: flex; flex-direction: column; gap: 3px; min-width: 0; color: var(--ink); text-decoration: none; }
+.rvwho > b { font: 700 .95rem var(--display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rvsub { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .76rem; color: var(--muted); }
+.rvres { font: 700 .74rem var(--mono); padding: 1px 6px; border-radius: 6px; background: var(--chip); color: var(--ink); }
+.rvres.w { background: color-mix(in srgb, var(--good) 18%, transparent); color: color-mix(in srgb, var(--good) 80%, var(--ink)); }
+.rvres.l { background: color-mix(in srgb, var(--bad) 15%, transparent); color: color-mix(in srgb, var(--bad) 80%, var(--ink)); }
+.rvright { display: flex; justify-content: flex-end; }
+.rvmi { text-align: right; font-size: .66rem; color: var(--muted); line-height: 1.1; }
+.rvmi b { display: block; font: 800 1.1rem/1 var(--display); color: var(--ink); }
+.rvwait { text-align: right; max-width: 6em; }
+.rvprog { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; max-width: 340px; }
+.rvprog .simbar { height: 6px; }
+.rvprog .small { white-space: nowrap; }
+
+/* the review page */
+.rvnav { display: flex; align-items: center; gap: 6px; }
+.rvnav .btn { min-width: 42px; }
+.rvturn { flex: 1; text-align: center; font: 700 .95rem var(--display); }
+.rvtoggle { display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; padding: 4px 0; font: 600 .82rem var(--display); color: var(--muted); cursor: pointer; }
+.rvtoggle i { width: 32px; height: 19px; border-radius: 99px; background: var(--line); position: relative; transition: background .2s; }
+.rvtoggle i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / .3); transition: left .2s; }
+.rvtoggle.on { color: var(--ink); } .rvtoggle.on i { background: var(--good); } .rvtoggle.on i::after { left: 15px; }
+.rvtoggle:disabled { opacity: .4; cursor: default; }
+/* the best play, laid over the board: the tiles tinted green with a dashed edge */
+#rvBoard.rvbest .tile.new { background-image: none; background-color: color-mix(in srgb, var(--good) 30%, var(--tile)); color: color-mix(in srgb, var(--good) 55%, var(--tile-ink)); filter: none; translate: none;
+  box-shadow: 0 0 0 2px var(--good), inset 0 -2px 0 color-mix(in srgb, var(--good) 40%, var(--tile-edge)); outline: 2px dashed color-mix(in srgb, var(--good) 45%, transparent); outline-offset: 2px; }
+#rvBoard.rvbest .tile.new::after { display: none; }
+.rvsums { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rvsums > div { display: flex; align-items: center; gap: 12px; }
+.rvsums span { font-size: .7rem; color: var(--muted); line-height: 1.15; }
+.rvsums span b { display: block; font: 800 1.15rem/1.1 var(--display); color: var(--ink); }
+.rvav { width: 30px; height: 30px; border-radius: 50%; display: grid !important; place-items: center; background: var(--head); color: var(--head-ink) !important; font: 800 .9rem var(--display) !important; flex: none; }
+.rvsub2 { display: flex; margin: 12px 0 2px; } .rvsub2 .small { margin-left: auto; letter-spacing: 0; text-transform: none; }
+.rvgraph { display: block; width: 100%; height: auto; overflow: visible; }
+.rvgraph text { font: 600 9px var(--mono); fill: var(--muted); }
+.rvgraph .mid { stroke: var(--line); stroke-dasharray: 3 3; }
+.rvgraph .area { fill: color-mix(in srgb, var(--accent) 16%, transparent); }
+.rvgraph .ln { fill: none; stroke: color-mix(in srgb, var(--accent) 80%, var(--ink)); stroke-width: 2; stroke-linejoin: round; }
+.rvgraph .cur { stroke: var(--accent); stroke-width: 1.5; }
+.rvgraph circle { fill: var(--gc); stroke: var(--panel); stroke-width: 1.5; cursor: pointer; }
+.rvgrade { display: inline-flex; align-items: center; gap: 5px; font: 700 .72rem var(--display); padding: 2px 9px 2px 7px; border-radius: 99px; white-space: nowrap;
+  background: color-mix(in srgb, var(--gc) 15%, var(--panel)); color: color-mix(in srgb, var(--gc) 85%, var(--ink)); border: 1px solid color-mix(in srgb, var(--gc) 40%, transparent); }
+.rvgrade::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--gc); }
+.rvrack { margin-bottom: 10px; }
+.rvvs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rvvs > div { display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); min-width: 0; }
+.rvvs > div.best { border-color: color-mix(in srgb, var(--good) 55%, var(--line)); background: color-mix(in srgb, var(--good) 8%, var(--bg)); }
+.rvvs small { font: 700 .62rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.rvvs .best small { color: var(--good); }
+.rvvs .rvw { font-size: 1.25rem; }
+.rvw { font: 800 1em var(--display); letter-spacing: .03em; overflow-wrap: anywhere; }
+.rvw i { font-style: normal; color: var(--accent); }
+.rvcost { display: flex; align-items: baseline; gap: 8px; margin: 10px 0 0; }
+.rvcost b { font: 800 1.5rem/1 var(--display); color: var(--gc); }
+.rvcost span { font-size: .8rem; color: var(--muted); }
+.rvtops > div { display: grid; grid-template-columns: 18px minmax(0, 1fr) 56px 30px 104px; gap: 6px; align-items: center; padding: 5px 4px; border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); font-size: .86rem; }
+.rvtops > div:first-child { border-top: 0; }
+.rvtops > div.mine { background: color-mix(in srgb, var(--accent) 10%, transparent); box-shadow: inset 3px 0 0 var(--accent); border-radius: 4px; }
+.rvtops .n { font: 600 .72rem var(--mono); color: var(--muted); }
+.rvtops .lv, .rvtops .s { font: 600 .74rem var(--mono); color: var(--muted); }
+.rvtops .s { text-align: right; }
+.rvtops .wb { display: flex; align-items: center; gap: 6px; font: 700 .76rem var(--mono); }
+.rvtops .wb i { flex: 1; height: 6px; border-radius: 3px; background: var(--chip); overflow: hidden; }
+.rvtops .wb b { display: block; height: 100%; background: var(--good); }
+.rvtag { font: 700 .58rem var(--display); letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border-radius: 99px; background: var(--accent); color: var(--on-accent, #fff); margin-left: 6px; vertical-align: 1px; }
+.rvtag.best { background: var(--good); color: #fff; }
+.rvsheet { display: grid; grid-template-columns: 1fr 1fr; max-height: 220px; overflow-y: auto; margin: 0 -4px; }
+.rvsheet button { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 5px 6px; border: 0; border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent); background: none; color: var(--ink); font: .84rem var(--body); cursor: pointer; text-align: left; }
+.rvsheet button.on { background: color-mix(in srgb, var(--accent) 16%, transparent); border-radius: 6px; }
+.rvsheet .rvdot { width: 9px; height: 9px; border-radius: 50%; background: var(--gc); flex: none; }
+.rvsheet .rvwho2 { font: 600 .68rem var(--mono); color: var(--muted); width: 2.6em; flex: none; }
+.rvsheet .rvmw { font: 700 .86rem var(--display); letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rvsheet .rvms { margin-left: auto; font: 600 .72rem var(--mono); color: var(--muted); }
+.rvat { font: 600 .66rem var(--mono); color: var(--muted); }
+/* the review redraws on every turn, so its tiles don't replay their pop-in */
+.rvgrid .tile, .rvgrid .tile::after { animation: none !important; }
+@media (max-width: 760px) { .rvadd { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 620px) {
+  .rvtops > div { grid-template-columns: 16px minmax(0, 1fr) 30px 84px; } .rvtops .lv { display: none; }
+  .rvvs .rvw { font-size: 1.05rem; } .rvsums > div { gap: 8px; } .rvsums span b { font-size: 1rem; }
+}

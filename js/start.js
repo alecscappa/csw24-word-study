@@ -21,7 +21,7 @@ const LEX = {
     document.getElementById("lexFile").onchange = e => { const f = e.target.files[0]; if (!f) return; msg.textContent = "Loading…"; LEX.load(f).catch(err => msg.textContent = "Couldn't load that file: " + err.message); };
   },
 };
-const APP_FILES = ["js/base.js", "js/data.js", "js/study.js", "js/board.js", "js/routing.js"];
+const APP_FILES = ["js/base.js", "js/data.js", "js/study.js", "js/board.js", "js/review.js", "js/routing.js"];
 if (location.protocol === "https:" && "serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 (async () => {
   if (!window.CSW_TSV) { try { window.CSW_TSV = await LEX.get(); if (window.CSW_TSV) LEX.source = "saved"; } catch {} }

@@ -379,8 +379,8 @@ const mvAt = m => m.tiles?.length ? bAt(m.start, m.dir) : "";
 const mvWord = m => m.pass ? "Pass" : m.exch !== undefined ? `Swap ${sortRack(m.exch)}` : m.word;
 const signed = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1).replace(/\.0$/, "");
 const wait = ms => new Promise(r => setTimeout(r, ms));
-// the board tab's switch: Free board · Analyse · Play
-const boardSeg = k => `<nav class="studyseg">${[["", "Free board"], ["analyse", "Analyse"], ["play", "Play"]].map(([h, n]) =>
+// the board tab's switch: Free board · Analyse · Play · Games
+const boardSeg = k => `<nav class="studyseg">${[["", "Free board"], ["analyse", "Analyse"], ["play", "Play"], ["games", "Games"]].map(([h, n]) =>
   `<a href="#board${h ? "/" + h : ""}" class="${h === k ? "on" : ""}">${n}</a>`).join("")}</nav>`;
 
 // ---------- placing tiles from a rack (Play and the Lab). S: { board, rack, pend: [{ i, ri, ch, b }], cur, dir, sel, swap }.
@@ -746,7 +746,7 @@ function viewPlay() {
     const [a, b] = GAME.scores, w = a === b ? -1 : a > b ? 0 : 1;
     status = `<p class="bq">${w < 0 ? "A draw" : GAME.mode === "cpu" ? (w === 0 ? "You won" : "The computer won") : esc(GAME.names[w]) + " won"}, ${Math.max(a, b)}–${Math.min(a, b)}</p>
       ${GAME.resigned !== undefined ? `<p class="small">${esc(GAME.names[GAME.resigned])} resigned.</p>` : ""}
-      <div class="row" style="margin-top:12px"><button class="btn primary" id="gReview">${GUI.review ? "Review again" : "Review the game"}</button><button class="btn" id="gNew2">New game</button></div>`;
+      <div class="row" style="margin-top:12px"><button class="btn primary" id="gToGames">${GAME.savedAs && gameById(GAME.savedAs) ? "Open its review" : "Full review"}</button><button class="btn" id="gReview">${GUI.review ? "Quick check again" : "Quick check"}</button><button class="btn" id="gNew2">New game</button></div>`;
   } else if (cover) {
     const canChal = GAME.rule === "chal" && lastE?.k === "play" && lastE.p !== GAME.turn && !lastE.held;
     status = `<p class="bq">${esc(GAME.names[GAME.turn])}'s turn</p>${lastE ? `<p class="small" style="margin:4px 0 0">${esc(logLine(GAME, lastE))}</p>` : ""}
@@ -823,6 +823,7 @@ function viewPlay() {
   GAME.over ? on("gNew", fresh) : confirmBtn($("#gNew"), fresh);
   on("gNew2", fresh);
   on("gReview", () => runReview());
+  on("gToGames", () => { const gm = GAME.savedAs && gameById(GAME.savedAs) || gameFromPlay(GAME); location.hash = "board/rv-" + gm.id; });
   on("gRetry", () => { GUI.cpuFail = ""; cpuGo(); });
   wireReview();
   cpuGo();
@@ -1018,5 +1019,6 @@ function labTrack() {
   confirmBtn($("#ttReset"), () => { T.used = {}; T.hist = []; save(); });
 }
 // the Board tab: Free board (Look), Analyse, Play. Count used to be #board/count; old links go to Scoring
-VIEWS.board = arg => arg === "count" ? location.replace("#scoring") : arg === "analyse" ? viewAnalyse() : arg === "play" ? viewPlay() : viewLook();
+VIEWS.board = arg => arg === "count" ? location.replace("#scoring") : arg === "analyse" ? viewAnalyse() : arg === "play" ? viewPlay()
+  : arg === "games" ? viewGames() : arg === "type" ? viewType() : arg?.startsWith("rv-") ? viewReview(arg.slice(3)) : viewLook();
 

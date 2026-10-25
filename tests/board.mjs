@@ -38,7 +38,7 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   // ---- Free board, Scoring, Board look
   let e0 = errors.length;
   await go("board"); check(`${W} Free board draws`, await ev(`!!document.querySelector("#view .bd") && document.querySelectorAll("#view .bgrid .bd .sq").length === 225`));
-  check(`${W} board switch has three parts`, await ev(`document.querySelectorAll("#view nav.studyseg a").length`) === 3);
+  check(`${W} board switch has four parts`, await ev(`document.querySelectorAll("#view nav.studyseg a").length`) === 4);
   await click("#bLookOpen"); await sleep(200);
   check(`${W} Board look: Theme for the board list`, await ev(`document.querySelectorAll('#bsheet [data-bset="bTheme"]').length`) > 5, await ev(`document.querySelectorAll('#bsheet [data-bset="bTheme"]').length`) + " buttons");
   await click('#bsheet [data-bset="bStyle"][data-val="wood"]'); await sleep(150);
