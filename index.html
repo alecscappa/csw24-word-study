@@ -1573,7 +1573,8 @@ async function fetchOnline(w) {
     const r = await fetch(`https://en.wiktionary.org/api/rest_v1/page/definition/${encodeURIComponent(lw)}`);
     if (r.ok) {
       const data = await r.json();
-      const strip = h => { const t = document.createElement("div"); t.innerHTML = h; return t.textContent.trim(); };
+      // parsed, not put in the page, so nothing in Wiktionary's HTML (an image, a script) can run
+      const strip = h => new DOMParser().parseFromString(h, "text/html").body.textContent.trim();
       for (const ent of data.en || []) for (const d of ent.definitions || []) {
         const def = strip(d.definition || ""); if (!def) continue;
         const ex = (d.parsedExamples || []).map(x => strip(x.example)).concat((d.examples || []).map(strip)).filter(Boolean)[0];
@@ -3105,7 +3106,8 @@ function route() {
   const fresh = searchFromBar;
   $('#tabs [data-tab="study"]').href = "#" + store.get("studyLast", "lists");
   document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === t || (a.dataset.tab === "study" && STUDY.includes(t))));
-  if (t !== "quiz") document.onkeydown = null;
+  // each page sets its own keys (Quiz again when a question is drawn), so none carry over from the last page
+  document.onkeydown = null;
   $("#view").classList.toggle("quizv", t === "quiz" || t === "practice");
   // phone: Practice is full screen (no header) only once started; a sheet left open elsewhere is closed
   document.body.classList.toggle("full", t === "practice" && arg === "go");
