@@ -3,7 +3,7 @@
 // changed; the newer copy wins. The first time a device signs in, what it already has is added to the account's
 // (stars, notes, games and so on are merged, not replaced). The look (theme, text size, tiles, the board's look)
 // stays each device's own ----------
-const SYNC_KEYS = ["stars", "missed", "notes", "notebook", "hist", "stats", "plearnt", "pq", "pLast", "games", "boardStats", "labStats", "settings"];
+const SYNC_KEYS = ["stars", "missed", "notes", "notebook", "folders", "known", "hist", "stats", "plearnt", "pq", "pLast", "games", "boardStats", "labStats", "settings"];
 const LOOK_KEYS = ["theme", "mode", "glare", "size", "tiles", "tileCustom", "headCustom", "accentCustom", "tileLook", "tileFont", "rackLook", "values", "tones",
   "bPal", "bLabels", "bCoords", "bTile", "bStyle", "bMark", "bTheme", "bTileCol", "bArrows"];
 const FB_SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
@@ -22,7 +22,8 @@ function syncIn(k, local, remote, first) {
   if (k === "settings") return { ...(local || {}), ...remote, ...Object.fromEntries(LOOK_KEYS.filter(f => local && f in local).map(f => [f, local[f]])) };
   if (!first || local == null) return remote;
   // first sign-in on this device: put the two together
-  if (Array.isArray(local) && Array.isArray(remote) && k !== "games" && k !== "notebook") return [...new Set([...local, ...remote])];
+  if (Array.isArray(local) && Array.isArray(remote) && k !== "games" && k !== "notebook" && k !== "folders") return [...new Set([...local, ...remote])];
+  if (k === "folders") { const by = new Map(remote.map(f => [f.id, f])); for (const f of local) { const r = by.get(f.id); by.set(f.id, r ? { ...(f.at > r.at ? f : r), words: [...new Set([...r.words, ...f.words])] } : f); } return [...by.values()]; }
   if (k === "notebook") { const by = new Map(remote.map(n => [n.id, n])); for (const n of local) { const r = by.get(n.id); if (!r || n.at > r.at) by.set(n.id, n); } return [...by.values()].sort((a, b) => b.at - a.at); }
   if (k === "notes") return { ...remote, ...local };
   if (k === "games") { const by = new Map(remote.map(g => [g.id, g])); for (const g of local) { const r = by.get(g.id); if (!r || (g.review && !r.review)) by.set(g.id, g); } return [...by.values()].sort((a, b) => b.at - a.at); }

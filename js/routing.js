@@ -52,6 +52,13 @@ $("#randBtn").addEventListener("click", () => {
   location.hash = "w/" + pool[Math.floor(Math.random() * pool.length)];
 });
 document.addEventListener("click", ev => {
+  const kb = ev.target.closest("[data-known]");
+  if (kb) {
+    ev.preventDefault();
+    const w = kb.dataset.known, on = toggleKnown(w);
+    document.querySelectorAll(`[data-known="${w}"]`).forEach(b => { b.closest(".r")?.classList.toggle("known", on); b.outerHTML = knownBtn(w, on); });
+    return;
+  }
   const sb = ev.target.closest("[data-star]");
   if (sb) {
     ev.preventDefault();

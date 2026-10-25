@@ -201,7 +201,7 @@ function results(el, words, opts = {}) {
     const list = ranged ? full.slice(lo - 1, hi) : full;
     const offset = ranged ? lo - 1 : 0;
     lastResults = list;
-    const starSet = new Set(getStars()), allStarred = list.length > 0 && list.every(w => starSet.has(w));
+    const starSet = new Set(getStars()), knownSet = new Set(getKnown()), allStarred = list.length > 0 && list.every(w => starSet.has(w));
     const total = st.lens.size ? `${full.length.toLocaleString()} ${[...st.lens].sort((a, b) => a - b).join(", ")}-letter words <span class="small">(${words.length.toLocaleString()} in all)</span>` : `${full.length.toLocaleString()} word${full.length === 1 ? "" : "s"}`;
     el.innerHTML = `
       <div class="toolbar">
@@ -210,7 +210,8 @@ function results(el, words, opts = {}) {
         <label class="check small"><input type="checkbox" id="defChk" ${SET.defs ? "checked" : ""}> Definitions</label>
         <div class="tacts"><button class="btn sm" id="quizThese">Quiz these</button>
         <button class="btn sm" id="practiceThese">Practice these</button>
-        <button class="btn sm" id="starAll">${allStarred ? "Unstar all" : "Star all"}</button></div>
+        <button class="btn sm" id="starAll">${allStarred ? "Unstar all" : "Star all"}</button>
+        <button class="btn sm" id="toFolder">Add to folder</button></div>
       </div>
       <div class="row rangebar">
         <span class="small">Show</span>
@@ -223,7 +224,7 @@ function results(el, words, opts = {}) {
         <span class="small">in ${SORTS[SET.sort] || "Probability"} order</span>
       </div>
       ${lens.length > 1 ? `<div class="chips" style="margin:10px 0 6px"><button class="btn sm ${st.lens.size ? "" : "on"}" data-len="0">All lengths</button>${lens.map(n => `<button class="btn sm ${st.lens.has(n) ? "on" : ""}" data-len="${n}">${n}</button>`).join("")}</div>` : ""}
-      ${list.length ? `<div class="rows ${ranged ? "ranked" : ""} ${SET.defs ? "" : "nodefs"} ${SET.prob ? "" : "noprob"} ${SET.hooks ? "" : "nohooks"}">${list.slice(0, st.shown).map((w, i) => rowHTML(w, opts.masks?.get(w), ranged ? offset + i + 1 : 0, starSet)).join("")}</div>` : `<p class="empty" style="margin-top:10px">${ranged && full.length ? `There are only ${full.length.toLocaleString()} words, so rank ${lo.toLocaleString()} is past the end.` : "No words match."}</p>`}
+      ${list.length ? `<div class="rows ${ranged ? "ranked" : ""} ${SET.defs ? "" : "nodefs"} ${SET.prob ? "" : "noprob"} ${SET.hooks ? "" : "nohooks"}">${list.slice(0, st.shown).map((w, i) => rowHTML(w, opts.masks?.get(w), ranged ? offset + i + 1 : 0, starSet, knownSet)).join("")}</div>` : `<p class="empty" style="margin-top:10px">${ranged && full.length ? `There are only ${full.length.toLocaleString()} words, so rank ${lo.toLocaleString()} is past the end.` : "No words match."}</p>`}
       ${list.length > st.shown ? `<button class="btn more" id="moreBtn">Show ${Math.min(+SET.pageSize, list.length - st.shown).toLocaleString()} more</button>` : ""}`;
     // length chips: tap several to see them together; All lengths clears them
     el.querySelectorAll("[data-len]").forEach(b => b.onclick = () => {
@@ -245,16 +246,18 @@ function results(el, words, opts = {}) {
     el.querySelector("#moreBtn")?.addEventListener("click", () => { st.shown += +SET.pageSize; mem.shown = st.shown; draw(); });
     el.querySelector("#quizThese").onclick = () => { quizSetup.source = "last"; quizSetup.lens = []; quizSetup.starOnly = false; location.hash = "quiz"; };
     el.querySelector("#practiceThese").onclick = () => { store.set("pLast", [...lastResults]); saveSettings({ practice: { ...PO_DEFAULT, mode: SET.practice?.mode || "anagram", order: SET.practice?.order || "rand", rev: !!SET.practice?.rev, src: "my:last", lens: [] } }); location.hash = "practice"; };
+    el.querySelector("#toFolder").onclick = () => folderSheet(list);
     // Star all / Unstar all for exactly the rows in view (after the length and rank filters)
     el.querySelector("#starAll").onclick = () => { const s = getStars(), inList = new Set(list); store.set("stars", allStarred ? s.filter(w => !inList.has(w)) : [...list.filter(w => !starSet.has(w)), ...s]); draw(); };
     if (first) { first = false; restoreScroll(); pendingScroll = 0; }
   }
   draw();
 }
+const knownBtn = (w, on) => `<button type="button" class="kn ${on ? "on" : ""}" data-known="${w}" title="${on ? "Not known yet" : "Cross off: I know it"}" aria-label="${on ? "Uncross" : "Cross off"} ${w}" aria-pressed="${on}">✓</button>`;
 const starBtn = (w, on) => `<button type="button" class="st ${on ? "on" : ""}" data-star="${w}" title="${on ? "Unstar" : "Star"}" aria-label="Star ${w}">${on ? "★" : "☆"}</button>`;
-function rowHTML(w, mask, rank, stars = new Set(getStars())) {
+function rowHTML(w, mask, rank, stars = new Set(getStars()), known = new Set(getKnown())) {
   const e = DICT.get(w);
   const label = mask ? [...w].map((c, i) => mask[i] ? `<mark>${c.toLowerCase()}</mark>` : c).join("") : w;
-  return `<div class="r" data-go="${w}">${rank ? `<span class="rk">${rank}.</span>` : ""}<span class="meta">#${e.p.toLocaleString()}</span><span class="fh">${hookText(e.fh, e.fhNew)}</span><span class="wl">${label}${e.n ? "<sup>+</sup>" : ""}</span><span class="bh">${hookText(e.bh, e.bhNew)}</span><span class="d">${esc(e.d)}</span>${starBtn(w, stars.has(w))}</div>`;
+  return `<div class="r${known.has(w) ? " known" : ""}" data-go="${w}">${rank ? `<span class="rk">${rank}.</span>` : ""}<span class="meta">#${e.p.toLocaleString()}</span><span class="fh">${hookText(e.fh, e.fhNew)}</span><span class="wl">${label}${e.n ? "<sup>+</sup>" : ""}</span><span class="bh">${hookText(e.bh, e.bhNew)}</span><span class="d">${esc(e.d)}</span><span class="ra">${knownBtn(w, known.has(w))}${starBtn(w, stars.has(w))}</span></div>`;
 }
 

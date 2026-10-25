@@ -30,7 +30,7 @@ VIEWS.w = (arg) => {
       <span class="badge plain">${score(w)} pts</span>
       ${qs ? `<span class="badge plain">Record ${qs[0]}✓ ${qs[1]}✗</span>` : ""}
       ${inGroups.map(g => `<a class="badge plain" href="#lists/${g.id}">${esc(g.name)}</a>`).join("")}
-      ${valid ? `<button class="btn sm ${starred ? "on" : ""}" id="starBtn" style="margin-left:auto">${starred ? "★ Starred" : "☆ Star"}</button>` : ""}
+      ${valid ? `<span style="margin-left:auto"></span><button class="btn sm ${getKnown().includes(w) ? "on" : ""}" id="knownBtnW">${getKnown().includes(w) ? "✓ Known" : "✓ Cross off"}</button><button class="btn sm" id="folderBtn">Add to folder</button><button class="btn sm ${starred ? "on" : ""}" id="starBtn">${starred ? "★ Starred" : "☆ Star"}</button>` : ""}
     </div>
   </div>`;
   html += valid
@@ -75,7 +75,8 @@ VIEWS.w = (arg) => {
         ${tilesHTML(w)}
         ${valid ? `<div class="hooksline">${hk(e.fh, "f")}<span>hooks</span>${hk(e.bh, "b")}</div>` : ""}
         <div class="badges">${valid ? `<span class="badge ok">✓ Valid</span>` : `<span class="badge bad">✗ Phony</span>`}${e?.n ? `<span class="badge">New</span>` : ""}<span class="badge">${score(w)} pts</span>${valid ? `<span class="badge">#${e.p.toLocaleString()} of ${w.length}s</span>` : ""}</div>
-        <p class="hdef">${valid ? defHTML(e.d) : "Not in the lexicon"}</p></div>
+        <p class="hdef">${valid ? defHTML(e.d) : "Not in the lexicon"}</p>
+        ${valid ? `<div class="hacts"><button type="button" class="btn sm ${getKnown().includes(w) ? "on" : ""}" id="knownBtnW">${getKnown().includes(w) ? "✓ Known" : "✓ Cross off"}</button><button type="button" class="btn sm" id="folderBtn">Add to folder</button></div>` : ""}</div>
       <nav class="segtabs">${[["ana", "Anagrams", ana.length], ["plus", "Add one", plusN], ["minus", "Drop one", minusN], ["facts", "Facts"]].map(([k, n, c]) => `<button type="button" class="${k === wt ? "on" : ""}" data-wtab="${k}">${n}${c !== undefined ? `<em>${c}</em>` : ""}</button>`).join("")}</nav></div>
       ${Object.entries(panes).map(([k, h]) => `<div class="wpane" data-pane="${k}" ${k === wt ? "" : "hidden"}>${h}</div>`).join("")}
       ${valid ? noteCard : ""}`;
@@ -92,6 +93,8 @@ VIEWS.w = (arg) => {
   if (!valid) return;
   if (SET.online) fetchOnline(w);
   $("#note").addEventListener("input", ev => { const n = getNotes(); if (ev.target.value.trim()) n[w] = ev.target.value; else delete n[w]; store.set("notes", n); });
+  $("#knownBtnW").addEventListener("click", ev => { const on = toggleKnown(w); ev.currentTarget.classList.toggle("on", on); ev.currentTarget.textContent = on ? "✓ Known" : "✓ Cross off"; });
+  $("#folderBtn").addEventListener("click", () => folderSheet([w]));
   $("#starBtn").addEventListener("click", ev => { const b = ev.currentTarget, on = toggleStar(w); b.classList.toggle("on", on); b.textContent = b.classList.contains("hstar") ? (on ? "★" : "☆") : on ? "★ Starred" : "☆ Star"; });
 };
 
@@ -536,15 +539,17 @@ if (!Array.isArray(quizSetup.lens)) {
 let Q = store.get("quiz", null);
 const saveQ = () => store.set("quiz", Q);
 function quizSources() {
-  return [["stars", `Starred words (${getStars().length})`], ["missed", `Missed words (${store.get("missed", []).length})`], ["last", `Last search results (${lastResults.length})`]];
+  return [["stars", `Starred words (${getStars().length})`], ["missed", `Missed words (${store.get("missed", []).length})`], ["last", `Last search results (${lastResults.length})`],
+    ...getFolders().map(f => ["folder:" + f.id, `📁 ${f.name} (${f.words.length})`])];
 }
 function sourceWords(src) {
   const g = groupOf(src.replace("list:", ""));
-  let words = src === "stars" ? getStars() : src === "missed" ? store.get("missed", []) : src === "last" ? lastResults
+  let words = src === "stars" ? getStars() : src === "missed" ? store.get("missed", []) : src === "last" ? lastResults : src.startsWith("folder:") ? folderById(src.slice(7))?.words || []
     : !g ? [] : g.special === "stems" ? stems(g.n).flatMap(s => s.words) : groupWords(g);
   const lens = quizSetup.lens || [];
   if (lens.length) words = words.filter(w => lens.includes(w.length));
   if (quizSetup.starOnly && src !== "stars") { const s = new Set(getStars()); words = words.filter(w => s.has(w)); }
+  if (quizSetup.skipKnown) { const k = new Set(getKnown()); words = words.filter(w => !k.has(w)); }
   return words;
 }
 function makePhony(w) {
@@ -589,7 +594,8 @@ VIEWS.quiz = () => {
     <div class="field wide"><span class="flabel">Length</span>${lenPick("qlens", quizSetup.lens)}</div>
     <div class="field wide"><label for="qcount">Questions</label><div class="numpick"><input id="qcount" value="${SET.qcount}" inputmode="numeric" aria-label="Number of questions">${[10, 20, 50, 100].map(n => `<button type="button" class="btn sm ${n === +SET.qcount ? "on" : ""}" data-qn="${n}">${n}</button>`).join("")}</div></div>
     <div class="field wide"><span class="flabel">Order</span>${orderPick("qorder", quizSetup.order, quizSetup.rev)}</div>
-    <div class="field wide"><label class="check"><input type="checkbox" id="qstar" ${quizSetup.starOnly ? "checked" : ""}> Only words I've starred</label></div>
+    <div class="field wide"><label class="check"><input type="checkbox" id="qstar" ${quizSetup.starOnly ? "checked" : ""}> Only words I've starred</label>
+      <label class="check"><input type="checkbox" id="qknown" ${quizSetup.skipKnown ? "checked" : ""}> Leave out words I've crossed off</label></div>
   </div></div>
   <button type="button" class="btn primary block" id="qstart">${going ? "Start a new quiz" : "Start quiz"}</button><p class="small" id="qmsg" style="text-align:center;margin:-6px 0 0"></p>`;
   $("#view").querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { quizSetup.mode = b.dataset.mode; store.set("quizSetup", quizSetup); VIEWS.quiz(); });
@@ -603,6 +609,7 @@ VIEWS.quiz = () => {
   $("#view").querySelectorAll("[data-qn]").forEach(b => b.onclick = () => setCount(b.dataset.qn));
   $("#qlens").onchange = e => { quizSetup.lens = lensOf(e.target.value); store.set("quizSetup", quizSetup); count(); };
   $("#qstar").onchange = e => { quizSetup.starOnly = e.target.checked; count(); };
+  $("#qknown").onchange = e => { quizSetup.skipKnown = e.target.checked; store.set("quizSetup", quizSetup); count(); };
   const wireQOrder = () => {
     $("#view").querySelectorAll("#qorder [data-order]").forEach(b => b.onclick = () => { quizSetup.order = b.dataset.order; store.set("quizSetup", quizSetup); $("#qorder").outerHTML = orderPick("qorder", quizSetup.order, quizSetup.rev); wireQOrder(); });
     $("#view").querySelectorAll("#qorder [data-rev]").forEach(b => b.onclick = () => { quizSetup.rev = !quizSetup.rev; store.set("quizSetup", quizSetup); $("#qorder").outerHTML = orderPick("qorder", quizSetup.order, quizSetup.rev); wireQOrder(); });
@@ -834,14 +841,16 @@ let poolCache = { key: "", pool: [] };
 const practiceLast = () => store.get("pLast", null) ?? lastResults;
 const keepLast = () => store.set("pLast", [...lastResults]);
 function practicePool(o) {
-  const key = JSON.stringify(o) + (o.src.startsWith("my:") || o.starOnly ? getStars().length + ":" + store.get("missed", []).length + ":" + practiceLast().length : "");
+  const folder = o.src.startsWith("f:") ? folderById(o.src.slice(2)) : null;
+  const key = JSON.stringify(o) + (o.src.startsWith("my:") || folder || o.starOnly || o.skipKnown ? getStars().length + ":" + store.get("missed", []).length + ":" + practiceLast().length + ":" + (folder?.words.join() || "") + ":" + getKnown().length : "");
   if (poolCache.key === key) return poolCache.pool;
   const g = o.src.startsWith("g:") ? o.src.slice(2) : "";
   const r = runSearch({ ...SEARCH_DEFAULT, group: g, lens: o.lens.join(","), starts: o.starts, ends: o.ends, contains: o.contains, incl: o.incl, excl: o.excl, pattern: o.pattern, anas: o.anas });
   let pool = r.words || [];
-  const mine = { "my:stars": getStars(), "my:missed": store.get("missed", []), "my:last": practiceLast() }[o.src];
+  const mine = folder ? folder.words : { "my:stars": getStars(), "my:missed": store.get("missed", []), "my:last": practiceLast() }[o.src];
   if (mine) { const set = new Set(mine); pool = pool.filter(w => set.has(w)); }
   if (o.starOnly) { const set = new Set(getStars()); pool = pool.filter(w => set.has(w)); }
+  if (o.skipKnown) { const set = new Set(getKnown()); pool = pool.filter(w => !set.has(w)); }
   // optional rank range, counted in probability order within each length (e.g. ranks 1–50 or 30–80)
   pool = likelyRange(pool, o.from, o.to, o.by, o.lax);
   return (poolCache = { key, pool, error: r.error }).pool;
@@ -938,7 +947,7 @@ VIEWS.practice = () => {
         <div class="field wide"><span class="flabel">Type</span><div class="seg" id="po_mode">${PMODES.map(([k, n]) => `<button type="button" class="btn sm ${o.mode === k ? "on" : ""}" data-pmode="${k}">${n}</button>`).join("")}</div>
           <p class="small" style="margin:6px 0 0">${o.mode === "hooks" ? "A word: which letters go on its front, and its back?" : o.mode === "pattern" ? "A word with a letter gone: which letters fit the gap?" : "A rack: find every word it makes."}</p></div>
         <div class="field wide"><label for="po_src">Words from</label><select id="po_src"><option value="">Any word</option>
-          <optgroup label="Mine"><option value="my:stars" ${o.src === "my:stars" ? "selected" : ""}>Starred words (${getStars().length})</option><option value="my:missed" ${o.src === "my:missed" ? "selected" : ""}>Missed words (${store.get("missed", []).length})</option><option value="my:last" ${o.src === "my:last" ? "selected" : ""}>Last search results (${o.src === "my:last" ? practiceLast().length : lastResults.length})</option></optgroup>
+          <optgroup label="Mine"><option value="my:stars" ${o.src === "my:stars" ? "selected" : ""}>Starred words (${getStars().length})</option><option value="my:missed" ${o.src === "my:missed" ? "selected" : ""}>Missed words (${store.get("missed", []).length})</option><option value="my:last" ${o.src === "my:last" ? "selected" : ""}>Last search results (${o.src === "my:last" ? practiceLast().length : lastResults.length})</option>${getFolders().map(f => `<option value="f:${f.id}" ${o.src === "f:" + f.id ? "selected" : ""}>📁 ${esc(f.name)} (${f.words.length})</option>`).join("")}</optgroup>
           ${groupOptions(o.src.startsWith("g:") ? o.src.slice(2) : "").replace(/value="/g, 'value="g:')}</select></div>
         <div class="field wide"><span class="flabel">Length</span>${lenPick("po_lens", o.lens)}</div>
         <div class="field wide"><span class="flabel">Order</span>${orderPick("po_order", o.order, o.rev)}</div>
@@ -947,7 +956,8 @@ VIEWS.practice = () => {
     <details class="card" id="pOpts" ${open ? "open" : ""}><summary class="lbl" style="cursor:pointer;margin:0">More options · ${pool.length.toLocaleString()} words in play</summary>
       <div class="form" style="margin-top:12px">
         ${tf("starts", "Starts with", "e.g. UN")}${tf("ends", "Ends with", "e.g. ING")}${tf("contains", "Contains in a row", "e.g. QI")}
-        <div class="field"><span class="flabel">Starred</span><label class="check"><input type="checkbox" id="po_star" ${o.starOnly ? "checked" : ""}> Only words I've starred</label></div>
+        <div class="field"><span class="flabel">Starred</span><label class="check"><input type="checkbox" id="po_star" ${o.starOnly ? "checked" : ""}> Only words I've starred</label>
+          <label class="check"><input type="checkbox" id="po_known" ${o.skipKnown ? "checked" : ""}> Leave out words I've crossed off</label></div>
         ${tf("incl", "Must include", "e.g. Z")}${tf("excl", "Must exclude", "e.g. S")}${tf("pattern", "Pattern", "e.g. .A.E*")}
         ${tf("anas", "Anagrams", "e.g. 3, 2-4 or 5+")}
       </div>
@@ -967,6 +977,7 @@ VIEWS.practice = () => {
     wireOrder();
     $("#view").querySelectorAll("[data-pmode]").forEach(b => b.onclick = () => { saveSettings({ practice: { ...o, mode: b.dataset.pmode } }); VIEWS.practice(); });
     $("#po_star").onchange = e => { saveSettings({ practice: { ...o, starOnly: e.target.checked } }); VIEWS.practice(); };
+    $("#po_known").onchange = e => { saveSettings({ practice: { ...o, skipKnown: e.target.checked } }); VIEWS.practice(); };
     const read = () => { const n = { ...o }; for (const k of ["src", "starts", "ends", "contains", "incl", "excl", "pattern", "anas", "from", "to", "by"]) n[k] = $("#po_" + k).value.trim(); n.lax = $("#po_lax").checked; n.lens = lensOf($("#po_lens").value); saveSettings({ practice: n }); VIEWS.practice(); };
     // picking a list picks its usual length too
     $("#po_src").onchange = () => { const v = $("#po_src").value; if (v === "my:last") keepLast(); if (v) $("#po_lens").value = v.startsWith("g:") ? groupOf(v.slice(2))?.len || "" : ""; read(); }; $("#po_lens").onchange = read; $("#poApply").onclick = read;
@@ -986,7 +997,7 @@ const lensLabel = o => o.lens.length ? `${o.lens.join(", ")} letters` : "Any len
 let pSheetOpen = false;
 function practicePlay(pool, o, opts, wire) {
   const v = $("#view"), pq = getPQ().items.length, pr = progress(pool, o.mode);
-  const src = o.src.startsWith("g:") ? groupOf(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src];
+  const src = o.src.startsWith("g:") ? groupOf(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src] || (o.src.startsWith("f:") ? folderById(o.src.slice(2))?.name : "");
   const pills = [o.mode !== "anagram" && PMODES.find(m => m[0] === o.mode)?.[1], lensLabel(o), src, o.order !== "rand" && orderText(o.order, o.rev), o.starOnly && "★ only", likelyText(o.from, o.to, o.by, o.lax), anaText(o.anas), `Streak ${P.streak}`, pq && `${pq} to review`].filter(Boolean);
   const top = `<div class="fc-top"><button type="button" class="ib2" id="pExit" aria-label="Leave practice">×</button><div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div>
       <span class="n" title="${pr.unit} learnt">${pr.racks.toLocaleString()} / ${pr.racksAll.toLocaleString()}</span><button type="button" class="ib2 phone-only" id="pStatsBtn" aria-label="Stats">${icon('<path d="M5 20V11M12 20V4M19 20v-6"/>')}</button><button type="button" class="ib2" id="pOptBtn" aria-label="Options">${icon('<path d="M4 6h16M7 12h10M10 18h4"/>')}</button></div>
@@ -1245,7 +1256,7 @@ function practiceRail(pr, cls) {
 // practice setup: what to practise; Start (or the play button) goes full screen
 function practiceSetup(pool, o, main, more, wire) {
   const pr = progress(pool, o.mode), going = P.seen || store.get("pcur")?.key === P.key;
-  const src = o.src.startsWith("g:") ? groupOf(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src] || "Any word";
+  const src = o.src.startsWith("g:") ? groupOf(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src] || (o.src.startsWith("f:") ? folderById(o.src.slice(2))?.name : "") || "Any word";
   $("#view").innerHTML = `<div class="cont" id="pGo"><div class="ct"><small>${going ? "Continue" : "Ready to practise"}${o.mode !== "anagram" ? " · " + PMODES.find(m => m[0] === o.mode)[1].toLowerCase() : ""}</small><b>${esc(src)} · ${lensLabel(o).toLowerCase()}</b>
       <div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div><div class="small">${pr.racks.toLocaleString()} of ${pr.racksAll.toLocaleString()} ${pr.unit} learnt · ${pool.length.toLocaleString()} words</div></div>
       <button type="button" class="go" aria-label="${going ? "Carry on practising" : "Start practice"}">${ICON_PLAY}</button></div>
@@ -1264,14 +1275,16 @@ function addHistory(w) { const h = store.get("hist", []).filter(x => x !== w); h
 
 VIEWS.mine = (tab) => {
   tab ||= "stars";
+  if (tab.startsWith("f-")) return folderView(tab.slice(2));
   const notes = getNotes();
-  const tabs = { stars: ["Starred", getStars()], missed: ["Missed", store.get("missed", [])], notebook: ["Notes", getNotebook()], notes: ["Word notes", Object.keys(notes)], hist: ["Recently viewed", store.get("hist", [])] };
+  const tabs = { stars: ["Starred", getStars()], folders: ["Folders", getFolders()], missed: ["Missed", store.get("missed", [])], notebook: ["Notes", getNotebook()], notes: ["Word notes", Object.keys(notes)], hist: ["Recently viewed", store.get("hist", [])] };
   $("#view").innerHTML = `<div><h3 class="title">My words</h3><p class="sub">${typeof SYNC !== "undefined" && SYNC.user ? "Synced to your account." : "Saved in this browser."}</p></div>
     <div class="seg">${Object.entries(tabs).map(([k, [n, l]]) => `<a class="btn ${k === tab ? "on" : ""}" href="#mine/${k}">${n} (${l.length})</a>`).join("")}</div>
     ${tab === "stars" && tabs.stars[1].length ? `<div class="row"><button class="btn sm" id="copyList">Copy list</button><button class="btn sm" id="clearStars">Clear starred</button><span class="small" id="msg"></span></div>` : ""}
     ${tab === "missed" && tabs.missed[1].length ? `<div class="row"><button class="btn sm" id="clearMissed">Clear missed</button></div>` : ""}
     <div class="card" id="mres"></div>`;
   if (tab === "notebook") return notebook();
+  if (tab === "folders") return folderList();
   const words = tabs[tab][1].filter(w => DICT.has(w));
   if (tab === "notes") {
     $("#mres").innerHTML = words.length ? `<div class="rows">${words.map(w => `<div class="r" data-go="${w}"><span class="meta"></span><span class="fh"></span><span class="wl">${w}</span><span class="bh"></span><span class="d">${esc(notes[w])}</span><span></span></div>`).join("")}</div>` : `<p class="empty">Write notes on any word page and it shows up here.</p>`;
@@ -1281,6 +1294,78 @@ VIEWS.mine = (tab) => {
   confirmBtn($("#clearStars"), () => { store.set("stars", []); VIEWS.mine("stars"); });
   confirmBtn($("#clearMissed"), () => { store.set("missed", []); VIEWS.mine("missed"); });
 };
+// ---------- folders: your own lists of words, opened like a word list and usable in Quiz and Practice. Crossing a
+// word off (✓, beside the star) marks it as one you know, wherever it shows; it stays in its folders ----------
+const getFolders = () => store.get("folders", []);
+const getKnown = () => store.get("known", []);
+const folderById = id => getFolders().find(f => f.id === id);
+const saveFolder = (id, patch) => store.set("folders", getFolders().map(f => f.id === id ? { ...f, ...patch, at: Date.now() } : f));
+function newFolder(name, words = []) {
+  const f = { id: Date.now().toString(36) + rnd(1e6).toString(36), name: name || "New folder", words: [...new Set(words)], at: Date.now() };
+  store.set("folders", [...getFolders(), f]);
+  return f;
+}
+function toggleKnown(w) { const k = getKnown(), i = k.indexOf(w); i >= 0 ? k.splice(i, 1) : k.unshift(w); store.set("known", k); return i < 0; }
+// words typed or pasted in any form (one a line, commas, spaces): the real ones, and the ones that aren't words
+const wordsIn = text => { const all = [...new Set(String(text).toUpperCase().split(/[^A-Z]+/).filter(Boolean))]; return { good: all.filter(w => DICT.has(w)), bad: all.filter(w => !DICT.has(w)) }; };
+function folderList() {
+  const fs = getFolders(), known = new Set(getKnown());
+  $("#mres").innerHTML = `<div class="row" style="margin-bottom:12px"><input class="arack" id="fName" placeholder="New folder name" maxlength="40" style="text-transform:none;flex:1;min-width:0"><button class="btn primary" id="fNew">+ New folder</button></div>
+    ${fs.length ? `<div class="flist">${fs.map(f => { const k = f.words.filter(w => known.has(w)).length;
+      return `<a class="fitem" href="#mine/f-${f.id}"><b>${esc(f.name)}</b><span class="small">${f.words.length} word${f.words.length === 1 ? "" : "s"}${f.words.length ? ` · ${k} crossed off` : ""}</span>${f.words.length ? `<span class="fbar"><i style="width:${k / f.words.length * 100}%"></i></span>` : ""}</a>`; }).join("")}</div>`
+      : `<p class="empty">No folders yet. Name one above, then add words to it here, from a word page, or from any list with Add to folder.</p>`}`;
+  const make = () => { const f = newFolder($("#fName").value.trim()); location.hash = "mine/f-" + f.id; };
+  $("#fNew").onclick = make;
+  $("#fName").onkeydown = ev => { if (ev.key === "Enter") make(); };
+}
+function folderView(id) {
+  const f = folderById(id);
+  if (!f) { location.replace("#mine/folders"); return; }
+  const known = new Set(getKnown()), k = f.words.filter(w => known.has(w)).length;
+  $("#view").innerHTML = `<div class="fhead"><a class="bbk" href="#mine/folders">‹ Folders</a><input class="ftitle" id="fTitle" value="${esc(f.name)}" maxlength="40" aria-label="Folder name"></div>
+    <p class="sub" style="margin:4px 0 12px">${f.words.length} word${f.words.length === 1 ? "" : "s"} · ${k} crossed off</p>
+    <div class="row" style="margin-bottom:12px"><button class="btn" id="fEdit">Add or remove words</button><button class="btn" id="fDel">Delete folder</button></div>
+    <div class="card fedit" id="fBox" hidden><h2 class="lbl">The words in this folder</h2><p class="small" style="margin:0 0 8px">Paste or type words in any form: one a line, or with commas or spaces. Delete a word to take it out.</p>
+      <textarea id="fWords" class="ftext" spellcheck="false" autocapitalize="characters">${f.words.join("\n")}</textarea>
+      <div class="row" style="margin-top:8px"><button class="btn primary" id="fSave">Save</button><button class="btn" id="fCancel">Cancel</button><span class="small bad" id="fMsg"></span></div></div>
+    <div class="card" id="mres"></div>`;
+  if (f.words.length) results($("#mres"), f.words.filter(w => DICT.has(w)));
+  else $("#mres").innerHTML = `<p class="empty">No words yet. Press Add or remove words, or use Add to folder on a word page or any list.</p>`;
+  $("#fTitle").onchange = () => saveFolder(id, { name: $("#fTitle").value.trim() || "Folder" });
+  $("#fEdit").onclick = () => { $("#fBox").hidden = !$("#fBox").hidden; if (!$("#fBox").hidden) $("#fWords").focus(); };
+  $("#fCancel").onclick = () => { $("#fBox").hidden = true; $("#fWords").value = f.words.join("\n"); };
+  $("#fSave").onclick = () => {
+    const { good, bad } = wordsIn($("#fWords").value);
+    saveFolder(id, { words: good });
+    if (bad.length) { folderView(id); $("#fBox").hidden = false; $("#fMsg").textContent = `Not in CSW24, so left out: ${bad.slice(0, 12).join(", ")}${bad.length > 12 ? "…" : ""}`; }
+    else folderView(id);
+  };
+  confirmBtn($("#fDel"), () => { store.set("folders", getFolders().filter(x => x.id !== id)); location.hash = "mine/folders"; });
+}
+// the folder picker: for one word, a tick for each folder it's in; for a list, a button per folder to add them all
+function folderSheet(words) {
+  words = [...new Set(words)];
+  document.getElementById("fsheet")?.remove();
+  const one = words.length === 1, fs = getFolders();
+  document.body.insertAdjacentHTML("beforeend", sheetHTML("fsheet", `<h3>${one ? `Folders for ${esc(words[0])}` : `Add ${words.length.toLocaleString()} words to a folder`}<button type="button" id="fsDone">Done</button></h3>
+    ${fs.length ? `<div class="fpick">${fs.map(f => one ? `<label class="check"><input type="checkbox" data-fs="${f.id}" ${f.words.includes(words[0]) ? "checked" : ""}> ${esc(f.name)} <span class="small">${f.words.length}</span></label>`
+      : `<button type="button" class="btn" data-fsall="${f.id}">${esc(f.name)} <span class="small">${f.words.length}</span></button>`).join("")}</div>` : `<p class="small">No folders yet: make one here.</p>`}
+    <div class="row" style="margin-top:12px"><input class="arack" id="fsName" placeholder="New folder name" maxlength="40" style="text-transform:none;flex:1;min-width:0"><button class="btn primary" id="fsNew">+ New folder</button></div>
+    <p class="small" id="fsMsg" style="margin:8px 0 0"></p>`));
+  const close = () => { sheet("fsheet", false); document.getElementById("fsheet")?.remove(); };
+  sheet("fsheet", true);
+  $("#fsDone").onclick = $("#fsheet .scrim").onclick = close;
+  document.querySelectorAll("#fsheet [data-fs]").forEach(c => c.onchange = () => {
+    const f = folderById(c.dataset.fs), w = words[0];
+    saveFolder(f.id, { words: c.checked ? [...new Set([...f.words, w])] : f.words.filter(x => x !== w) });
+  });
+  document.querySelectorAll("#fsheet [data-fsall]").forEach(b => b.onclick = () => {
+    const f = folderById(b.dataset.fsall), before = f.words.length;
+    saveFolder(f.id, { words: [...new Set([...f.words, ...words])] });
+    $("#fsMsg").textContent = `Added ${(folderById(f.id).words.length - before).toLocaleString()} to ${f.name}.`;
+  });
+  $("#fsNew").onclick = () => { const f = newFolder($("#fsName").value.trim(), words); $("#fsMsg").textContent = `Made ${f.name} with ${f.words.length.toLocaleString()} word${f.words.length === 1 ? "" : "s"}.`; setTimeout(() => { folderSheet(words); $("#fsMsg").textContent = `Made ${f.name}.`; }, 0); };
+}
 // your own notes: as many as you like, each a title and some text, saved as you type (and synced when signed in)
 const getNotebook = () => store.get("notebook", []);
 const edited = t => { const s = (Date.now() - t) / 1000; return s < 60 ? "just now" : s < 3600 ? Math.round(s / 60) + " min ago" : s < 86400 ? Math.round(s / 3600) + " h ago" : new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short" }); };
