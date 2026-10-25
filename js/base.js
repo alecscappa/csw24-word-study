@@ -208,15 +208,23 @@ const tileLookOf = () => SET.tileLook === "theme" ? THEME_TSTYLE[SET.theme] || "
 // the page's tiles follow the setting; the previews in Settings (.ts-<id>) come after so they win
 document.head.insertAdjacentHTML("beforeend", `<style>${Object.entries(TILE_STYLES).map(([id, [, css, sub]]) => `:root[data-tstyle="${id}"] .tile { ${css} }${sub ? ` :root[data-tstyle="${id}"] .tile sub { ${sub} }` : ""}`).join("\n")}
 ${Object.entries(TILE_STYLES).map(([id, [, css, sub]]) => `.tstyles .tile.ts-${id} { ${css} }${sub ? ` .tstyles .tile.ts-${id} sub { ${sub} }` : ""}`).join("\n")}</style>`);
+// text sizes; Normal was 16px until 2026-10-26, when every size moved one name down and Large and Extra large were added
+const TEXT_SIZES = { xs: "14px", sm: "16px", md: "18px", lg: "20px", xl: "22px" };
 const SET_DEFAULT = { theme: "coffee", mode: "light", size: "md", values: true, sort: "prob", defs: true, prob: true, hooks: true, pageSize: 300, online: true, phony: 50, randMin: 2, randMax: 8, qcount: 20,
   tiles: "maple", tileCustom: "#f1dcaa", headCustom: "", accentCustom: "", glare: "dim", tileLook: "soft", tileFont: "sans", rackLook: "cherry",
   bPal: "theme", bLabels: "letters", bCoords: true, bTile: "same", bStyle: "gaps", bMark: "bright", bTheme: "", bTileCol: "same", bArrows: false };
+const hadSettings = !!store.get("settings", null);
 let SET = { ...SET_DEFAULT, ...store.get("settings", {}) };
 // once, on every device: the look settings move to the new defaults (Coffee, light, Dim, Maple tiles, Soft shadow,
 // Cherry rack). After that they're the person's own again
 if (store.get("settingsV", 1) < 2) {
   SET = { ...SET, theme: "coffee", mode: "light", glare: "dim", tiles: "maple", tileLook: "soft", rackLook: "cherry" };
   store.set("settings", SET); store.set("settingsV", 2);
+}
+// once: a saved text size keeps its size under its new name (Small 14px is now Extra small, and so on)
+if (store.get("settingsV", 1) < 3) {
+  if (hadSettings) SET.size = { sm: "xs", md: "sm", lg: "md" }[SET.size] || SET.size;
+  store.set("settings", SET); store.set("settingsV", 3);
 }
 const darkMQ = matchMedia("(prefers-color-scheme: dark)");
 const isDark = () => SET.mode === "dark" || (SET.mode === "auto" && darkMQ.matches);
@@ -243,7 +251,7 @@ function applySettings() {
   const tok = tokensFor(dark);
   for (const [k, v] of Object.entries(tok)) root.style.setProperty("--" + k, v);
   root.style.colorScheme = dark ? "dark" : "light";
-  root.style.fontSize = { sm: "14px", md: "16px", lg: "18px" }[SET.size] || "16px";
+  root.style.fontSize = TEXT_SIZES[SET.size] || TEXT_SIZES.md;
   root.dataset.values = SET.values ? "on" : "off";
   root.dataset.tstyle = tileLookOf();
   root.dataset.tfont = SET.tileFont;

@@ -1146,7 +1146,7 @@ VIEWS.settings = () => {
         ${moreGroups.map(([g, ids]) => `<div class="sect" style="margin:14px 0 0">${g}</div><div class="swatches">${ids.map(id => swatch(id, THEMES[id])).join("")}</div>`).join("")}</details></div>
     <div class="fs"><h2 class="lbl">Light or dark</h2>${seg("mode", [["auto", "Match my device"], ["light", "Light"], ["dark", "Dark"]])}</div>
     <div class="fs"><h2 class="lbl">Light mode brightness</h2>${seg("glare", [["bright", "Bright"], ["soft", "Soft"], ["dim", "Dim"]])}<p class="small" style="margin:8px 0 0">How white the page and cards are in light mode.</p></div>
-    <div class="fs"><h2 class="lbl">Text size</h2>${seg("size", [["sm", "Small"], ["md", "Normal"], ["lg", "Large"]])}</div>
+    <div class="fs"><h2 class="lbl">Text size</h2>${seg("size", [["xs", "Extra small"], ["sm", "Small"], ["md", "Normal"], ["lg", "Large"], ["xl", "Extra large"]])}</div>
     <div class="fs"><h2 class="lbl">Tile colour</h2><div class="tilepick">${Object.entries(TILES).map(([id, [n, c]]) => tileBtn(id, n, c || (isDark() ? (THEMES[SET.theme] || THEMES.board).dark : lightOf(SET.theme, THEMES[SET.theme] || THEMES.board)).tile)).join("")}
       <label class="pickc ${SET.tiles === "custom" ? "on" : ""}"><div class="tile" style="background:conic-gradient(#e74c3c,#f1c40f,#2ecc71,#3498db,#9b59b6,#e74c3c);color:#fff">?</div>Pick…<input type="color" id="tileCustom" value="${SET.tileCustom}" aria-label="Pick a tile colour"></label></div>
       <h2 class="lbl" style="margin-top:18px">Tile style</h2>
