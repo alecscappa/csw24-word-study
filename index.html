@@ -1318,7 +1318,12 @@ const E = (() => {
       if (q.type === "moves") {
         const all = moves(q.board, q.rack, bag, unseen);
         let found = null;
-        if (q.find) { const k = tkey(q.find), i = all.findIndex(m => tkey(m) === k); if (i >= 0) found = { rank: i + 1, move: all[i] }; }
+        if (q.find) {
+          // on an empty board only across plays are made, so a play down is turned round to its across twin
+          let f = q.find;
+          if (f.tiles && !/[^.]/.test(q.board) && f.tiles.length > 1 && f.tiles[0][0] % 15 === f.tiles[1][0] % 15) f = { tiles: f.tiles.map(([i, l, b]) => [(i % 15) * 15 + (i / 15 | 0), l, b]) };
+          const k = tkey(f), i = all.findIndex(m => tkey(m) === k); if (i >= 0) found = { rank: i + 1, move: all[i] };
+        }
         return reply({ moves: q.limit ? all.slice(0, q.limit) : all, total: all.length, bag, unseen, found });
       }
       if (q.type === "sim") {
@@ -3498,7 +3503,8 @@ const ENG = (() => {
     try {
       const w = new Worker(URL.createObjectURL(new Blob([src, "\nconst stopped = new Set();\nonmessage = e => e.data.type === 'stop' ? stopped.add(e.data.of) : E.serve(e.data, m => postMessage(m), id => stopped.has(id));"], { type: "text/javascript" })));
       w.onmessage = e => got(e.data);
-      w.onerror = e => console.error("engine", e.message);
+      // if the worker dies, every request waiting on it fails (so nothing waits forever) and the next one starts a new worker
+      w.onerror = e => { console.error("engine", e.message); port = null; for (const j of jobs.values()) j.no(new Error("The computer stopped working")); jobs.clear(); };
       port = q => w.postMessage(q);
     } catch {
       const Eng = new Function(src + "\nreturn E;")(), stopped = new Set();
@@ -3639,6 +3645,7 @@ const anaGet = () => {
 };
 const anaSave = () => store.set("ana", { board: cellsStr(AZY.cells), rack: AZY.rack });
 function anaOpen(board, rack) {
+  if (AZY) anaSimDrop(AZY);
   AZY = null; store.set("ana", { board, rack: rack || "" }); anaGet().edit = false;
   location.hash = "board/analyse";
 }
@@ -3654,6 +3661,7 @@ function anaListHTML(A) {
   const u = unseenOf(cellsStr(A.cells), A.rack);
   if (!u.ok) return `<h2 class="lbl">Plays</h2><p class="empty">${u.err}: check the board and rack.</p>`;
   if (!A.res) return `<h2 class="lbl">Plays</h2><p class="empty">Thinking…</p>`;
+  if (A.res.error) return `<h2 class="lbl">Plays</h2><p class="empty">${esc(A.res.error)}. Change the rack to try again.</p>`;
   const rows = anaRows(A), show = rows.slice(0, A.more ? 80 : 15), S = A.sim;
   const sel = A.sel >= 0 ? A.res.moves[A.sel] : null, r = sel?.tiles.length ? scorePlay(A.cells, tilesNews(sel.tiles)) : null;
   return `<div class="alhead"><h2 class="lbl">Plays <span class="small">${A.res.total.toLocaleString()} found</span></h2>
@@ -3666,8 +3674,12 @@ function anaListHTML(A) {
   <div class="simrow">${S?.running ? `<div class="simbar"><i style="width:${(S.it / S.iters * 100).toFixed(1)}%"></i></div><span class="small">${S.it} of ${S.iters} racks</span><button class="btn sm" id="anaStop">Stop</button>`
     : `<button class="btn" id="anaSim" ${A.res.moves.length > 1 ? "" : "disabled"}>${S ? "Look ahead again" : "Look ahead"}</button><span class="small">${S ? `${S.it} racks dealt to the other player` : "Plays out the other player's reply for the top 10"}</span>`}</div>`;
 }
+const anaUnseenHTML = A => { const u = unseenOf(cellsStr(A.cells), A.rack);
+  return u.ok ? `${u.n} tiles unseen · ${Math.max(0, u.n - 7)} in the bag${u.n <= 7 ? " · the bag is empty, so the end counts" : ""}` : `<span class="bad">${u.err}</span>`; };
+// a look-ahead that's no longer wanted is stopped, so the worker doesn't keep going
+const anaSimDrop = A => { if (A.sim?.running) ENG.stop(A.sim.job); A.sim = null; };
 function viewAnalyse() {
-  const A = anaGet(), board = cellsStr(A.cells), unseen = unseenOf(board, A.rack), sel = A.sel >= 0 && A.res ? A.res.moves[A.sel] : null;
+  const A = anaGet(), sel = A.sel >= 0 && A.res ? A.res.moves[A.sel] : null;
   const news = sel?.tiles.length ? tilesNews(sel.tiles) : new Map();
   $("#view").innerHTML = `${boardSeg("analyse")}${bLookBar()}
   <div class="bgrid"><div id="anaBoard">${boardHTML(A.cells, news, A.edit ? A.cur : -1, A.dir, sel?.tiles.length ? sel.dir : false)}</div>
@@ -3675,7 +3687,7 @@ function viewAnalyse() {
     <div class="card"><h2 class="lbl">Your rack</h2>
       <div class="row"><input id="anaRack" class="arack" value="${A.rack}" maxlength="7" placeholder="AEINRST · ? is a blank" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-label="Your rack">
         <button class="btn" id="anaDeal" title="Seven random tiles from the unseen ones">Random</button></div>
-      <p class="small" style="margin:8px 0 0">${unseen.ok ? `${unseen.n} tiles unseen · ${Math.max(0, unseen.n - 7)} in the bag${unseen.n <= 7 ? " · the bag is empty, so the end counts" : ""}` : `<span class="bad">${unseen.err}</span>`}</p></div>
+      <p class="small" id="anaUnseen" style="margin:8px 0 0">${anaUnseenHTML(A)}</p></div>
     <div class="card" id="anaPlays">${anaListHTML(A)}</div>
     <div class="card"><h2 class="lbl">The board</h2>
       ${A.edit ? `<p class="small" style="margin:0 0 10px">Tap a square and type to put tiles down, any order, no rules. ? then a letter is a blank. Backspace takes a tile off.</p>` : ""}
@@ -3686,13 +3698,13 @@ function viewAnalyse() {
   bLookWire(redraw);
   const listDraw = () => { $("#anaPlays").innerHTML = anaListHTML(A); listWire(); };
   const find = () => {
-    A.res = null; A.sel = -1; A.sim = null; if (A.sort === "sim") A.sort = "eq";
+    A.res = null; A.sel = -1; anaSimDrop(A); if (A.sort === "sim") A.sort = "eq";
     if (!A.rack || !unseenOK()) return;
     const key = cellsStr(A.cells) + A.rack;
     ENG.call({ type: "moves", board: cellsStr(A.cells), rack: A.rack, limit: 300 }).then(res => {
       if (key !== cellsStr(A.cells) + A.rack || AZY !== A) return;
       A.res = res; if (location.hash === "#board/analyse") listDraw();
-    });
+    }).catch(e => { if (AZY !== A) return; A.res = { moves: [], total: 0, error: e.message }; if (location.hash === "#board/analyse") listDraw(); });
   };
   const unseenOK = () => unseenOf(cellsStr(A.cells), A.rack).ok;
   const listWire = () => {
@@ -3712,7 +3724,8 @@ function viewAnalyse() {
         if (A.sim !== S) return; S.vals = p.vals; S.it = p.it; if (location.hash === "#board/analyse") listDraw();
       });
       S.job = job.id;
-      job.then(p => { if (A.sim !== S) return; S.vals = p.vals; S.it = p.it; S.running = false; A.sort = "sim"; if (location.hash === "#board/analyse") listDraw(); });
+      job.then(p => { if (A.sim !== S) return; S.vals = p.vals; S.it = p.it; S.running = false; A.sort = "sim"; if (location.hash === "#board/analyse") listDraw(); })
+        .catch(() => { if (A.sim === S) { S.running = false; if (location.hash === "#board/analyse") listDraw(); } });
       listDraw();
     };
     if ($("#anaStop")) $("#anaStop").onclick = () => ENG.stop(A.sim.job);
@@ -3724,14 +3737,21 @@ function viewAnalyse() {
   rk.addEventListener("input", () => {
     const v = rk.value.toUpperCase().replace(/[^A-Z?]/g, "").slice(0, 7);
     if (rk.value !== v) rk.value = v;
-    clearTimeout(t); t = setTimeout(() => { if (v === A.rack) return; A.rack = v; anaSave(); A.res = null; A.sim = null; A.sel = -1; redraw(); }, 300);
+    clearTimeout(t); t = setTimeout(() => {
+      if (v === A.rack) return;
+      const had = A.sel >= 0;
+      A.rack = v; anaSave(); A.res = null; A.sel = -1;
+      $("#anaUnseen").innerHTML = anaUnseenHTML(A);
+      if (had) $("#anaBoard").innerHTML = boardHTML(A.cells, new Map(), A.edit ? A.cur : -1, A.dir);
+      find(); listDraw();
+    }, 300);
   });
   rk.addEventListener("keydown", ev => { if (ev.key === "Enter") rk.blur(); });
   $("#anaDeal").onclick = () => { A.rack = shuffle([...unseenOf(cellsStr(A.cells), "").pool]).slice(0, 7).join(""); A.res = null; redraw(); };
   $("#anaEdit").onclick = () => { A.edit = !A.edit; A.cur = -1; redraw(); };
   if ($("#anaBlank")) $("#anaBlank").onclick = () => { A.blank = !A.blank; redraw(); if (coarse.matches && A.cur >= 0) bkInput().focus({ preventScroll: true }); };
-  $("#anaFree").onclick = () => { const L = lookGet(); A.cells = L.cells.map(t => t && { ...t }); A.res = null; A.sim = null; redraw(); };
-  confirmBtn($("#anaClear"), () => { A.cells = Array(225).fill(null); A.res = null; A.sim = null; A.edit = true; redraw(); });
+  $("#anaFree").onclick = () => { const L = lookGet(); A.cells = L.cells.map(t => t && { ...t }); A.res = null; anaSimDrop(A); redraw(); };
+  confirmBtn($("#anaClear"), () => { A.cells = Array(225).fill(null); A.res = null; anaSimDrop(A); A.edit = true; redraw(); });
   // setting up: letters go straight onto the board where the arrow is
   $("#anaBoard").addEventListener("click", ev => {
     const sq = ev.target.closest(".sq"); if (!sq) return;
@@ -3745,7 +3765,7 @@ function viewAnalyse() {
   boardKeys(k => {
     if (!A.edit) return false;
     const step = A.dir ? 15 : 1, inLine = (a, b) => b >= 0 && b < 225 && (A.dir || (a / 15 | 0) === (b / 15 | 0));
-    const changed = () => { A.res = null; A.sim = null; A.sel = -1; redraw(); };
+    const changed = () => { A.res = null; anaSimDrop(A); A.sel = -1; redraw(); };
     if (k === "?") { blankNext = true; return; }
     const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
     if (arrows[k]) {
@@ -3858,7 +3878,7 @@ function logLine(g, e) {
     : e.k === "out" ? `${nm} went out: +${e.s}, twice ${sortRack(e.x)}` : `${nm} is left with ${sortRack(e.x) || "nothing"}: ${e.s}`;
 }
 const logHTML = (g, hl) => g.log.length ? `<div class="glog">${g.log.map((e, n) => `<div class="p${e.p}${e.k === "off" ? " off" : ""}${hl === n ? " on" : ""}">
-  <span>${g.names[e.p][0]}</span><span>${e.at || ""}</span><span>${e.k === "play" || e.k === "off" ? esc(e.w) : e.k === "swap" ? (g.mode === "friend" ? "Swap" : "Swap " + sortRack(e.x)) : e.k === "pass" ? "Pass" : e.k === "chal" ? "Challenge" : e.k === "out" ? "Out " + sortRack(e.x) : "Left " + (sortRack(e.x) || "–")}</span>
+  <span>${esc(g.names[e.p][0])}</span><span>${e.at || ""}</span><span>${e.k === "play" || e.k === "off" ? esc(e.w) : e.k === "swap" ? (g.mode === "friend" ? "Swap" : "Swap " + sortRack(e.x)) : e.k === "pass" ? "Pass" : e.k === "chal" ? "Challenge" : e.k === "out" ? "Out " + sortRack(e.x) : "Left " + (sortRack(e.x) || "–")}</span>
   <b>${e.k === "play" ? e.s : e.k === "off" ? "0" : e.k === "swap" || e.k === "pass" ? "0" : (e.s > 0 ? "+" : "") + e.s}</b><span class="small">${e.tot}</span></div>`).join("")}</div>` : `<p class="empty">No plays yet.</p>`;
 const scoreHTML = (g, active) => `<div class="gscore">${[0, 1].map(p => `<div class="${active === p ? "on" : ""} p${p}"><span>${esc(g.names[p])}</span><b>${g.scores[p]}</b></div>`).join(`<div class="gbag"><b>${g.bag.length}</b>in bag</div>`)}</div>`;
 // the tiles a player can't see, by letter
@@ -3896,7 +3916,8 @@ function viewPlay() {
     const canChal = GAME.rule === "chal" && lastE?.k === "play" && lastE.p !== GAME.turn && !lastE.held;
     status = `<p class="bq">${esc(GAME.names[GAME.turn])}'s turn</p>${lastE ? `<p class="small" style="margin:4px 0 0">${esc(logLine(GAME, lastE))}</p>` : ""}
       <div class="row" style="margin-top:12px">${canChal ? `<button class="btn" id="gChal">Challenge ${esc(lastE.w)}</button>` : ""}<button class="btn primary" id="gShow">${GAME.outWait ? "Accept, and end the game" : `Show ${esc(GAME.names[GAME.turn])}'s rack`}</button></div>`;
-  } else if (GUI.think) status = `<p class="bq thinking">The computer is thinking…</p>${lastE ? `<p class="small">${esc(logLine(GAME, lastE))}</p>` : ""}`;
+  } else if (GUI.cpuFail && GAME.turn === 1) status = `<p class="bq">The computer couldn't move</p><p class="small bad">${esc(GUI.cpuFail)}</p><div class="row" style="margin-top:12px"><button class="btn primary" id="gRetry">Try again</button></div>`;
+  else if (GUI.think) status = `<p class="bq thinking">The computer is thinking…</p>${lastE ? `<p class="small">${esc(logLine(GAME, lastE))}</p>` : ""}`;
   else {
     status = `<p class="bq">${GAME.mode === "cpu" ? "Your turn" : esc(GAME.names[GAME.turn]) + "'s turn"}</p>`;
     if (err) status += `<p class="bres wrong">${esc(err)}</p>`;
@@ -3948,7 +3969,9 @@ function viewPlay() {
   on("gSwapGo", () => { const out = [...GUI.swap].map(ri => GUI.rack[ri]).join(""); GUI.swap = null; gSwap(GAME, GAME.turn, out); redraw(); cpuGo(); });
   confirmBtn($("#gPass"), () => { gPass(GAME, GAME.turn); redraw(); cpuGo(); });
   on("gHint", async () => {
-    const res = await ENG.call({ type: "moves", board: GAME.board, rack: GAME.racks[me], bag: GAME.bag.length, limit: 1 }), m = res.moves[0];
+    let res;
+    try { res = await ENG.call({ type: "moves", board: GAME.board, rack: GAME.racks[me], bag: GAME.bag.length, limit: 1 }); } catch (e) { GUI.err = e.message; return redraw(); }
+    const m = res.moves[0];
     GAME.hints++; GUI.pend = []; GUI.swap = null;
     if (m.tiles.length) {
       const used = new Set();
@@ -3965,12 +3988,13 @@ function viewPlay() {
   GAME.over ? on("gNew", fresh) : confirmBtn($("#gNew"), fresh);
   on("gNew2", fresh);
   on("gReview", () => runReview());
+  on("gRetry", () => { GUI.cpuFail = ""; cpuGo(); });
   wireReview();
   cpuGo();
 }
 // the computer moves when it's its turn (and the page is on Play)
 async function cpuGo() {
-  if (!GAME || GAME.mode !== "cpu" || GAME.over || GAME.turn !== 1 || GUI.think) return;
+  if (!GAME || GAME.mode !== "cpu" || GAME.over || GAME.turn !== 1 || GUI.think || GUI.cpuFail) return;
   const g = GAME, t0 = Date.now();
   GUI.think = true; if (location.hash === "#board/play") viewPlay();
   try {
@@ -3978,7 +4002,8 @@ async function cpuGo() {
     await wait(Math.max(0, 700 - (Date.now() - t0)));
     if (GAME !== g) return;
     gDo(g, 1, m);
-  } finally { GUI.think = false; }
+  } catch (e) { GUI.cpuFail = e.message || "Something went wrong"; }
+  finally { GUI.think = false; }
   gSave();
   if (location.hash === "#board/play") { const sy = window.scrollY; viewPlay(); window.scrollTo(0, sy); }
 }
@@ -4011,7 +4036,8 @@ async function runReview() {
   viewPlay();
   for (const { e, n } of turns) {
     const find = e.k === "play" ? { tiles: e.t } : e.k === "swap" ? { exch: e.x } : { pass: true };
-    const res = await ENG.call({ type: "moves", board: e.before.board, rack: e.before.rack, bag: e.before.bag.length, limit: 1, find });
+    let res;
+    try { res = await ENG.call({ type: "moves", board: e.before.board, rack: e.before.rack, bag: e.before.bag.length, limit: 1, find }); } catch { GUI.review.of = GUI.review.done; break; }
     if (GAME !== g) return;
     const best = res.moves[0], mine = e.k === "off" ? null : res.found?.move;
     GUI.review.rows.push({ n, p: e.p, e, best, lost: mine ? best.eq - mine.eq : null, rank: res.found?.rank, total: res.total });
@@ -4025,7 +4051,7 @@ function reviewHTML() {
   return `<h2 class="lbl">Review ${R.done < R.of ? `<span class="small">${R.done} of ${R.of}…</span>` : ""}</h2>
     ${R.done ? `<p class="small" style="margin:0 0 8px">${tops} of ${R.rows.length} were the computer's top play · about ${sum.toFixed(0)} points of value left on the table</p>` : ""}
     <div class="grev">${R.rows.map(r => `<button type="button" data-rv="${r.n}" class="${r.rank === 1 ? "top" : r.lost > 10 || r.lost === null ? "big" : ""}">
-      <span>${g.names[r.p][0]}${r.n + 1}</span><span><b>${esc(r.e.k === "play" || r.e.k === "off" ? r.e.w : r.e.k === "swap" ? "Swap " + sortRack(r.e.x) : "Pass")}</b>${r.e.k === "off" ? " (phony)" : ""}<br><i>best: ${esc(mvWord(r.best))} ${mvAt(r.best)} ${r.best.tiles.length ? r.best.score : ""}</i></span>
+      <span>${esc(g.names[r.p][0])}${r.n + 1}</span><span><b>${esc(r.e.k === "play" || r.e.k === "off" ? r.e.w : r.e.k === "swap" ? "Swap " + sortRack(r.e.x) : "Pass")}</b>${r.e.k === "off" ? " (phony)" : ""}<br><i>best: ${esc(mvWord(r.best))} ${mvAt(r.best)} ${r.best.tiles.length ? r.best.score : ""}</i></span>
       <span>${r.rank === 1 ? "✓" : r.lost === null ? "–" : signed(-r.lost)}</span></button>`).join("")}</div>
     <p class="small" style="margin:8px 0 0">Tap a turn to open it in Analyse.</p>`;
 }
@@ -4053,7 +4079,7 @@ function labPuzzle(mode) {
       if (!z) { PZ = null; if (location.hash.startsWith("#lab")) labPuzzle(mode); return; }
       PZ = { mode, ...z, S: { board: z.board, rack: z.rack, pend: [], cur: -1, dir: 0, sel: -1, swap: null }, done: null, show: -1 };
       if (location.hash.startsWith("#lab")) labPuzzle(mode);
-    });
+    }).catch(e => { if (PZ?.mode === mode && PZ.loading) { PZ = null; $("#view").innerHTML = `${labSeg(mode)}<div class="card"><p class="empty">${esc(e.message)}. Open the page again to retry.</p></div>`; } });
   }
   const st = pzStats(), Z = PZ;
   const intro = mode === "top" ? "Find the highest-scoring play on this board." : "There's a bingo (all seven tiles) somewhere. Find one.";
@@ -4162,6 +4188,7 @@ VIEWS.board = arg => arg === "count" ? location.replace("#scoring") : arg === "a
 // ---------- routing ----------
 function route() {
   closePicker();
+  if (AZY?.sim?.running && location.hash !== "#board/analyse") { ENG.stop(AZY.sim.job); AZY.sim.running = false; }
   scrollMem[curHash] = window.scrollY; curHash = location.hash;
   const [tab, arg] = decodeURIComponent(location.hash.slice(1)).split("/");
   const t = VIEWS[tab] ? tab : "w";

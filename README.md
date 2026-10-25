@@ -23,6 +23,7 @@ There's also a hidden **Lab** at `#lab`: Top play and Bingo hunt puzzles, the co
 ## Tests
 
     node tests/logic.js      # ~3,300 checks: every search, group, hook and quiz rule vs brute force and the Zyzzyva DB
-    node tests/browser.mjs   # ~325 checks in headless Chrome: every page, theme, phone width and quiz flow
+    node tests/browser.mjs   # ~650 checks in headless Chrome: every page, theme, phone width and quiz flow (QUICK=1 is a 2-minute version)
+    node tests/board.mjs     # ~110 checks: Free board, Scoring, Analyse, Play (v computer and friends) and the Lab
 
 See [PUBLISHING.md](PUBLISHING.md) for notes on copyright, privacy and getting the site on a phone.

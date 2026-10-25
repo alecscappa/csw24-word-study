@@ -1,19 +1,19 @@
 // Usage: node tests/logic.js   (from the project folder; needs words.js and ~/Zyzzyva/lexicons/CSW24.db)
 // Independent audit: every site function vs a brute-force reference, with the Zyzzyva DB as ground truth.
 const fs=require('fs'); const {DatabaseSync}=require('node:sqlite');
-const el=()=>new Proxy({},{get:(t,k)=>k in t?t[k]:(k==='querySelectorAll'?()=>[]:k==='classList'?{toggle(){}}:k==='style'?{setProperty(){}}:k==='dataset'?{}:typeof k==='string'&&/^(addEventListener|focus)$/.test(k)?()=>{}:k==='querySelector'?()=>el():undefined),set:(t,k,v)=>(t[k]=v,true)});
+const el=()=>new Proxy({},{get:(t,k)=>k in t?t[k]:(k==='querySelectorAll'?()=>[]:k==='classList'?{toggle(){},add(){},remove(){},contains(){return false}}:k==='style'?{setProperty(){}}:k==='dataset'?{}:typeof k==='string'&&/^(addEventListener|removeEventListener|focus|insertAdjacentHTML|append|remove|setAttribute)$/.test(k)?()=>{}:k==='querySelector'?()=>el():undefined),set:(t,k,v)=>(t[k]=v,true)});
 global.window=global; global.location={hash:''}; const LS={'csw24:search':JSON.stringify({newOnly:true,power:true,pattern:''})}; global.localStorage={getItem:k=>LS[k]??null,setItem:(k,v)=>LS[k]=v};
 global.matchMedia=()=>({matches:false,addEventListener(){}});
-global.document={documentElement:el(),querySelector:()=>el(),querySelectorAll:()=>[],addEventListener(){},createElement:()=>el()};
-global.addEventListener=()=>{}; global.scrollTo=()=>{};
+global.document={documentElement:el(),head:el(),body:el(),getElementById:()=>el(),querySelector:()=>el(),querySelectorAll:()=>[],addEventListener(){},createElement:()=>el()};
+global.addEventListener=()=>{}; global.scrollTo=()=>{}; global.MutationObserver=class{observe(){}};
 const path=require('path'), os=require('os'); const ROOT=path.join(__dirname,'..');
-const html=fs.readFileSync(path.join(ROOT,'index.html'),'utf8'); const app=html.slice(html.lastIndexOf('<script>')+8, html.lastIndexOf('</script>'));
+const html=fs.readFileSync(path.join(ROOT,'index.html'),'utf8'); const APP='<script id="app" type="text/plain">', a0=html.indexOf(APP)+APP.length, app=html.slice(a0, html.indexOf('</script>', a0));
 eval(fs.readFileSync(path.join(ROOT,'words.js'),'utf8')); eval(app+`
 const db=new DatabaseSync(process.argv[2]||path.join(os.homedir(),'Zyzzyva/lexicons/CSW24.db'),{readOnly:true});
 let fails=0, checks=0; const issues=[];
 const ok=(name,cond,detail='')=>{checks++; if(!cond){fails++; issues.push(name+(detail?' :: '+detail:''));}};
 const same=(name,a,b)=>{const A=[...a].sort(),B=[...b].sort(); const d1=A.filter(x=>!B.includes(x)).slice(0,5), d2=B.filter(x=>!A.includes(x)).slice(0,5); ok(name, A.length===B.length&&d1.length===0, 'site '+A.length+' vs ref '+B.length+' extra:'+d1+' missing:'+d2);};
-let seed=7; const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647; const pick=a=>a[Math.floor(rnd()*a.length)];
+let seed=7; const srnd=()=>(seed=(seed*16807)%2147483647)/2147483647; const pick=a=>a[Math.floor(srnd()*a.length)];
 const srt=w=>w.split('').sort().join('');
 const S=o=>runSearch({...SEARCH_DEFAULT,...o});
 
@@ -43,8 +43,8 @@ const match=(w,p)=>{const go=(i,j)=>{if(j===p.length)return i===w.length; const 
 for(const p of ['Q*','*Q','.A.E','?A?E','*ZZ*','[JQXZ]..','[^S]*S','A*[AEIOU]','*[^AEIOU][^AEIOU][^AEIOU][^AEIOU]*','..','QI*','*IUM','R.*.S','[.]A','[A.]B','[^.]A','A[?]*']) same('pattern '+p, (S({pattern:p}).words||[]), ALL.filter(w=>match(w,p)));
 // 7. letter filters vs brute force
 const cnt=(w,c)=>w.split(c).length-1;
-const cases=[{starts:'UN',min:'7',max:'7'},{ends:'ZA'},{contains:'QI'},{incl:'VV'},{incl:'ZZ',max:'6'},{excl:'AEIOU',min:'5'},{starts:'OUT',ends:'S',min:'8',max:'8'},{min:'9',max:'3'},{def:'fish',min:'4',max:'4'},{def:'Hindu'},{top:'500',min:'7',max:'7'}];
-for(const c of cases){ const ref=ALL.filter(w=>{const e=DICT.get(w); return (!c.starts||w.startsWith(c.starts))&&(!c.ends||w.endsWith(c.ends))&&(!c.contains||w.includes(c.contains))&&(!c.incl||[...new Set(c.incl)].every(ch=>cnt(w,ch)>=cnt(c.incl,ch)))&&(!c.excl||![...w].some(ch=>c.excl.includes(ch)))&&(!c.min||w.length>=+c.min)&&(!c.max||w.length<=+c.max)&&(!c.def||e.d.toLowerCase().includes(c.def.toLowerCase()))&&(!c.top||e.p<=+c.top)}); same('filters '+JSON.stringify(c), S(c).words, ref);}
+const cases=[{starts:'UN',min:'7',max:'7'},{ends:'ZA'},{contains:'QI'},{incl:'VV'},{incl:'ZZ',max:'6'},{excl:'AEIOU',min:'5'},{starts:'OUT',ends:'S',min:'8',max:'8'},{min:'9',max:'3'},{def:'fish',min:'4',max:'4'},{def:'Hindu'},{pto:'500',min:'7',max:'7'}];
+for(const c of cases){ const ref=ALL.filter(w=>{const e=DICT.get(w); return (!c.starts||w.startsWith(c.starts))&&(!c.ends||w.endsWith(c.ends))&&(!c.contains||w.includes(c.contains))&&(!c.incl||[...new Set(c.incl)].every(ch=>cnt(w,ch)>=cnt(c.incl,ch)))&&(!c.excl||![...w].some(ch=>c.excl.includes(ch)))&&(!c.min||w.length>=+c.min)&&(!c.max||w.length<=+c.max)&&(!c.def||e.d.toLowerCase().includes(c.def.toLowerCase()))&&(!c.pto||e.p<=+c.pto)}); same('filters '+JSON.stringify(c), S(c).words, ref);}
 // 8. every group: search == list == brute force, and stated counts/claims in blurbs
 for(const g of GROUPS) if(g.test){ same('group '+g.id, S({group:g.id}).words, ALL.filter(w=>g.test(w,DICT.get(w)))); same('group+filter '+g.id, S({group:g.id,min:'4',max:'5',excl:'S'}).words, ALL.filter(w=>w.length>=4&&w.length<=5&&!w.includes('S')&&g.test(w,DICT.get(w)))); }
 for(const g of GROUPS) if(g.blurb){ const nums=(g.blurb.match(/\\b\\d{1,3}(,\\d{3})+\\b|\\bAll (\\d+)/g)||[]); for(const n of nums){ const v=+n.replace(/\\D/g,''); if(g.test && !/most probable/.test(g.blurb)) ok('blurb count '+g.id+' says '+n, groupWords(g).length===v, 'actual '+groupWords(g).length);} 

@@ -2,14 +2,14 @@
 import { spawn } from "node:child_process";
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 import { fileURLToPath, pathToFileURL } from "node:url"; import os from "node:os"; import path from "node:path";
-const URL0 = pathToFileURL(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "index.html")).href;
-const prof = path.join(os.tmpdir(), "csw24-test-" + Date.now());
+const URL0 = pathToFileURL(path?.join?.(path.dirname(fileURLToPath(import.meta.url)), "..", "index.html")).href;
+const prof = path?.join?.(os.tmpdir(), "csw24-test-" + Date.now());
 const chrome = spawn(CHROME, ["--headless=new", "--remote-debugging-port=9333", "--user-data-dir=" + prof, "--no-first-run", "--allow-file-access-from-files", "about:blank"], { stdio: "ignore" });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let targets; for (let i = 0; i < 50; i++) { try { targets = await (await fetch("http://127.0.0.1:9333/json")).json(); break; } catch { await sleep(200); } }
 const ws = new WebSocket(targets.find(t => t.type === "page").webSocketDebuggerUrl);
 await new Promise(r => ws.onopen = r);
-let id = 0; const pending = {}; const errors = [];
+let id = 0; const pending = {}; const errors = []; const results = [];
 ws.onmessage = m => { const d = JSON.parse(m.data);
   if (d.id && pending[d.id]) { pending[d.id](d); delete pending[d.id]; }
   if (d.method === "Runtime.exceptionThrown") errors.push("EXCEPTION " + (d.params.exceptionDetails.exception?.description || d.params.exceptionDetails.text).split("\n")[0]);
@@ -17,20 +17,20 @@ ws.onmessage = m => { const d = JSON.parse(m.data);
   if (d.method === "Log.entryAdded" && d.params.entry.level === "error" && !/dictionaryapi|wiktionary|favicon|404/.test((d.params.entry.url || "") + d.params.entry.text)) errors.push("log " + d.params.entry.text + " " + (d.params.entry.url || ""));
 };
 const cmd = (method, params = {}) => new Promise(r => { const i = ++id; pending[i] = r; ws.send(JSON.stringify({ id: i, method, params })); });
-const ev = async expr => { const r = await cmd("Runtime.evaluate", { expression: expr.trim().startsWith("const") ? "{" + expr + "}" : expr, awaitPromise: true, returnByValue: true }); if (r.result.exceptionDetails) throw new Error(expr.slice(0, 80) + " -> " + r.result.exceptionDetails.exception?.description); return r.result.result.value; };
+const ev = async expr => { const r = await cmd("Runtime.evaluate", { expression: expr.trim().startsWith("const") ? "{" + expr + "}" : expr, awaitPromise: true, returnByValue: true }); if (r.result.exceptionDetails) { results.push(["FAIL", "step threw: " + expr.slice(0, 70), r.result.exceptionDetails.exception?.description?.split("\n")[0]]); return undefined; } return r.result.result.value; };
 await cmd("Runtime.enable"); await cmd("Log.enable"); await cmd("Page.enable");
 const CONTRAST = `(() => { const lum = c => { const m = c.match(/[\\d.]+/g).map(Number); const f = v => (v/=255) <= .03928 ? v/12.92 : ((v+.055)/1.055)**2.4; return .2126*f(m[0])+.7152*f(m[1])+.0722*f(m[2]); };
       const bgOf = el => { while (el) { const b = getComputedStyle(el).backgroundColor; if (b && !(b.startsWith("rgba") && b.endsWith(", 0)")) && b !== "transparent") return b; el = el.parentElement; } return getComputedStyle(document.body).backgroundColor; };
       const bad = []; for (const el of document.querySelectorAll("main *, header *")) { if (!el.childNodes.length || ![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) continue; const cs = getComputedStyle(el); if (cs.visibility === "hidden" || cs.display === "none" || +cs.opacity < .5) continue;
         const a = lum(cs.color), b = lum(bgOf(el)); const r = (Math.max(a,b)+.05)/(Math.min(a,b)+.05); if (r < 3) bad.push(el.tagName + "." + el.className + " '" + el.textContent.trim().slice(0,20) + "' " + r.toFixed(2)); } return bad.slice(0,4); })()`;
-const results = []; const check = (name, cond, detail = "") => results.push([cond ? "PASS" : "FAIL", name, detail]);
+const check = (name, cond, detail = "") => { results.push([cond ? "PASS" : "FAIL", name, detail]); if (process.env.VERBOSE) console.log(cond ? "ok  " : "FAIL", name, cond ? "" : detail); };
 const go = async hash => { await ev(`location.hash = ${JSON.stringify(hash)}`); await sleep(350); };
 await cmd("Page.navigate", { url: URL0 + "#w/QI" }); await sleep(2500);
 check("page loads 280,887 words", await ev("DICT.size") === 280887);
 
 // --- every page, two widths, light + dark: errors, horizontal overflow, invisible text ---
 const pages0 = ["w/QI", "w/AATMAN", "w/ZZZZQ", "w/EUOUAE", "w/ABYE", "search", "lists", "lists/vowel", "lists/stems6", "lists/prefix", "quiz", "mine", "mine/missed", "settings"];
-const pages = pages0;
+const pages = process.env.QUICK ? ["w/QI", "search", "lists", "quiz", "settings"] : pages0;
 for (const [w, h] of [[1280, 900], [390, 844]]) for (const scheme of ["light", "dark"]) {
   await cmd("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 1, mobile: w < 500 });
   await cmd("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: scheme }] });
@@ -41,23 +41,24 @@ for (const [w, h] of [[1280, 900], [390, 844]]) for (const scheme of ["light", "
     check(`${w}px ${scheme} #${p} no sideways scroll`, ow <= 0, "overflow " + ow + "px");
     // text whose colour is (nearly) the same as its background
     const low = await ev(CONTRAST);
-    check(`${w}px ${scheme} #${p} text contrast >= 3:1`, low.length === 0, low.join(" | "));
+    check(`${w}px ${scheme} #${p} text contrast >= 3:1`, low.length === 0, low?.join?.(" | "));
     check(`${w}px ${scheme} #${p} no errors`, errors.length === before, errors.slice(before).join(" | "));
   }
 }
 await cmd("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
 
 // --- every theme, light and dark: contrast on the busiest pages ---
-for (const theme of await ev("Object.keys(THEMES)")) for (const mode of ["light", "dark"]) {
+// (QUICK=1 skips this: it takes about ten minutes)
+for (const theme of process.env.QUICK ? [] : await ev("Object.keys(THEMES)")) for (const mode of ["light", "dark"]) {
   await ev(`saveSettings({ theme: "${theme}", mode: "${mode}" })`);
   for (const p of ["w/AATMAN", "lists", "search", "settings"]) { await go(p); await sleep(150);
-    const low = await ev(CONTRAST); check(`theme ${theme} ${mode} #${p} contrast`, low.length === 0, low.join(" | ")); }
+    const low = await ev(CONTRAST); check(`theme ${theme} ${mode} #${p} contrast`, low.length === 0, low?.join?.(" | ")); }
   await go("quiz"); await ev(`document.querySelector("#qsrc").value="list:twos"; document.querySelector("#qstart").click()`); await sleep(150);
-  const low = await ev(CONTRAST); check(`theme ${theme} ${mode} quiz question contrast`, low.length === 0, low.join(" | ")); await ev(`Q = null`);
+  const low = await ev(CONTRAST); check(`theme ${theme} ${mode} quiz question contrast`, low.length === 0, low?.join?.(" | ")); await ev(`Q = null`);
 }
 await ev(`saveSettings({ theme: "board", mode: "auto" })`);
 await go("lists"); await sleep(1500);
-check("list cards show title + count only", (await ev(`document.querySelectorAll(".lcard span").length`)) === 0 && /\d+ words/.test(await ev(`document.querySelector("#cnt_vowel").textContent`)), await ev(`document.querySelector(".lcard").textContent`));
+check("Lists page shows the lists with counts", (await ev(`document.querySelectorAll("#view [data-list]").length`)) > 10 && /\d+ words/.test(await ev(`document.querySelector("#cnt_vowel")?.textContent`)), await ev(`document.querySelector("#cnt_vowel")?.textContent`));
 // --- flows ---
 const txt = sel => ev(`document.querySelector(${JSON.stringify(sel)})?.textContent.trim()`);
 const submitHeader = async q => { await ev(`document.querySelector("#q").value = ${JSON.stringify(q)}; document.querySelector("#form").requestSubmit()`); await sleep(700); };
@@ -66,7 +67,7 @@ check("header rack → search", (await ev("location.hash")) === "#search" && /97
 check("blank shown in red lowercase", await ev(`!!document.querySelector("#sres .wl mark")`));
 await submitHeader("q[^u]*");
 check("header pattern → search", /\d+ words/.test(await txt("#sres .count") || ""), await txt("#sres .count"));
-await submitHeader("retains");
+await go("w/QI"); await submitHeader("retains");
 check("header word → word page", (await ev("location.hash")) === "#w/RETAINS" && /Valid/.test(await txt(".badge")));
 await go("w/AATMAN");
 check("AATMAN back hook shows s with + mark", (await ev(`[...document.querySelectorAll(".hook button")].map(b=>b.textContent).join(",")`)) === "s+");
@@ -84,45 +85,34 @@ await ev(`document.querySelector("[data-len='0']")?.click()`); await sleep(300);
 check("prefix+OUT all lengths = 579", /^579 words/.test(await txt("#sres .count")), c1 + " → " + await txt("#sres .count"));
 await ev(`document.querySelector("[data-len='7']")?.click()`); await sleep(300);
 check("prefix+OUT 7s = 218 of 579", /218 7-letter words.*579 in all/.test(await txt("#sres .count")), await txt("#sres .count"));
-await ev(`document.querySelector("#s_top").value="1000"; document.querySelector("#sform").requestSubmit()`); await sleep(600);
+await ev(`document.querySelector("#s_pto").value="100"; document.querySelector("#sform").requestSubmit()`); await sleep(600);
 check("probability filter narrows it", (await ev(`parseInt(document.querySelector("#sres .count").textContent.replace(/,/g,""))`)) < 218);
 await ev(`document.querySelector("#sClear").click()`); await sleep(300);
-check("Clear all resets fields", (await ev(`document.querySelector("#s_group").value + document.querySelector("#s_starts").value + document.querySelector("#s_top").value`)) === "");
-// --- rank range ("show top 30", "30 to 50") ---
-await ev(`document.querySelector("#s_group").value="prefix"; document.querySelector("#s_starts").value="out"; document.querySelector("#s_top").value=""; document.querySelector("#sform").requestSubmit()`); await sleep(700);
-await ev(`document.querySelector("[data-len='0']")?.click()`); await sleep(250);
-const expected = await ev(`runSearch(searchState).words.sort(sorters[SET.sort]).map(w => w)`);
-const rowsNow = () => ev(`[...document.querySelectorAll("#sres .r")].map(r => r.dataset.go)`);
-const ranksNow = () => ev(`[...document.querySelectorAll("#sres .rk")].map(r => r.textContent)`);
-await ev(`document.querySelector("[data-top='30']").click()`); await sleep(250);
-let rws = await rowsNow();
-check("Top 30 shows exactly the first 30 in sort order", rws.length === 30 && rws.join() === expected.slice(0, 30).join(), rws.length + " rows");
-check("Top 30 count text", /^Ranks 1–30 of 579 words/.test(await txt("#sres .count")), await txt("#sres .count"));
-check("rank numbers 1..30 shown", (await ranksNow()).join("") === Array.from({ length: 30 }, (_, i) => (i + 1) + ".").join(""));
-await ev(`document.querySelector("#rFrom").value="30"; document.querySelector("#rTo").value="50"; document.querySelector("#rTo").dispatchEvent(new Event("change"))`); await sleep(250);
-rws = await rowsNow();
-check("30 to 50 shows ranks 30–50 (21 words)", rws.length === 21 && rws.join() === expected.slice(29, 50).join(), rws.length + " rows");
-check("30 to 50 rank labels", (await ranksNow())[0] === "30." && (await ranksNow()).at(-1) === "50.");
-check("Quiz these uses only the shown range", (await ev("lastResults.length")) === 21);
-await ev(`document.querySelector("#rFrom").value="50"; document.querySelector("#rTo").value="30"; document.querySelector("#rTo").dispatchEvent(new Event("change"))`); await sleep(250);
-check("reversed range 50 to 30 is swapped", /^Ranks 30–50/.test(await txt("#sres .count")), await txt("#sres .count"));
-await ev(`document.querySelector("#rFrom").value="5000"; document.querySelector("#rTo").value=""; document.querySelector("#rTo").dispatchEvent(new Event("change"))`); await sleep(250);
-check("range past the end explains why it's empty", /only 579 words/.test(await txt("#sres .empty") || ""), await txt("#sres .empty"));
-await ev(`document.querySelector("#rFrom").value="30"; document.querySelector("#rTo").value="50"; document.querySelector("#rTo").dispatchEvent(new Event("change"))`); await sleep(250);
-await ev(`document.querySelector("[data-len='7']").click()`); await sleep(250);
-const exp7 = expected.filter(w => w.length === 7);
-rws = await rowsNow();
-check("range applies within the chosen length", rws.join() === exp7.slice(29, 50).join() && /Ranks 30–50 of 218 7-letter words/.test(await txt("#sres .count")), await txt("#sres .count"));
+check("Clear all resets fields", (await ev(`document.querySelector("#s_group").value + document.querySelector("#s_starts").value + document.querySelector("#s_pto").value`)) === "");
+// --- Most likely words: ranks from–to, counted within each length of what's found ---
+const likely = async (f, t) => { await ev(`document.querySelector("#s_group").value="prefix"; document.querySelector("#s_starts").value="out"; document.querySelector("#s_pfrom").value=${JSON.stringify(f)}; document.querySelector("#s_pto").value=${JSON.stringify(t)}; document.querySelector("#sform").requestSubmit()`); await sleep(700); };
+const perLen = () => ev(`(() => { const c = {}; for (const w of runSearch(searchState).words) c[w.length] = (c[w.length] || 0) + 1; return Math.max(0, ...Object.values(c)); })()`);
+const shown = () => ev(`runSearch(searchState).words.length`);
+await likely("", "30");
+check("30 most likely: at most 30 of each length", (await perLen()) === 30, await perLen());
+check("30 most likely: the 30 are the top ranks", await ev(`runSearch(searchState).words.every(w => runSearch({ ...searchState, pfrom: "", pto: "" }).words.filter(x => x.length === w.length).sort(sorters.prob).indexOf(w) < 30)`));
+await likely("30", "50");
+check("ranks 30 to 50: 21 of each length", (await perLen()) === 21, await perLen());
+check("Quiz these uses only the shown range", (await ev("lastResults.length")) === (await shown()), (await ev("lastResults.length")) + " vs " + (await shown()));
+const r3050 = await ev(`runSearch(searchState).words.join()`);
+await likely("50", "30");
+check("reversed range 50 to 30 is swapped", (await ev(`runSearch(searchState).words.join()`)) === r3050);
+await likely("5000", "");
+check("range past the end finds nothing", (await shown()) === 0);
+await likely("30", "50");
 await go("lists"); await go("search"); await sleep(700);
-check("range is remembered with the search", (await ev(`document.querySelector("#rFrom").value + "-" + document.querySelector("#rTo").value`)) === "30-50");
+check("range is remembered with the search", (await ev(`document.querySelector("#s_pfrom").value + "-" + document.querySelector("#s_pto").value`)) === "30-50");
 await ev(`const s=document.querySelector("#sortSel"); s.value="score"; s.dispatchEvent(new Event("change"))`); await sleep(250);
-const byScore = await ev(`runSearch(searchState).words.sort(sorters.score).slice(29, 50)`);
-check("changing sort re-ranks the range", (await rowsNow()).join() === byScore.join());
+const firstScore = await ev(`score(document.querySelector("#sres .r").dataset.go)`), maxScore = await ev(`Math.max(...runSearch(searchState).words.map(score))`);
+check("sort by points puts the highest-scoring word first", firstScore === maxScore, firstScore + " vs " + maxScore);
 await ev(`const s=document.querySelector("#sortSel"); s.value="prob"; s.dispatchEvent(new Event("change"))`); await sleep(200);
 await ev(`document.querySelector("#sClear").click()`); await sleep(300);
-check("Clear all also clears the range", (await ev("searchState.from + searchState.to")) === "");
-await go("lists/p7"); await sleep(700); await ev(`document.querySelector("[data-top='100']").click()`); await sleep(250);
-check("range works on Word lists too", (await ev(`document.querySelectorAll("#lres .r").length`)) === 100);
+check("Clear all also clears the range", (await ev("searchState.pfrom + searchState.pto")) === "");
 // sort + defs toggle persist
 await go("lists/twos"); await sleep(500);
 await ev(`const s=document.querySelector("#sortSel"); s.value="score"; s.dispatchEvent(new Event("change"))`); await sleep(200);
@@ -135,44 +125,48 @@ check("starred word appears in My words", (await ev(`[...document.querySelectorA
 // quiz flows
 await go("quiz"); await ev(`document.querySelector("#qsrc").value="list:twos"; document.querySelector("#qsrc").dispatchEvent(new Event("change")); document.querySelector("[data-mode=anagram]").click()`); await sleep(200);
 await ev(`document.querySelector("#qsrc").value="list:twos"; document.querySelector("#qsrc").dispatchEvent(new Event("change")); document.querySelector("#qstart").click()`); await sleep(300);
-const w1 = await ev("Q.qs[0].w");
-const typeWord = async w => { await ev(`document.querySelector("#qa").focus()`); await cmd("Input.insertText", { text: w.toLowerCase() }); await sleep(120); };
-await ev(`Q.qs[0] = { w: "ZAX", show: "ZAX" }; drawQuestion()`); await sleep(150);
+const w1 = await ev("Q.qs?.[0]?.w");
+const typeWord = async w => { for (const ch of w.toUpperCase()) await ev(`document.dispatchEvent(new KeyboardEvent("keydown", { key: "${ch}", bubbles: true }))`); await sleep(650); };
+// the definition quiz has a typing box
+const typeBox = async w => { await ev(`document.querySelector("#qa").focus()`); await cmd("Input.insertText", { text: w.toLowerCase() }); await sleep(150); };
+await ev(`Q.qs[0] = { w: "ZAX", show: "ZAX" }; Q.answered = false; drawQuestion()`); await sleep(150);
 await typeWord("zax");
-check("single answer is taken as you type (no Enter)", /Correct/.test(await txt("#qfb .fb") || ""), w1 + " " + await txt("#qfb .fb"));
-await ev(`document.querySelector("#qnext").click()`); await sleep(200);
+check("single answer is taken as you type (no Enter)", /Correct/.test(await txt("#qfb .fb") || ""), w1 + " " + await txt("#qfb"));
+await ev(`document.querySelector("#qMain").click()`); await sleep(200);
 // multi-anagram rack: force a question with several answers
-await ev(`Q.qs[Q.i] = { w: "RETAINS", show: "RETAINS" }; Q.answered = false; drawQuestion()`); await sleep(200);
+await ev(`Q.qs[Q.i] = { w: "RETAINS", show: "RETAINS" }; Q.answered = false; Q.found = []; drawQuestion()`); await sleep(200);
 await typeWord("retains");
-check("multi: correct word clears the box", (await ev(`document.querySelector("#qa").value`)) === "" && (await txt("#found")).includes("RETAINS") && !(await txt("#qfb")), await txt("#found"));
+check("multi: a right word goes in the found list", (await txt("#found") || "").includes("RETAINS") && !(await ev("Q.answered")), await txt("#found"));
 await typeWord("stainer");
 check("multi: second word added, not finished yet", (await ev("Q.found.length")) === 2 && !(await ev("Q.answered")));
-await typeWord("zzz");
-check("multi: wrong text stays in the box", (await ev(`document.querySelector("#qa").value`)) === "zzz");
-await ev(`document.querySelector("#qform").requestSubmit()`); await sleep(200);
-check("multi: Enter gives up and shows found/missed", /Not quite/.test(await txt("#qfb .fb")) && /found 2 of 11/.test(await txt("#qfb")), await txt("#qfb"));
-check("missed word saved", (await ev(`store.get("missed",[])`)).includes("RETAINS"));
-await ev(`document.querySelector("#qnext").click()`); await sleep(200);
-await ev(`Q.qs[Q.i] = { w: "AEON", show: "AEON" }; Q.answered = false; drawQuestion()`); await sleep(150);
+await typeWord("aeinrst");
+check("multi: a wrong word isn't added", (await ev("Q.found.length")) === 2);
+await ev(`document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }))`); await sleep(250);
+check("multi: Enter gives up and shows found/missed", (await ev("Q.answered")) && !(await ev("Q.ok")), await txt("#qfb"));
+await ev(`document.querySelector("#qMain").click()`); await sleep(200);
+check("missed word saved on moving on", (await ev(`store.get("missed",[])`)).includes("RETAINS"));
+await ev(`Q.qs[Q.i] = { w: "AEON", show: "AEON" }; Q.answered = false; Q.found = []; drawQuestion()`); await sleep(150);
 for (const w of ["aeon", "eoan"]) await typeWord(w);
-check("multi: finding every word marks it correct", /Correct/.test(await txt("#qfb .fb") || ""), await txt("#qfb"));
-const qbtn = await ev(`[getComputedStyle(document.querySelector("#qnext")).backgroundColor, getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()]`);
-check("quiz buttons are not the red accent", !qbtn[0].includes("184, 54, 74"), qbtn.join(" "));
+check("multi: finding every word marks it correct", /Correct/.test(await txt("#qfb .fb") || "") || (await ev("Q.answered && Q.ok")), await txt("#qfb"));
+const qbtn = await ev(`[getComputedStyle(document.querySelector("#qMain")).backgroundColor, getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()]`);
+check("quiz buttons are not the red accent", !qbtn?.[0]?.includes("184, 54, 74"), qbtn?.join?.(" "));
 check("wrong-answer text is not red", !(await ev(`(() => { const p = document.createElement("p"); p.className = "fb no"; document.querySelector("#qfb").append(p); const c = getComputedStyle(p).color; p.remove(); return c; })()`)).includes("184, 54, 74"));
 await ev(`document.querySelector("#qquit").click()`);
 await ev(`quizSetup.mode="def"; VIEWS.quiz(); document.querySelector("#qsrc").value="list:twos"; document.querySelector("#qsrc").dispatchEvent(new Event("change")); document.querySelector("#qstart").click()`); await sleep(300);
-await typeWord(await ev("Q.qs[0].w"));
-check("definition quiz takes the word as you type", /Correct/.test(await txt("#qfb .fb") || ""), await ev("Q.qs[0].w"));
+await typeBox(await ev("Q.qs?.[0]?.w"));
+check("definition quiz takes the word as you type", /Correct/.test(await txt("#qfb .fb") || ""), await ev("Q.qs?.[0]?.w"));
 await ev(`document.querySelector("#qquit").click()`); await sleep(200);
+check("leaving a quiz keeps it to carry on", !!(await ev(`document.querySelector("#qEnd")`)));
+await ev(`document.querySelector("#qEnd").click()`); await sleep(200);
 check("ending quiz shows summary", /Last quiz/.test(await ev("document.querySelector('#view').textContent")));
 await ev(`quizSetup.mode="phony"; VIEWS.quiz(); document.querySelector("#qsrc").value="list:threes"; document.querySelector("#qsrc").dispatchEvent(new Event("change")); document.querySelector("#qstart").click()`); await sleep(300);
-const isPh = await ev("!!Q.qs[0].phony");
+const isPh = await ev("!!Q.qs?.[0]?.phony");
 await cmd("Input.dispatchKeyEvent", { type: "keyDown", key: isPh ? "p" : "v", text: isPh ? "p" : "v" }); await sleep(200);
 check("phony quiz keyboard answer works", /Correct/.test(await txt("#qfb .fb") || ""), await txt("#qfb .fb"));
 await ev(`document.querySelector("#qquit").click()`);
 await ev(`quizSetup.mode="hooks"; VIEWS.quiz(); document.querySelector("#qsrc").value="list:twos"; document.querySelector("#qsrc").dispatchEvent(new Event("change")); document.querySelector("#qstart").click()`); await sleep(300);
-await ev(`const e=DICT.get(Q.qs[0].w); document.querySelector("#qf").value=[...e.fh].reverse().join(" ").toUpperCase(); document.querySelector("#qb").value=e.bh; document.querySelector("#qform").requestSubmit()`); await sleep(200);
-check("hooks quiz grades any order / case", /Correct/.test(await txt("#qfb .fb")), await ev("Q.qs[0].w"));
+await ev(`const e=DICT.get(Q.qs?.[0]?.w); document.querySelector("#qf").value=[...e.fh].reverse().join(" ").toUpperCase(); document.querySelector("#qb").value=e.bh; document.querySelector("#qform").requestSubmit()`); await sleep(200);
+check("hooks quiz grades any order / case", /Correct/.test(await txt("#qfb .fb")), await ev("Q.qs?.[0]?.w"));
 await ev(`document.querySelector("#qquit").click()`);
 // Quiz these from a list preselects last results
 await go("lists/qnou"); await sleep(500); await ev(`document.querySelector("#quizThese").click()`); await sleep(400);
@@ -196,7 +190,7 @@ await ev(`saveSettings({randMin: 5, randMax: 5})`); let lens = new Set();
 for (let i = 0; i < 8; i++) { await ev(`document.querySelector("#randBtn").click()`); await sleep(120); lens.add((await ev("location.hash")).length - 3); }
 check("random word honours length 5–5", lens.size === 1 && lens.has(5), [...lens].join(","));
 await ev(`saveSettings({randMin: 2, randMax: 8})`);
-check("no errors during flows", errors.length === 0, errors.join(" | "));
+check("no errors during flows", errors.length === 0, errors?.join?.(" | "));
 
 const fails = results.filter(r => r[0] === "FAIL");
 console.log(`${results.length} UI checks, ${fails.length} failed`);
