@@ -192,15 +192,15 @@ function results(el, words, opts = {}) {
   // range = which ranks to show, counted in the current sort order (e.g. 1–100 or 30–50)
   const mem = resMem[location.hash + ":" + words.length] ||= {};
   const lens = [...new Set(words.map(w => w.length))].sort((a, b) => a - b);
-  const st = { lens: new Set((mem.lens || (opts.len ? [opts.len] : [])).filter(n => lens.includes(n) && lens.length > 1)), shown: mem.shown || +SET.pageSize, from: +opts.range?.from || 0, to: +opts.range?.to || 0 };
-  let first = true;
+  const st = { sel: null, lens: new Set((mem.lens || (opts.len ? [opts.len] : [])).filter(n => lens.includes(n) && lens.length > 1)), shown: mem.shown || +SET.pageSize, from: +opts.range?.from || 0, to: +opts.range?.to || 0 };
+  let first = true, shownList = [];
   function draw() {
     const full = (st.lens.size ? words.filter(w => st.lens.has(w.length)) : [...words]).sort(sorters[SET.sort] || sorters.prob);
     const ranged = st.from > 1 || st.to > 0;
     const lo = Math.max(1, st.from || 1), hi = st.to ? Math.max(st.to, lo) : full.length;
     const list = ranged ? full.slice(lo - 1, hi) : full;
     const offset = ranged ? lo - 1 : 0;
-    lastResults = list;
+    lastResults = shownList = list;
     const starSet = new Set(getStars()), knownSet = new Set(getKnown()), allStarred = list.length > 0 && list.every(w => starSet.has(w));
     const total = st.lens.size ? `${full.length.toLocaleString()} ${[...st.lens].sort((a, b) => a - b).join(", ")}-letter words <span class="small">(${words.length.toLocaleString()} in all)</span>` : `${full.length.toLocaleString()} word${full.length === 1 ? "" : "s"}`;
     el.innerHTML = `
@@ -211,7 +211,8 @@ function results(el, words, opts = {}) {
         <div class="tacts"><button class="btn sm" id="quizThese">Quiz these</button>
         <button class="btn sm" id="practiceThese">Practice these</button>
         <button class="btn sm" id="starAll">${allStarred ? "Unstar all" : "Star all"}</button>
-        <button class="btn sm" id="toFolder">Add to folder</button></div>
+        <button class="btn sm" id="toFolder">Add to folder</button>
+        <button class="btn sm ${st.sel ? "on" : ""}" id="selBtn">Select</button></div>
       </div>
       <div class="row rangebar">
         <span class="small">Show</span>
@@ -224,8 +225,9 @@ function results(el, words, opts = {}) {
         <span class="small">in ${SORTS[SET.sort] || "Probability"} order</span>
       </div>
       ${lens.length > 1 ? `<div class="chips" style="margin:10px 0 6px"><button class="btn sm ${st.lens.size ? "" : "on"}" data-len="0">All lengths</button>${lens.map(n => `<button class="btn sm ${st.lens.has(n) ? "on" : ""}" data-len="${n}">${n}</button>`).join("")}</div>` : ""}
-      ${list.length ? `<div class="rows ${ranged ? "ranked" : ""} ${SET.defs ? "" : "nodefs"} ${SET.prob ? "" : "noprob"} ${SET.hooks ? "" : "nohooks"}">${list.slice(0, st.shown).map((w, i) => rowHTML(w, opts.masks?.get(w), ranged ? offset + i + 1 : 0, starSet, knownSet)).join("")}</div>` : `<p class="empty" style="margin-top:10px">${ranged && full.length ? `There are only ${full.length.toLocaleString()} words, so rank ${lo.toLocaleString()} is past the end.` : "No words match."}</p>`}
-      ${list.length > st.shown ? `<button class="btn more" id="moreBtn">Show ${Math.min(+SET.pageSize, list.length - st.shown).toLocaleString()} more</button>` : ""}`;
+      ${list.length ? `<div class="rows ${st.sel ? "selecting" : ""} ${ranged ? "ranked" : ""} ${SET.defs ? "" : "nodefs"} ${SET.prob ? "" : "noprob"} ${SET.hooks ? "" : "nohooks"}">${list.slice(0, st.shown).map((w, i) => rowHTML(w, opts.masks?.get(w), ranged ? offset + i + 1 : 0, starSet, knownSet, st.sel?.has(w))).join("")}</div>` : `<p class="empty" style="margin-top:10px">${ranged && full.length ? `There are only ${full.length.toLocaleString()} words, so rank ${lo.toLocaleString()} is past the end.` : "No words match."}</p>`}
+      ${list.length > st.shown ? `<button class="btn more" id="moreBtn">Show ${Math.min(+SET.pageSize, list.length - st.shown).toLocaleString()} more</button>` : ""}
+      ${st.sel ? `<div class="selbar"><span class="count" id="selN"></span><button class="btn sm" id="selAll"></button><button class="btn sm primary" id="selFolder">Add to folder</button><button class="btn sm" id="selStar">☆ Star</button><button class="btn sm" id="selKnown">✓ Cross off</button><button class="btn sm" id="selDone">Done</button></div>` : ""}`;
     // length chips: tap several to see them together; All lengths clears them
     el.querySelectorAll("[data-len]").forEach(b => b.onclick = () => {
       const n = +b.dataset.len; if (!n) st.lens.clear(); else st.lens.has(n) ? st.lens.delete(n) : st.lens.add(n);
@@ -246,18 +248,45 @@ function results(el, words, opts = {}) {
     el.querySelector("#moreBtn")?.addEventListener("click", () => { st.shown += +SET.pageSize; mem.shown = st.shown; draw(); });
     el.querySelector("#quizThese").onclick = () => { quizSetup.source = "last"; quizSetup.lens = []; quizSetup.starOnly = false; location.hash = "quiz"; };
     el.querySelector("#practiceThese").onclick = () => { store.set("pLast", [...lastResults]); saveSettings({ practice: { ...PO_DEFAULT, mode: SET.practice?.mode || "anagram", order: SET.practice?.order || "rand", rev: !!SET.practice?.rev, src: "my:last", lens: [] } }); location.hash = "practice"; };
-    el.querySelector("#toFolder").onclick = () => folderSheet(list);
+    el.querySelector("#toFolder").onclick = () => folderSheet(list, () => { st.sel = new Set(); draw(); });
+    el.querySelector("#selBtn").onclick = () => { st.sel = st.sel ? null : new Set(); draw(); };
+    if (st.sel) {
+      const picked = () => list.filter(w => st.sel.has(w));
+      el.querySelector("#selAll").onclick = () => { const all = picked().length === list.length; st.sel = new Set(all ? [] : list); el.querySelectorAll(".rows .r").forEach(r => r.classList.toggle("sel", !all)); selBar(); };
+      el.querySelector("#selFolder").onclick = () => picked().length && folderSheet(picked());
+      // star or cross off the picked words; if they all already are, undo it for them
+      const mark = (key, get) => { const p = picked(); if (!p.length) return; const had = new Set(get()), all = p.every(w => had.has(w)); store.set(key, all ? get().filter(w => !st.sel.has(w)) : [...p.filter(w => !had.has(w)), ...get()]); draw(); };
+      el.querySelector("#selStar").onclick = () => mark("stars", getStars);
+      el.querySelector("#selKnown").onclick = () => mark("known", getKnown);
+      el.querySelector("#selDone").onclick = () => { st.sel = null; draw(); };
+      selBar();
+    }
     // Star all / Unstar all for exactly the rows in view (after the length and rank filters)
     el.querySelector("#starAll").onclick = () => { const s = getStars(), inList = new Set(list); store.set("stars", allStarred ? s.filter(w => !inList.has(w)) : [...list.filter(w => !starSet.has(w)), ...s]); draw(); };
     if (first) { first = false; restoreScroll(); pendingScroll = 0; }
   }
+  function selBar() {
+    const n = shownList.filter(w => st.sel.has(w)).length;
+    el.querySelector("#selN").textContent = `${n.toLocaleString()} picked`;
+    el.querySelector("#selAll").textContent = n && n === shownList.length ? "Clear" : `All ${shownList.length.toLocaleString()}`;
+    for (const id of ["#selFolder", "#selStar", "#selKnown"]) el.querySelector(id).disabled = !n;
+  }
+  // while picking, tapping a row picks it instead of opening the word
+  el.addEventListener("click", ev => {
+    const r = st.sel && ev.target.closest(".rows .r[data-go]");
+    if (!r) return;
+    ev.preventDefault(); ev.stopPropagation();
+    const w = r.dataset.go, on = !st.sel.has(w);
+    on ? st.sel.add(w) : st.sel.delete(w);
+    r.classList.toggle("sel", on); selBar();
+  }, true);
   draw();
 }
 const knownBtn = (w, on) => `<button type="button" class="kn ${on ? "on" : ""}" data-known="${w}" title="${on ? "Not known yet" : "Cross off: I know it"}" aria-label="${on ? "Uncross" : "Cross off"} ${w}" aria-pressed="${on}">✓</button>`;
 const starBtn = (w, on) => `<button type="button" class="st ${on ? "on" : ""}" data-star="${w}" title="${on ? "Unstar" : "Star"}" aria-label="Star ${w}">${on ? "★" : "☆"}</button>`;
-function rowHTML(w, mask, rank, stars = new Set(getStars()), known = new Set(getKnown())) {
+function rowHTML(w, mask, rank, stars = new Set(getStars()), known = new Set(getKnown()), sel = false) {
   const e = DICT.get(w);
   const label = mask ? [...w].map((c, i) => mask[i] ? `<mark>${c.toLowerCase()}</mark>` : c).join("") : w;
-  return `<div class="r${known.has(w) ? " known" : ""}" data-go="${w}">${rank ? `<span class="rk">${rank}.</span>` : ""}<span class="meta">#${e.p.toLocaleString()}</span><span class="fh">${hookText(e.fh, e.fhNew)}</span><span class="wl">${label}${e.n ? "<sup>+</sup>" : ""}</span><span class="bh">${hookText(e.bh, e.bhNew)}</span><span class="d">${esc(e.d)}</span><span class="ra">${knownBtn(w, known.has(w))}${starBtn(w, stars.has(w))}</span></div>`;
+  return `<div class="r${known.has(w) ? " known" : ""}${sel ? " sel" : ""}" data-go="${w}">${rank ? `<span class="rk">${rank}.</span>` : ""}<span class="meta">#${e.p.toLocaleString()}</span><span class="fh">${hookText(e.fh, e.fhNew)}</span><span class="wl">${label}${e.n ? "<sup>+</sup>" : ""}</span><span class="bh">${hookText(e.bh, e.bhNew)}</span><span class="d">${esc(e.d)}</span><span class="ra">${knownBtn(w, known.has(w))}${starBtn(w, stars.has(w))}</span></div>`;
 }
 

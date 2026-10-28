@@ -7,10 +7,11 @@ phoneMQ.addEventListener?.("change", () => route());
 const sheetHTML = (id, body) => `<div class="sheetwrap" id="${id}" hidden><div class="scrim"></div><div class="sheet"><div class="grab"></div>${body}</div></div>`;
 function sheet(id, open) { const s = $("#" + id); if (!s) return; s.hidden = !open; document.body.classList.toggle("sheet-open", open); }
 
+let wordShown = "";
 VIEWS.w = (arg) => {
   const w = (arg || store.get("hist", [])[0] || "QI").toUpperCase().replace(/[^A-Z]/g, "");
   if (!w) return;
-  $("#q").value = w;
+  $("#q").value = wordShown = w;
   const e = DICT.get(w), valid = !!e;
   if (valid) addHistory(w);
   const ana = anagrams(w).filter(x => x !== w);
@@ -125,7 +126,7 @@ async function fetchOnline(w) {
     }
   } catch {}
   const b = $("#online");
-  if (!b || $("#q").value !== w) return;
+  if (!b || wordShown !== w) return;
   parts.sort((a, b) => (b.ex ? 1 : 0) - (a.ex ? 1 : 0));
   const shown = parts.slice(0, 6);
   const syns = [...new Set(parts.flatMap(p => p.syn || []))].map(s => s.toUpperCase()).filter(s => DICT.has(s)).slice(0, 12);
@@ -286,7 +287,7 @@ VIEWS.search = () => {
   const fold = searchFromBar; searchFromBar = false;
   const opened = fold ? {} : store.get("searchOpen", { group: true });
   const acc = (key, title) => `<details class="fs acc" data-acc="${key}" ${!fold && (opened[key] || accSummary(key)) ? "open" : ""}><summary class="lbl">${title}<span class="accn" id="accn_${key}">${esc(accSummary(key))}</span></summary>`;
-  $("#view").innerHTML = `<div class="card">
+  $("#view").innerHTML = `${searchTabsHTML()}<div class="card">
     <form id="sform" autocomplete="off">
       ${acc("group", "Group and length")}${secs.group}</details>
       ${acc("narrow", "Filters")}${secs.narrow}</details>
@@ -300,15 +301,86 @@ VIEWS.search = () => {
   <div class="card" id="sres"><p class="empty">Pick a group or fill in any options, then press Search. Hooks show either side of each word; red lowercase letters are blanks.</p></div>`;
   const read = () => { for (const k of Object.keys(SEARCH_DEFAULT)) { const el = $("#s_" + k); if (el) searchState[k] = el.type === "checkbox" ? (el.checked ? "1" : "") : el.value; } store.set("search", searchState); };
   $("#sform").querySelectorAll("details.acc").forEach(d => d.addEventListener("toggle", () => { const o = store.get("searchOpen", { group: true }); o[d.dataset.acc] = d.open; store.set("searchOpen", o); }));
-  $("#sform").addEventListener("input", () => { read(); for (const k of ["group", "narrow"]) $("#accn_" + k).textContent = accSummary(k); });
-  $("#s_group").onchange = e => { $("#groupHint").textContent = groupOf(e.target.value)?.blurb || ""; read(); doSearch(); };
+  $("#sform").addEventListener("input", () => { read(); nameSearchTab(); for (const k of ["group", "narrow"]) $("#accn_" + k).textContent = accSummary(k); });
+  $("#s_group").onchange = e => { $("#groupHint").textContent = groupOf(e.target.value)?.blurb || ""; read(); nameSearchTab(); doSearch(); };
   $("#sform").addEventListener("submit", ev => { ev.preventDefault(); read(); doSearch(); });
   $("#sClear").onclick = () => { searchState = { ...SEARCH_DEFAULT }; store.set("search", searchState); VIEWS.search(); };
-  bindTypeBar();
+  bindTypeBar(); bindSearchTabs();
   if (Object.entries(searchState).some(([k, v]) => v && v !== SEARCH_DEFAULT[k])) doSearch();
 };
 // short "what's set" text shown beside each folded search section
 let searchFromBar = false;
+// search tabs, like a browser's: each keeps its own search and scroll place (on this device only). The open tab's
+// search is searchState (saved as "search"); the others wait in "searchTabs"
+const MAX_TABS = 8;
+let searchTabs = store.get("searchTabs", null), searchTabOn = store.get("searchTabOn", 0);
+if (!Array.isArray(searchTabs) || !searchTabs.length) { searchTabs = [{ id: 1, s: { ...searchState }, y: 0 }]; searchTabOn = 1; }
+if (!searchTabs.some(t => t.id === searchTabOn)) searchTabOn = searchTabs[0].id;
+const searchSet = s => Object.entries(s).some(([k, v]) => !["mode", "from", "to"].includes(k) && v);
+function searchName(s) {
+  return [barText(s), groupOf(s.group)?.name, !groupOf(s.group)?.len && lensText(s.lens), accSummary("narrow", s)].filter(Boolean).join(" · ") || "New search";
+}
+// the open tab's name follows the filters as they're filled in
+function nameSearchTab() {
+  const t = $("#view .stab.on"), n = searchName(searchState);
+  if (t) { t.title = n; t.querySelector("b").textContent = n; }
+}
+// a search started from another page gets its own tab (or the open one, if that's still empty)
+function searchInNewTab(s) {
+  saveSearchTabs();
+  if (searchSet(searchState)) {
+    if (searchTabs.length >= MAX_TABS) searchTabs.splice(searchTabs.findIndex(t => t.id !== searchTabOn), 1);
+    const id = Math.max(...searchTabs.map(t => t.id)) + 1;
+    searchTabs.push({ id, s: {}, y: 0 }); searchTabOn = id;
+  }
+  searchState = { ...SEARCH_DEFAULT, ...s }; store.set("search", searchState); saveSearchTabs();
+}
+function saveSearchTabs() {
+  const on = searchTabs.find(t => t.id === searchTabOn);
+  if (on) on.s = { ...searchState };
+  store.set("searchTabs", searchTabs); store.set("searchTabOn", searchTabOn);
+}
+function searchTabsHTML() {
+  saveSearchTabs();
+  return `<div class="stabs" role="tablist">${searchTabs.map(t => `<span class="stab ${t.id === searchTabOn ? "on" : ""}" role="tab" aria-selected="${t.id === searchTabOn}" data-stab="${t.id}" title="${esc(searchName(t.s))}"><b>${esc(searchName(t.s))}</b><button type="button" class="x" data-stabx="${t.id}" aria-label="Close tab">×</button></span>`).join("")}
+    <button type="button" class="stab plus" id="stabNew" ${searchTabs.length >= MAX_TABS ? `disabled title="Up to ${MAX_TABS} tabs: close one first"` : `title="New search tab"`} aria-label="New search tab">+</button></div>`;
+}
+function openSearchTab(id, s) {
+  const cur = searchTabs.find(t => t.id === searchTabOn);
+  if (cur) cur.y = window.scrollY;
+  if (s) { id = Math.max(...searchTabs.map(t => t.id)) + 1; searchTabs.push({ id, s, y: 0 }); }
+  const t = searchTabs.find(x => x.id === id);
+  searchTabOn = id; searchState = { ...SEARCH_DEFAULT, ...t.s }; store.set("search", searchState);
+  VIEWS.search(); window.scrollTo({ top: 0 }); pendingScroll = t.y || 0; restoreScroll();
+}
+function bindSearchTabs() {
+  const v = $("#view");
+  v.querySelectorAll("[data-stab]").forEach(el => el.onclick = ev => {
+    const x = ev.target.closest("[data-stabx]");
+    if (x) return closeSearchTab(+x.dataset.stabx);
+    if (+el.dataset.stab !== searchTabOn) openSearchTab(+el.dataset.stab);
+  });
+  $("#stabNew").onclick = () => openSearchTab(0, { ...SEARCH_DEFAULT });
+  v.querySelector(".stab.on")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+function closeSearchTab(id) {
+  const i = searchTabs.findIndex(t => t.id === id);
+  if (searchTabs.length === 1) { searchTabs[0].s = { ...SEARCH_DEFAULT }; searchTabs[0].y = 0; return openSearchTab(searchTabs[0].id); }
+  searchTabs.splice(i, 1);
+  if (id === searchTabOn) { searchTabOn = 0; openSearchTab(searchTabs[Math.min(i, searchTabs.length - 1)].id); return; }
+  // closing another tab leaves the page as it is
+  saveSearchTabs();
+  $(`#view [data-stab="${id}"]`)?.remove();
+  const plus = $("#stabNew"); plus.disabled = false; plus.title = "New search tab";
+}
+// recent searches: the last 10 that ran, newest first, shown under the empty search bar
+const getRecent = () => store.get("searchRecent", []);
+const searchKey = s => JSON.stringify(Object.keys(SEARCH_DEFAULT).filter(k => !["from", "to"].includes(k) && s[k] && s[k] !== SEARCH_DEFAULT[k]).map(k => [k, s[k]]));
+function addRecentSearch(s, n) {
+  if (!searchSet(s)) return;
+  const key = searchKey(s);
+  store.set("searchRecent", [{ s: { ...s }, n, t: Date.now() }, ...getRecent().filter(r => searchKey(r.s) !== key)].slice(0, 10));
+}
 // the top bar guesses what kind of search it is: letters (blanks only at the end) are an anagram, ? or . anywhere
 // else is a fixed-position pattern, and * means starts with (QU*), ends with (*ING), contains (*QU*) or has any of (*[JX]*)
 const LETTER_KEYS = ["pattern", "rack", "mode", "starts", "ends", "contains", "from", "to"];
@@ -341,8 +413,8 @@ function bindTypeBar() {
     store.set("search", s); searchFromBar = true; VIEWS.search();
   });
 }
-function accSummary(key) {
-  const s = searchState, up = v => String(v || "").toUpperCase();
+function accSummary(key, s = searchState) {
+  const up = v => String(v || "").toUpperCase();
   const parts = {
     group: [groupOf(s.group)?.name, lensText(s.lens)],
     letters: [s.pattern && patLabel(s.pattern), s.rack && `rack ${up(s.rack)}`],
@@ -358,6 +430,7 @@ function doSearch() {
   setTimeout(() => {
     const r = runSearch(s);
     if (r.error) { box.innerHTML = `<p class="empty">${esc(r.error)}</p>`; return; }
+    addRecentSearch(s, r.words.length);
     const g = s.group && groupOf(s.group);
     const onlyGroup = g && !Object.entries(s).some(([k, v]) => !["mode", "group", "from", "to"].includes(k) && v);
     results(box, r.words, { masks: r.masks, len: onlyGroup ? g.len : 0, range: { from: s.from, to: s.to, save: (from, to) => { searchState.from = from; searchState.to = to; store.set("search", searchState); } } });
@@ -374,7 +447,7 @@ function searchPhone() {
     ["narrow", s.contains && `Has ${up(s.contains)}`, ["contains"]], ["narrow", s.incl && `Uses ${up(s.incl)}`, ["incl"]], ["narrow", s.excl && `No ${up(s.excl)}`, ["excl"]], ["narrow", anaText(s.anas), ["anas"]], ["narrow", likelyText(s.pfrom, s.pto, s.pby, s.plax), ["pfrom", "pto", "pby", "plax"]],
   ].filter(c => c[1]);
   const secs = searchSecs(s);
-  $("#view").innerHTML = `<div class="filterbar"><div class="hscroll">
+  $("#view").innerHTML = `${searchTabsHTML()}<div class="filterbar"><div class="hscroll">
       ${chips.map((c, i) => `<span class="pill on" data-sheet="${c[0]}">${esc(c[1])}<button type="button" class="x" data-clear="${i}" aria-label="Remove">×</button></span>`).join("")}
       ${[["group", "Group"], ["narrow", "Filters"]].map(([k, n]) => `<button type="button" class="pill add" data-sheet="${k}">+ ${n}</button>`).join("")}
       ${chips.length > 1 ? `<button type="button" class="pill add" id="sClear">Clear all</button>` : ""}</div></div>
@@ -404,13 +477,13 @@ function searchPhone() {
     for (const k of SEARCH_SECS[b.dataset.reset][1]) { const el = $("#s_" + k); if (el) el.value = SEARCH_DEFAULT[k]; }
     $("#groupHint").textContent = groupOf($("#s_group").value)?.blurb || ""; syncPick($("#s_group")); v.querySelectorAll(".lenpick").forEach(paintLens); v.querySelectorAll(".likely").forEach(paintLikely); read(); count();
   });
-  $("#sform").addEventListener("input", () => { read(); count(); });
-  $("#s_group").onchange = e => { $("#groupHint").textContent = groupOf(e.target.value)?.blurb || ""; read(); count(); };
+  $("#sform").addEventListener("input", () => { read(); nameSearchTab(); count(); });
+  $("#s_group").onchange = e => { $("#groupHint").textContent = groupOf(e.target.value)?.blurb || ""; read(); nameSearchTab(); count(); };
   // closing the sheet either way applies what's in it
   const apply = () => { read(); sheet("ssheet", false); searchPhone(); };
   $("#sform").addEventListener("submit", ev => { ev.preventDefault(); apply(); });
   $("#ssheet .scrim").onclick = apply;
-  bindTypeBar();
+  bindTypeBar(); bindSearchTabs();
   if (Object.entries(searchState).some(([k, v]) => !["mode", "from", "to"].includes(k) && v)) doSearch();
 }
 
@@ -428,7 +501,7 @@ VIEWS.lists = (id) => {
     $("#toSearch").insertAdjacentHTML("afterend", `<button type="button" class="btn sm" id="forgetList">Reset learnt (${nL.toLocaleString()})</button>`);
     confirmBtn($("#forgetList"), () => { store.set("plearnt", [...getLearnt()].filter(a => !racks.has(a))); VIEWS.lists(g.id); });
   }
-  $("#toSearch").onclick = ev => { ev.preventDefault(); searchState = { ...SEARCH_DEFAULT, group: g.id }; store.set("search", searchState); location.hash = "search"; };
+  $("#toSearch").onclick = ev => { ev.preventDefault(); searchInNewTab({ group: g.id }); location.hash = "search"; };
   setTimeout(() => {
     const box = $("#lres");
     if (g.special === "stems") return drawStems(box, g);
@@ -1343,7 +1416,8 @@ function folderView(id) {
   confirmBtn($("#fDel"), () => { store.set("folders", getFolders().filter(x => x.id !== id)); location.hash = "mine/folders"; });
 }
 // the folder picker: for one word, a tick for each folder it's in; for a list, a button per folder to add them all
-function folderSheet(words) {
+// (pick, when given, offers to choose some of the words instead)
+function folderSheet(words, pick) {
   words = [...new Set(words)];
   document.getElementById("fsheet")?.remove();
   const one = words.length === 1, fs = getFolders();
@@ -1351,10 +1425,12 @@ function folderSheet(words) {
     ${fs.length ? `<div class="fpick">${fs.map(f => one ? `<label class="check"><input type="checkbox" data-fs="${f.id}" ${f.words.includes(words[0]) ? "checked" : ""}> ${esc(f.name)} <span class="small">${f.words.length}</span></label>`
       : `<button type="button" class="btn" data-fsall="${f.id}">${esc(f.name)} <span class="small">${f.words.length}</span></button>`).join("")}</div>` : `<p class="small">No folders yet: make one here.</p>`}
     <div class="row" style="margin-top:12px"><input class="arack" id="fsName" placeholder="New folder name" maxlength="40" style="text-transform:none;flex:1;min-width:0"><button class="btn primary" id="fsNew">+ New folder</button></div>
-    <p class="small" id="fsMsg" style="margin:8px 0 0"></p>`));
+    <p class="small" id="fsMsg" style="margin:8px 0 0"></p>
+    ${pick && !one ? `<button type="button" class="btn" id="fsPick" style="margin-top:12px;width:100%">Pick some of the words instead</button>` : ""}`));
   const close = () => { sheet("fsheet", false); document.getElementById("fsheet")?.remove(); };
   sheet("fsheet", true);
   $("#fsDone").onclick = $("#fsheet .scrim").onclick = close;
+  $("#fsPick")?.addEventListener("click", () => { close(); pick(); });
   document.querySelectorAll("#fsheet [data-fs]").forEach(c => c.onchange = () => {
     const f = folderById(c.dataset.fs), w = words[0];
     saveFolder(f.id, { words: c.checked ? [...new Set([...f.words, w])] : f.words.filter(x => x !== w) });
@@ -1364,7 +1440,7 @@ function folderSheet(words) {
     saveFolder(f.id, { words: [...new Set([...f.words, ...words])] });
     $("#fsMsg").textContent = `Added ${(folderById(f.id).words.length - before).toLocaleString()} to ${f.name}.`;
   });
-  $("#fsNew").onclick = () => { const f = newFolder($("#fsName").value.trim(), words); $("#fsMsg").textContent = `Made ${f.name} with ${f.words.length.toLocaleString()} word${f.words.length === 1 ? "" : "s"}.`; setTimeout(() => { folderSheet(words); $("#fsMsg").textContent = `Made ${f.name}.`; }, 0); };
+  $("#fsNew").onclick = () => { const f = newFolder($("#fsName").value.trim(), words); $("#fsMsg").textContent = `Made ${f.name} with ${f.words.length.toLocaleString()} word${f.words.length === 1 ? "" : "s"}.`; setTimeout(() => { folderSheet(words, pick); $("#fsMsg").textContent = `Made ${f.name}.`; }, 0); };
 }
 // your own notes: as many as you like, each a title and some text, saved as you type (and synced when signed in)
 const getNotebook = () => store.get("notebook", []);

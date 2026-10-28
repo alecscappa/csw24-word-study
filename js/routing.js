@@ -36,10 +36,39 @@ $("#form").addEventListener("submit", ev => {
   if (/^[A-Z]+$/.test(q) && (!VIEWS[tab] || tab === "w")) { location.hash = "w/" + q; return; }
   // on the Search page the bar replaces just the letters, keeping the group, length and other filters
   const keep = onSearch ? Object.fromEntries(Object.entries(searchState).filter(([k]) => !LETTER_KEYS.includes(k))) : {};
-  searchFromBar = true; searchState = { ...SEARCH_DEFAULT, ...keep, ...barSearch(q) }; store.set("search", searchState);
-  onSearch ? VIEWS.search() : location.hash = "search";
+  searchFromBar = true;
+  if (onSearch) { searchState = { ...SEARCH_DEFAULT, ...keep, ...barSearch(q) }; store.set("search", searchState); VIEWS.search(); }
+  else { searchInNewTab(barSearch(q)); location.hash = "search"; }
 });
 $("#qClear").addEventListener("click", () => { $("#q").value = ""; $("#q").focus(); });
+// on the Word page the box holds the word being shown; tapping it starts a fresh word, and leaving it empty puts the word back
+const onWordPage = () => { const tab = location.hash.slice(1).split("/")[0]; return !VIEWS[tab] || tab === "w"; };
+$("#q").addEventListener("focus", () => { if (onWordPage() && $("#q").value === wordShown) $("#q").value = ""; });
+$("#q").addEventListener("blur", () => { if (onWordPage() && !$("#q").value) $("#q").value = wordShown; });
+// recent searches drop down under the empty bar; picking one runs it again (in the open search tab when on Search,
+// otherwise in a new one)
+function recentDrop() {
+  $("#recent")?.remove();
+  const list = getRecent();
+  if ($("#q").value || !list.length || document.activeElement !== $("#q")) return;
+  $(".qwrap").insertAdjacentHTML("beforeend", `<div class="recent" id="recent" role="listbox"><div class="lbl">Recent searches</div>
+    ${list.map((r, i) => `<button type="button" class="rc" data-recent="${i}"><b>${esc(searchName(r.s))}</b><em>${edited(r.t)}</em><span>${esc([accSummary("narrow", r.s), r.n != null && `${r.n.toLocaleString()} word${r.n === 1 ? "" : "s"}`].filter(Boolean).join(" · "))}</span></button>`).join("")}
+    <div class="ft"><span>Last ${list.length} kept on this device</span><button type="button" id="recentClear">Clear</button></div></div>`);
+  const box = $("#recent");
+  // keep the bar focused while tapping in the list, so it doesn't close before the tap lands
+  box.addEventListener("pointerdown", ev => ev.preventDefault());
+  box.querySelectorAll("[data-recent]").forEach(b => b.onclick = () => {
+    const s = list[+b.dataset.recent].s, onSearch = location.hash.slice(1).split("/")[0] === "search";
+    searchFromBar = true; $("#q").blur(); box.remove();
+    if (onSearch) { searchState = { ...SEARCH_DEFAULT, ...s }; store.set("search", searchState); VIEWS.search(); }
+    else { searchInNewTab(s); location.hash = "search"; }
+  });
+  $("#recentClear").onclick = () => { store.set("searchRecent", []); box.remove(); };
+}
+$("#q").addEventListener("focus", recentDrop);
+$("#q").addEventListener("input", recentDrop);
+$("#q").addEventListener("blur", () => $("#recent")?.remove());
+$("#q").addEventListener("keydown", ev => { if (ev.key === "Escape") $("#recent")?.remove(); });
 // a shorter hint fits the phone's narrower search box
 const qHint = () => $("#q").placeholder = phone() ? "Word or letters" : "Word, letters, ?AE or QU*";
 phoneMQ.addEventListener?.("change", qHint); qHint();
