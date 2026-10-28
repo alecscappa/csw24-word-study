@@ -1521,7 +1521,7 @@ VIEWS.settings = () => {
     <div class="fs"><h2 class="lbl">Word lists and search results</h2><div class="form">
       <div class="field"><label for="setSort">Default sort</label><select id="setSort">${Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${k === SET.sort ? "selected" : ""}>${v}</option>`).join("")}</select></div>
       <div class="field"><label for="setPage">Words per page</label><select id="setPage">${[100, 300, 1000, 3000].map(n => `<option ${n === +SET.pageSize ? "selected" : ""}>${n}</option>`).join("")}</select></div>
-      <div class="field" style="gap:8px"><span class="flabel">Show in each row</span>${chk("defs", "Definitions")}${chk("hooks", "Hooks")}${chk("prob", "Probability rank")}</div>
+      <div class="field" style="gap:8px"><span class="flabel">Show in each row</span>${chk("defs", "Definitions")}${chk("ags", "Alphagrams")}${chk("hooks", "Hooks")}${chk("prob", "Probability rank")}</div>
     </div></div>
     <div class="fs"><h2 class="lbl">Word page</h2>${chk("online", "Look up pronunciation, examples and origin online")}</div>
     <div class="fs"><h2 class="lbl">Quiz</h2><div class="form">

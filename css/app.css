@@ -128,7 +128,8 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .r .wl mark { background: none; color: var(--accent); }
 .r .d { color: var(--muted); font-size: .93rem; min-width: 0; }
 .r .meta { font: .72rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.rows.nodefs .d, .rows.noprob .meta { display: none; }
+.r .ag { display: block; font: 400 .72rem var(--mono); color: var(--muted); letter-spacing: .06em; }
+.rows.nodefs .d, .rows.noprob .meta, .rows.noags .ag { display: none; }
 .rows.noprob .r { grid-template-columns: 4.5em max-content 4.5em minmax(0,1fr) auto; }
 .rows.nohooks .fh, .rows.nohooks .bh { visibility: hidden; }
 @media (max-width: 620px) {
@@ -145,6 +146,7 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 }
 .more { margin-top: 12px; }
 .rangebar { margin-top: 10px; gap: 6px; }
+.rangebar ~ .rows, .rangebar ~ .empty { margin-top: 14px !important; }
 .rangebar input { width: 4.5em; border: 1px solid var(--line); background: var(--chip); border-radius: 6px; padding: 4px 7px; font: 600 .85rem var(--mono); }
 .r .rk { font: 400 .74rem var(--mono); color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
 .rows.ranked .r { grid-template-columns: 3em 4.6em 4.5em max-content 4.5em minmax(0,1fr) auto; }
