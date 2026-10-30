@@ -35,7 +35,7 @@ VIEWS.w = (arg) => {
     </div>
   </div>`;
   html += valid
-    ? `<div class="grid2"><div class="card"><h2 class="lbl">CSW24 definition</h2><p class="def">${defHTML(e.d)}</p></div>
+    ? `<div class="grid2"><div class="card"><h2 class="lbl">CSW24 definition</h2><p class="def">${defHTML(e.d)}</p>${soundAlikes(w).length ? `<p class="saw">Sounds like ${saLinks(soundAlikes(w))}</p>` : ""}</div>
        <div class="card"><h2 class="lbl">Facts</h2><div class="stats">
          <div class="stat"><b>${alpha(w)}</b><span>alphagram</span></div>
          <div class="stat"><b>#${e.p.toLocaleString()}</b><span>probability of ${BYLEN[w.length].length.toLocaleString()} ${w.length}s</span></div>
@@ -77,6 +77,7 @@ VIEWS.w = (arg) => {
         ${valid ? `<div class="hooksline">${hk(e.fh, "f")}<span>hooks</span>${hk(e.bh, "b")}</div>` : ""}
         <div class="badges">${valid ? `<span class="badge ok">✓ Valid</span>` : `<span class="badge bad">✗ Phony</span>`}${e?.n ? `<span class="badge">New</span>` : ""}<span class="badge">${score(w)} pts</span>${valid ? `<span class="badge">#${e.p.toLocaleString()} of ${w.length}s</span>` : ""}</div>
         <p class="hdef">${valid ? defHTML(e.d) : "Not in the lexicon"}</p>
+        ${valid && soundAlikes(w).length ? `<p class="saw">Sounds like ${saLinks(soundAlikes(w))}</p>` : ""}
         ${valid ? `<div class="hacts"><button type="button" class="btn sm ${getKnown().includes(w) ? "on" : ""}" id="knownBtnW">${getKnown().includes(w) ? "✓ Known" : "✓ Cross off"}</button><button type="button" class="btn sm" id="folderBtn">Add to folder</button></div>` : ""}</div>
       <nav class="segtabs">${[["ana", "Anagrams", ana.length], ["plus", "Add one", plusN], ["minus", "Drop one", minusN], ["facts", "Facts"]].map(([k, n, c]) => `<button type="button" class="${k === wt ? "on" : ""}" data-wtab="${k}">${n}${c !== undefined ? `<em>${c}</em>` : ""}</button>`).join("")}</nav></div>
       ${Object.entries(panes).map(([k, h]) => `<div class="wpane" data-pane="${k}" ${k === wt ? "" : "hidden"}>${h}</div>`).join("")}
@@ -1100,21 +1101,23 @@ function practicePlay(pool, o, opts, wire) {
   if (cur?.key === P.key && ANA.has(cur.letters)) { P.letters = cur.letters; P.want = anagrams(cur.letters); P.found = cur.found.filter(x => P.want.includes(x)); }
   else { const w = pickPractice(pool, o.order, !!o.rev); P.letters = alpha(w); P.want = anagrams(w); P.found = []; saveCard(); }
   P.review = !!getPQ().items.find(x => x.a === P.letters);
-  const n = P.letters.length, kbd = phone() && store.get("pKbd", false);
+  const n = P.letters.length, kbd = phone() && store.get("pKbd", false), pad = store.get("pPad", false);
   const key = k => `<kbd>${k}</kbd>`;
   v.innerHTML = `<div class="foc"><div class="stage">${top}<div class="fc-card"><div class="slots" id="pslots"></div>
       <p class="q"><span id="pleft">${leftText()}</span>${P.review ? ` · <b style="color:var(--warn)">review</b>` : ""}</p><div class="found" id="pchips"></div></div>
     ${rackHTML("prack")}
     <div class="rackbtns"><button type="button" class="btn" id="pShuf" aria-label="Shuffle" title="Shuffle (Space)">${icon(ICON_SHUF)}</button>
       <button type="button" class="btn" id="pBack" aria-label="Take back a letter" title="Take back a letter (Backspace)">${icon(ICON_BACK)}</button>
+      <button type="button" class="btn ${pad ? "on" : ""}" id="pPad" aria-label="Notepad" title="Notepad: write the words with your finger">${icon('<path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4"/>')}</button>
       <button type="button" class="btn phone-only ${kbd ? "on" : ""}" id="pKbd" aria-label="Type instead">${icon('<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>')}</button></div>
+    <div class="notepad" id="ppad" ${pad ? "" : "hidden"}><canvas></canvas><span class="small">Write the words here</span><button type="button" class="btn sm" id="padClear">Clear</button></div>
     <div class="thumb"><input class="qinput" id="pa" placeholder="Type the answer" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" ${kbd ? "" : "hidden"}>
       <div class="acts"><button type="button" class="btn mk" id="pAlt"></button><button type="button" class="btn mk" id="pMain"></button></div></div></div>
     ${practiceRail(pr, "prail")}</div>` + sh;
   // while playing: a chip per word (dots until found). Once marked: the words with hooks and definitions, in the
   // card at the top (each opens its word page; coming back finds this card as it was)
   const chips = () => { $("#pchips").innerHTML = P.done
-    ? `<div class="rows">${P.want.map(x => quizRow(x, P.found.includes(x) || P.verdict.ok ? "got" : "miss")).join("")}</div>${stemsHTML(P.letters)}`
+    ? `<div class="rows sashow">${P.want.map(x => quizRow(x, P.found.includes(x) || P.verdict.ok ? "got" : "miss")).join("")}</div>${stemsHTML(P.letters)}`
     : P.want.map(x => P.found.includes(x) ? `<a class="w got" href="#w/${x}">${x}</a>` : `<span class="w blank">${"•".repeat(x.length)}</span>`).join(""); };
   const finish = ok => {
     P.done = true; P.verdict = { letters: P.letters, want: P.want, ok };
@@ -1138,6 +1141,9 @@ function practicePlay(pool, o, opts, wire) {
   });
   $("#pShuf").onclick = board.shuffle;
   $("#pBack").onclick = board.back;
+  const np = notepad($("#ppad"));
+  $("#pPad").onclick = () => { const on = !store.get("pPad", false); store.set("pPad", on); $("#pPad").classList.toggle("on", on); $("#ppad").hidden = !on; if (on) np.fit(); };
+  $("#padClear").onclick = np.clear;
   $("#pKbd").onclick = () => { const k = !store.get("pKbd", false); store.set("pKbd", k); $("#pKbd").classList.toggle("on", k); $("#pa").hidden = !k; if (k) $("#pa").focus(); };
   $("#pa").addEventListener("input", ev => {
     const x = ev.target.value.toUpperCase().replace(/[^A-Z]/g, "");
@@ -1163,6 +1169,31 @@ function practicePlay(pool, o, opts, wire) {
   // a card that was marked (or fully found) before leaving comes back marked
   if (typeof cur?.ok === "boolean" && cur.key === P.key && cur.letters === P.letters) finish(cur.ok);
   else if (P.found.length === P.want.length) finish(true);
+}
+// the Practice notepad: write with a finger, pen or mouse. It starts blank on each card; Clear wipes it
+function notepad(box) {
+  const cv = box.querySelector("canvas"), cx = cv.getContext("2d");
+  let last = null, mid = null;
+  const fit = () => {
+    const r = cv.getBoundingClientRect(), d = devicePixelRatio || 1;
+    if (!r.width || cv.width === Math.round(r.width * d)) return;
+    cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d);
+    cx.setTransform(d, 0, 0, d, 0, 0);
+    cx.lineCap = cx.lineJoin = "round"; cx.lineWidth = 3.2; cx.strokeStyle = getComputedStyle(box).color;
+  };
+  const at = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  cv.onpointerdown = e => { fit(); cv.setPointerCapture(e.pointerId); last = mid = at(e); cx.beginPath(); cx.arc(last[0], last[1], cx.lineWidth / 2, 0, 7); cx.fillStyle = cx.strokeStyle; cx.fill(); };
+  // smooth strokes: a curve through each point to the middle of the next
+  cv.onpointermove = e => {
+    if (!last) return;
+    const p = at(e), m = [(last[0] + p[0]) / 2, (last[1] + p[1]) / 2];
+    cx.beginPath(); cx.moveTo(mid[0], mid[1]); cx.quadraticCurveTo(last[0], last[1], m[0], m[1]); cx.stroke();
+    last = p; mid = m;
+  };
+  cv.onpointerup = cv.onpointercancel = () => { last = null; };
+  const clear = () => cx.clearRect(0, 0, cv.width, cv.height);
+  if (!box.hidden) requestAnimationFrame(fit);
+  return { fit, clear };
 }
 // a hook or pattern card: the word (gaps dashed), a box for the letters (two for hooks), then ✗ / ✓. Checking shows
 // each letter as got, missed or wrong, and every word the card makes
@@ -1521,7 +1552,7 @@ VIEWS.settings = () => {
     <div class="fs"><h2 class="lbl">Word lists and search results</h2><div class="form">
       <div class="field"><label for="setSort">Default sort</label><select id="setSort">${Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${k === SET.sort ? "selected" : ""}>${v}</option>`).join("")}</select></div>
       <div class="field"><label for="setPage">Words per page</label><select id="setPage">${[100, 300, 1000, 3000].map(n => `<option ${n === +SET.pageSize ? "selected" : ""}>${n}</option>`).join("")}</select></div>
-      <div class="field" style="gap:8px"><span class="flabel">Show in each row</span>${chk("defs", "Definitions")}${chk("ags", "Alphagrams")}${chk("hooks", "Hooks")}${chk("prob", "Probability rank")}</div>
+      <div class="field" style="gap:8px"><span class="flabel">Show in each row</span>${chk("defs", "Definitions")}${chk("ags", "Alphagrams")}${chk("sas", "Sound-alikes")}${chk("hooks", "Hooks")}${chk("prob", "Probability rank")}</div>
     </div></div>
     <div class="fs"><h2 class="lbl">Word page</h2>${chk("online", "Look up pronunciation, examples and origin online")}</div>
     <div class="fs"><h2 class="lbl">Quiz</h2><div class="form">

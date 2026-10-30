@@ -210,7 +210,7 @@ document.head.insertAdjacentHTML("beforeend", `<style>${Object.entries(TILE_STYL
 ${Object.entries(TILE_STYLES).map(([id, [, css, sub]]) => `.tstyles .tile.ts-${id} { ${css} }${sub ? ` .tstyles .tile.ts-${id} sub { ${sub} }` : ""}`).join("\n")}</style>`);
 // text sizes; Normal was 16px until 2026-10-26, when every size moved one name down and Large and Extra large were added
 const TEXT_SIZES = { xs: "14px", sm: "16px", md: "18px", lg: "20px", xl: "22px" };
-const SET_DEFAULT = { theme: "coffee", mode: "light", size: "md", values: true, sort: "prob", defs: true, prob: true, hooks: true, pageSize: 300, online: true, phony: 50, randMin: 2, randMax: 8, qcount: 20,
+const SET_DEFAULT = { theme: "coffee", mode: "light", size: "md", values: true, sort: "prob", defs: true, sas: true, prob: true, hooks: true, pageSize: 300, online: true, phony: 50, randMin: 2, randMax: 8, qcount: 20,
   tiles: "maple", tileCustom: "#f1dcaa", headCustom: "", accentCustom: "", glare: "dim", tileLook: "soft", tileFont: "sans", rackLook: "cherry",
   bPal: "theme", bLabels: "letters", bCoords: true, bTile: "same", bStyle: "gaps", bMark: "bright", bTheme: "", bTileCol: "same", bArrows: false };
 const hadSettings = !!store.get("settings", null);
