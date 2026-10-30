@@ -132,6 +132,12 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .rows.nodefs .d, .rows.noprob .meta, .rows.noags .ag { display: none; }
 /* sound-alikes: a small line under the word, shown when the Sound-alikes box is ticked */
 .r .sa { display: none; font: 400 .72rem var(--body, inherit); color: var(--muted); letter-spacing: 0; white-space: nowrap; }
+.r .sa { cursor: pointer; } .r .sa b { color: var(--link); font: 600 .72rem var(--mono); letter-spacing: .04em; }
+.r .sa:hover b { text-decoration: underline; }
+.rhead { display: flex; align-items: baseline; gap: 8px; margin: 16px 0 4px; font: 700 .95rem var(--mono); letter-spacing: .08em; }
+.rhead:first-child { margin-top: 4px; } .rhead .small { margin-left: auto; font-family: var(--body); letter-spacing: 0; }
+.rhead .badge { font: 600 .66rem var(--display); letter-spacing: .02em; }
+.rhead + .r { border-top: 0; }
 .r .sa a, .saw a { color: var(--link); font-family: var(--mono); font-weight: 600; text-decoration: none; letter-spacing: .04em; }
 .rows.sashow .r .sa { display: block; }
 .saw { margin: 4px 0 0; font-size: .8rem; color: var(--muted); }

@@ -208,6 +208,9 @@ function results(el, words, opts = {}) {
   let first = true, shownList = [];
   function draw() {
     const full = (st.lens.size ? words.filter(w => st.lens.has(w.length)) : [...words]).sort(sorters[SET.sort] || sorters.prob);
+    // grouped results (one-letter swaps): each group together under its heading, in the sort order within it
+    const G = opts.groups, gw = {};
+    if (G) { full.sort((a, b) => G.by(a) - G.by(b)); for (const w of full) (gw[G.by(w)] ||= []).push(w); }
     const ranged = st.from > 1 || st.to > 0;
     const lo = Math.max(1, st.from || 1), hi = st.to ? Math.max(st.to, lo) : full.length;
     const list = ranged ? full.slice(lo - 1, hi) : full;
@@ -239,7 +242,7 @@ function results(el, words, opts = {}) {
         <span class="small">in ${SORTS[SET.sort] || "Probability"} order</span>
       </div>
       ${lens.length > 1 ? `<div class="chips" style="margin:10px 0 6px"><button class="btn sm ${st.lens.size ? "" : "on"}" data-len="0">All lengths</button>${lens.map(n => `<button class="btn sm ${st.lens.has(n) ? "on" : ""}" data-len="${n}">${n}</button>`).join("")}</div>` : ""}
-      ${list.length ? `<div class="rows ${st.sel ? "selecting" : ""} ${ranged ? "ranked" : ""} ${SET.defs ? "" : "nodefs"} ${SET.ags ? "" : "noags"} ${SET.sas ? "sashow" : ""} ${SET.prob ? "" : "noprob"} ${SET.hooks ? "" : "nohooks"}">${list.slice(0, st.shown).map((w, i) => rowHTML(w, opts.masks?.get(w), ranged ? offset + i + 1 : 0, starSet, knownSet, st.sel?.has(w))).join("")}</div>` : `<p class="empty" style="margin-top:10px">${ranged && full.length ? `There are only ${full.length.toLocaleString()} words, so rank ${lo.toLocaleString()} is past the end.` : "No words match."}</p>`}
+      ${list.length ? `<div class="rows ${st.sel ? "selecting" : ""} ${ranged ? "ranked" : ""} ${SET.defs ? "" : "nodefs"} ${SET.ags ? "" : "noags"} ${SET.sas ? "sashow" : ""} ${SET.prob ? "" : "noprob"} ${SET.hooks ? "" : "nohooks"}">${list.slice(0, st.shown).map((w, i) => (G && (!i || G.by(w) !== G.by(list[i - 1])) ? `<h3 class="rhead">${G.name(G.by(w), gw[G.by(w)])}<span class="small">${gw[G.by(w)].length}</span></h3>` : "") + rowHTML(w, opts.masks?.get(w), ranged ? offset + i + 1 : 0, starSet, knownSet, st.sel?.has(w))).join("")}</div>` : `<p class="empty" style="margin-top:10px">${ranged && full.length ? `There are only ${full.length.toLocaleString()} words, so rank ${lo.toLocaleString()} is past the end.` : "No words match."}</p>`}
       ${list.length > st.shown ? `<button class="btn more" id="moreBtn">Show ${Math.min(+SET.pageSize, list.length - st.shown).toLocaleString()} more</button>` : ""}
       ${st.sel ? `<div class="selbar"><span class="count" id="selN"></span><button class="btn sm" id="selAll"></button><button class="btn sm primary" id="selFolder">Add to folder</button><button class="btn sm" id="selStar">☆ Star</button><button class="btn sm" id="selKnown">✓ Cross off</button><button class="btn sm" id="selDone">Done</button></div>` : ""}`;
     // length chips: tap several to see them together; All lengths clears them
@@ -303,7 +306,7 @@ const starBtn = (w, on) => `<button type="button" class="st ${on ? "on" : ""}" d
 function rowHTML(w, mask, rank, stars = new Set(getStars()), known = new Set(getKnown()), sel = false) {
   const e = DICT.get(w);
   const sa = soundAlikes(w);
-  const label = mask ? [...w].map((c, i) => mask[i] ? `<mark>${c.toLowerCase()}</mark>` : c).join("") : w;
-  return `<div class="r${known.has(w) ? " known" : ""}${sel ? " sel" : ""}" data-go="${w}">${rank ? `<span class="rk">${rank}.</span>` : ""}<span class="meta">#${e.p.toLocaleString()}</span><span class="fh">${hookText(e.fh, e.fhNew)}</span><span class="wl">${label}${e.n ? "<sup>+</sup>" : ""}<span class="ag">${alpha(w)}</span>${sa.length ? `<span class="sa">sounds like ${saLinks(sa)}</span>` : ""}</span><span class="bh">${hookText(e.bh, e.bhNew)}</span><span class="d">${esc(e.d)}</span><span class="ra">${knownBtn(w, known.has(w))}${starBtn(w, stars.has(w))}</span></div>`;
+  const label = mask ? [...w].map((c, i) => mask[i] ? `<mark>${mask[i] === "up" ? c : c.toLowerCase()}</mark>` : c).join("") : w;
+  return `<div class="r${known.has(w) ? " known" : ""}${sel ? " sel" : ""}" data-go="${w}">${rank ? `<span class="rk">${rank}.</span>` : ""}<span class="meta">#${e.p.toLocaleString()}</span><span class="fh">${hookText(e.fh, e.fhNew)}</span><span class="wl">${label}${e.n ? "<sup>+</sup>" : ""}<span class="ag">${alpha(w)}</span>${sa.length ? `<span class="sa" data-swap="${w}" role="link" title="All one-letter swaps of ${w}">sounds like <b>${sa.join(", ")}</b> ›</span>` : ""}</span><span class="bh">${hookText(e.bh, e.bhNew)}</span><span class="d">${esc(e.d)}</span><span class="ra">${knownBtn(w, known.has(w))}${starBtn(w, stars.has(w))}</span></div>`;
 }
 

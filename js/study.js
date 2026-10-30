@@ -35,7 +35,7 @@ VIEWS.w = (arg) => {
     </div>
   </div>`;
   html += valid
-    ? `<div class="grid2"><div class="card"><h2 class="lbl">CSW24 definition</h2><p class="def">${defHTML(e.d)}</p>${soundAlikes(w).length ? `<p class="saw">Sounds like ${saLinks(soundAlikes(w))}</p>` : ""}</div>
+    ? `<div class="grid2"><div class="card"><h2 class="lbl">CSW24 definition</h2><p class="def">${defHTML(e.d)}</p><p class="saw">${soundAlikes(w).length ? `Sounds like ${saLinks(soundAlikes(w))} · ` : ""}<a href="#search" data-swap="${w}">One-letter swaps ›</a></p></div>
        <div class="card"><h2 class="lbl">Facts</h2><div class="stats">
          <div class="stat"><b>${alpha(w)}</b><span>alphagram</span></div>
          <div class="stat"><b>#${e.p.toLocaleString()}</b><span>probability of ${BYLEN[w.length].length.toLocaleString()} ${w.length}s</span></div>
@@ -77,7 +77,7 @@ VIEWS.w = (arg) => {
         ${valid ? `<div class="hooksline">${hk(e.fh, "f")}<span>hooks</span>${hk(e.bh, "b")}</div>` : ""}
         <div class="badges">${valid ? `<span class="badge ok">✓ Valid</span>` : `<span class="badge bad">✗ Phony</span>`}${e?.n ? `<span class="badge">New</span>` : ""}<span class="badge">${score(w)} pts</span>${valid ? `<span class="badge">#${e.p.toLocaleString()} of ${w.length}s</span>` : ""}</div>
         <p class="hdef">${valid ? defHTML(e.d) : "Not in the lexicon"}</p>
-        ${valid && soundAlikes(w).length ? `<p class="saw">Sounds like ${saLinks(soundAlikes(w))}</p>` : ""}
+        ${valid ? `<p class="saw">${soundAlikes(w).length ? `Sounds like ${saLinks(soundAlikes(w))} · ` : ""}<a href="#search" data-swap="${w}">One-letter swaps ›</a></p>` : ""}
         ${valid ? `<div class="hacts"><button type="button" class="btn sm ${getKnown().includes(w) ? "on" : ""}" id="knownBtnW">${getKnown().includes(w) ? "✓ Known" : "✓ Cross off"}</button><button type="button" class="btn sm" id="folderBtn">Add to folder</button></div>` : ""}</div>
       <nav class="segtabs">${[["ana", "Anagrams", ana.length], ["plus", "Add one", plusN], ["minus", "Drop one", minusN], ["facts", "Facts"]].map(([k, n, c]) => `<button type="button" class="${k === wt ? "on" : ""}" data-wtab="${k}">${n}${c !== undefined ? `<em>${c}</em>` : ""}</button>`).join("")}</nav></div>
       ${Object.entries(panes).map(([k, h]) => `<div class="wpane" data-pane="${k}" ${k === wt ? "" : "hidden"}>${h}</div>`).join("")}
@@ -188,8 +188,9 @@ function runSearch(s) {
   const group = s.group ? groupOf(s.group) : null;
   const ar = anaRange(s.anas);
   const rl = rack.replace(/\?/g, ""), rb = rack.length - rl.length, rc = counts(rl);
-  const masks = rack && rb ? new Map() : null;
-  const pool = rack && s.mode === "exact" ? BYLEN[rack.length] || [] : group ? groupWords(group) : ALL;
+  const swap = rack && s.mode === "swap" ? rl : "";
+  const masks = (rack && rb) || swap ? new Map() : null;
+  const pool = (rack && s.mode === "exact") || swap ? BYLEN[(swap || rack).length] || [] : group ? groupWords(group) : ALL;
   const out = [];
   for (const w of pool) {
     const len = w.length;
@@ -203,7 +204,12 @@ function runSearch(s) {
     if (ar) { const n = ANA.get(alpha(w)).length; if (n < ar[0] || n > ar[1]) continue; }
     if (group && !group.test(w, e)) continue;
     if (Object.keys(incl).length) { const wc = counts(w); if (Object.entries(incl).some(([c, n]) => (wc[c] || 0) < n)) continue; }
-    if (rack) {
+    if (swap) {
+      // one letter changed, the rest in place; the changed letter is marked
+      const diff = [...w].map((c, i) => c !== swap[i] && "up");
+      if (diff.filter(Boolean).length !== 1) continue;
+      masks.set(w, diff);
+    } else if (rack) {
       if (s.mode === "exact" || s.mode === "build") { if (blanksNeeded(w, rc) > rb) continue; }
       else { const wc = counts(w); if (len < rl.length || Object.entries(rc).some(([c, n]) => (wc[c] || 0) < n)) continue; }
       if (masks && s.mode !== "super") masks.set(w, blankMask(w, rc));
@@ -318,8 +324,17 @@ let searchTabs = store.get("searchTabs", null), searchTabOn = store.get("searchT
 if (!Array.isArray(searchTabs) || !searchTabs.length) { searchTabs = [{ id: 1, s: { ...searchState }, y: 0 }]; searchTabOn = 1; }
 if (!searchTabs.some(t => t.id === searchTabOn)) searchTabOn = searchTabs[0].id;
 const searchSet = s => Object.entries(s).some(([k, v]) => !["mode", "from", "to"].includes(k) && v);
+// a word's one-letter swaps open as a search in a new tab (from a row's "sounds like" line or the word page)
+function openSwaps(w) {
+  searchInNewTab({ rack: w, mode: "swap" });
+  if (location.hash === "#search") { VIEWS.search(); window.scrollTo({ top: 0 }); } else location.hash = "search";
+}
+document.addEventListener("click", ev => {
+  const t = ev.target.closest("[data-swap]");
+  if (t) { ev.preventDefault(); ev.stopPropagation(); openSwaps(t.dataset.swap); }
+}, true);
 function searchName(s) {
-  return [barText(s), groupOf(s.group)?.name, !groupOf(s.group)?.len && lensText(s.lens), accSummary("narrow", s)].filter(Boolean).join(" · ") || "New search";
+  return [(s.rack && s.mode === "swap" ? "≈ " : "") + barText(s), groupOf(s.group)?.name, !groupOf(s.group)?.len && lensText(s.lens), accSummary("narrow", s)].filter(Boolean).join(" · ") || "New search";
 }
 // the open tab's name follows the filters as they're filled in
 function nameSearchTab() {
@@ -399,7 +414,7 @@ function barText(s) {
 }
 const patLabel = p => { const m = p.toUpperCase().match(/^\*\[([A-Z]+)\]\*$/); return m ? `Has ${[...m[1]].join(" or ")}` : `Pattern ${p.toUpperCase()}`; };
 // Anagram / Build / Contains all / Pattern: the same letters run as another kind of search
-const STYPES = [["exact", "Anagram"], ["build", "Subanagram"], ["super", "Superanagram"], ["pattern", "Pattern"]];
+const STYPES = [["exact", "Anagram"], ["build", "Subanagram"], ["super", "Superanagram"], ["swap", "Swap one"], ["pattern", "Pattern"]];
 function typeBar() {
   const s = searchState, l = (s.rack || s.pattern || "").toUpperCase();
   if (!/^[A-Z?.]+$/.test(l) || (s.rack && s.pattern)) return "";
@@ -418,7 +433,7 @@ function accSummary(key, s = searchState) {
   const up = v => String(v || "").toUpperCase();
   const parts = {
     group: [groupOf(s.group)?.name, lensText(s.lens)],
-    letters: [s.pattern && patLabel(s.pattern), s.rack && `rack ${up(s.rack)}`],
+    letters: [s.pattern && patLabel(s.pattern), s.rack && `${s.mode === "swap" ? "swap one in" : "rack"} ${up(s.rack)}`],
     narrow: [s.def && `“${s.def}”`, s.starts && `${up(s.starts)}…`, s.ends && `…${up(s.ends)}`, s.contains && `has ${up(s.contains)}`,
       s.incl && `uses ${up(s.incl)}`, s.excl && `no ${up(s.excl)}`, anaText(s.anas).toLowerCase(), likelyText(s.pfrom, s.pto, s.pby, s.plax).toLowerCase()],
   }[key];
@@ -434,7 +449,10 @@ function doSearch() {
     addRecentSearch(s, r.words.length);
     const g = s.group && groupOf(s.group);
     const onlyGroup = g && !Object.entries(s).some(([k, v]) => !["mode", "group", "from", "to"].includes(k) && v);
-    results(box, r.words, { masks: r.masks, len: onlyGroup ? g.len : 0, range: { from: s.from, to: s.to, save: (from, to) => { searchState.from = from; searchState.to = to; store.set("search", searchState); } } });
+    const swap = s.rack && s.mode === "swap" ? s.rack.toUpperCase().replace(/[^A-Z]/g, "") : "";
+    const sa = new Set(swap ? soundAlikes(swap) : []);
+    const groups = swap ? { by: w => r.masks.get(w).indexOf("up"), name: (i, ws) => `${swap.slice(0, i)}?${swap.slice(i + 1)}${ws.some(w => sa.has(w)) ? ` <span class="badge">sounds alike</span>` : ""}` } : null;
+    results(box, r.words, { masks: r.masks, groups, len: onlyGroup ? g.len : 0, range: { from: s.from, to: s.to, save: (from, to) => { searchState.from = from; searchState.to = to; store.set("search", searchState); } } });
   }, 10);
 }
 // phone search: each filter that's set is a chip (× removes it); tapping a chip or a "+" opens that section in a bottom sheet
@@ -443,7 +461,7 @@ function searchPhone() {
   const s = searchState, up = v => String(v || "").toUpperCase();
   const chips = [
     ["group", groupOf(s.group)?.name, ["group"]], ["narrow", s.def && `“${s.def}”`, ["def"]],
-    ["bar", s.pattern && patLabel(s.pattern), ["pattern"]], ["bar", s.rack && `Rack ${up(s.rack)}${s.mode === "build" ? " · subanagram" : s.mode === "super" ? " · superanagram" : ""}`, ["rack", "mode"]],
+    ["bar", s.pattern && patLabel(s.pattern), ["pattern"]], ["bar", s.rack && `Rack ${up(s.rack)}${s.mode === "build" ? " · subanagram" : s.mode === "super" ? " · superanagram" : s.mode === "swap" ? " · swap one" : ""}`, ["rack", "mode"]],
     ["group", lensText(s.lens), ["lens"]], ["narrow", s.starts && `${up(s.starts)}…`, ["starts"]], ["narrow", s.ends && `…${up(s.ends)}`, ["ends"]],
     ["narrow", s.contains && `Has ${up(s.contains)}`, ["contains"]], ["narrow", s.incl && `Uses ${up(s.incl)}`, ["incl"]], ["narrow", s.excl && `No ${up(s.excl)}`, ["excl"]], ["narrow", anaText(s.anas), ["anas"]], ["narrow", likelyText(s.pfrom, s.pto, s.pby, s.plax), ["pfrom", "pto", "pby", "plax"]],
   ].filter(c => c[1]);
