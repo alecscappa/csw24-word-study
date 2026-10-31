@@ -23,9 +23,19 @@ VIEWS.w = (arg) => {
   // sound-alikes get their own section (a tab on a phone), each with its definition and the letter that changes marked
   const sas = valid ? soundAlikes(w) : [];
   const saWord = x => [...x].map((c, i) => c !== w[i] ? `<mark>${c}</mark>` : c).join("");
-  const swapsLink = `<a href="#search" data-swap="${w}">One-letter swaps ›</a>`;
   const saNone = w.length < 7 || w.length > 8 ? "Sound-alikes are only looked for in 7s and 8s." : "No word sounds like this one.";
-  const saSection = `${sas.length ? `<div class="sarows">${sas.map(x => `<a class="sarow" href="#w/${x}"><b>${saWord(x)}</b><span>${defHTML(DICT.get(x).d)}</span></a>`).join("")}</div>` : `<p class="empty">${saNone}</p>`}<p class="saw">${swapsLink}</p>`;
+  // and under them every one-letter swap, grouped by the spot that changes (?RANITE, U?ANITE…); past about 24 words
+  // the rest fold away under "Show all"
+  const swaps = [...w].map((c, i) => [`${w.slice(0, i)}?${w.slice(i + 1)}`, [...AZ].map(L => w.slice(0, i) + L + w.slice(i + 1)).filter(x => x !== w && DICT.has(x))]).filter(g => g[1].length);
+  const swapN = swaps.reduce((n, g) => n + g[1].length, 0), saSet = new Set(sas);
+  const swapGrp = ([pat, ws]) => `<div class="grp swg"><b>${pat}</b><div class="words">${ws.map(x => saSet.has(x) ? chip(x).replace('class="w"', 'class="w sa"') : chip(x)).join("")}</div></div>`;
+  let cut = swaps.length;
+  for (let i = 0, n = 0; i < swaps.length; i++) { n += swaps[i][1].length; if (n > 24 && i) { cut = i; break; } }
+  const swapsHTML = `<h3 class="sub2">One-letter swaps (${swapN})</h3>${swapN ? swaps.slice(0, cut).map(swapGrp).join("")
+      + (cut < swaps.length ? `<details class="swmore"><summary>Show all ${swapN}</summary>${swaps.slice(cut).map(swapGrp).join("")}</details>` : "")
+    : `<p class="empty">No word is one letter away.</p>`}`;
+  const saSection = `${sas.length ? `<div class="sarows">${sas.map(x => `<a class="sarow" href="#w/${x}"><b>${saWord(x)}</b><span>${defHTML(DICT.get(x).d)}</span></a>`).join("")}</div>` : `<p class="empty">${saNone}</p>`}
+    ${swapsHTML}${swapN ? `<p class="saw"><a href="#search" data-swap="${w}">Open as a search ›</a></p>` : ""}`;
   const qs = store.get("stats", {})[w];
   const inGroups = valid ? GROUPS.filter(g => g.test && !["threes", "twos", "fours", "jqxz", "j", "q", "x", "z"].includes(g.id) && g.test(w, e)) : [];
   const hooks = (s, side) => s
@@ -43,7 +53,7 @@ VIEWS.w = (arg) => {
     </div>
   </div>`;
   html += valid
-    ? `<div class="grid2"><div class="card"><h2 class="lbl">CSW24 definition</h2><p class="def">${defHTML(e.d)}</p><p class="saw">${swapsLink}</p></div>
+    ? `<div class="grid2"><div class="card"><h2 class="lbl">CSW24 definition</h2><p class="def">${defHTML(e.d)}</p></div>
        <div class="card"><h2 class="lbl">Facts</h2><div class="stats">
          <div class="stat"><b>${alpha(w)}</b><span>alphagram</span></div>
          <div class="stat"><b>#${e.p.toLocaleString()}</b><span>probability of ${BYLEN[w.length].length.toLocaleString()} ${w.length}s</span></div>
@@ -53,7 +63,7 @@ VIEWS.w = (arg) => {
     : `<div class="card"><h2 class="lbl">Not in the lexicon</h2><p class="empty">${esc(w)} is not a valid CSW24 word.${ana.length ? " Valid anagrams of these letters:" : ""}</p>${ana.length ? `<div class="words" style="margin-top:8px">${ana.map(chip).join("")}</div>` : ""}</div>`;
   const groupsHTML = list => list.map(([L, g]) => `<div class="grp"><b>${L}</b><div class="words">${g.map(chip).join("")}</div></div>`).join("");
   html += `<div class="card"><h2 class="lbl">Anagrams (${ana.length})</h2>${ana.length ? `<div class="words">${ana.map(chip).join("")}</div>` : `<p class="empty">No other anagrams.</p>`}</div>
-  ${valid ? `<div class="card"><h2 class="lbl">Sound-alikes (${sas.length})</h2>${saSection}</div>` : ""}
+  ${valid ? `<div class="card"><h2 class="lbl">Sound-alikes (${sas.length}) and swaps</h2>${saSection}</div>` : ""}
   <div class="grid2">
     <div class="card"><h2 class="lbl">Add one letter (${plusN})${w.length === 6 ? " · 7-letter bingos" : ""}</h2>
       ${plus.length ? `<p class="small" style="margin:0 0 6px">Letters: <b style="color:var(--accent);letter-spacing:.08em">${plus.map(g => g[0]).join("")}</b></p>${groupsHTML(plus)}` : `<p class="empty">Nothing.</p>`}</div>
@@ -87,9 +97,9 @@ VIEWS.w = (arg) => {
         ${valid ? `<div class="hooksline">${hk(e.fh, "f")}<span>hooks</span>${hk(e.bh, "b")}</div>` : ""}
         <div class="badges">${valid ? `<span class="badge ok">✓ Valid</span>` : `<span class="badge bad">✗ Phony</span>`}${e?.n ? `<span class="badge">New</span>` : ""}<span class="badge">${score(w)} pts</span>${valid ? `<span class="badge">#${e.p.toLocaleString()} of ${w.length}s</span>` : ""}</div>
         <p class="hdef">${valid ? defHTML(e.d) : "Not in the lexicon"}</p>
-        ${valid ? `<p class="saw">${swapsLink}</p>` : ""}
+        ${valid ? `` : ""}
         ${valid ? `<div class="hacts"><button type="button" class="btn sm ${getKnown().includes(w) ? "on" : ""}" id="knownBtnW">${getKnown().includes(w) ? "✓ Known" : "✓ Cross off"}</button><button type="button" class="btn sm" id="folderBtn">Add to folder</button></div>` : ""}</div>
-      <nav class="segtabs">${[["ana", "Anagrams", ana.length], ["plus", "Add one", plusN], ["minus", "Drop one", minusN], ...(valid ? [["sa", "Sounds", sas.length]] : []), ["facts", "Facts"]].map(([k, n, c]) => `<button type="button" class="${k === wt ? "on" : ""}" data-wtab="${k}">${n}${c !== undefined ? `<em>${c}</em>` : ""}</button>`).join("")}</nav></div>
+      <nav class="segtabs">${[["ana", "Anagrams", ana.length], ["plus", "Add one", plusN], ["minus", "Drop one", minusN], ...(valid ? [["sa", "Swaps", swapN]] : []), ["facts", "Facts"]].map(([k, n, c]) => `<button type="button" class="${k === wt ? "on" : ""}" data-wtab="${k}">${n}${c !== undefined ? `<em>${c}</em>` : ""}</button>`).join("")}</nav></div>
       ${Object.entries(panes).map(([k, h]) => `<div class="wpane" data-pane="${k}" ${k === wt ? "" : "hidden"}>${h}</div>`).join("")}
       ${valid ? noteCard : ""}`;
   }

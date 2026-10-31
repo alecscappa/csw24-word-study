@@ -1156,3 +1156,8 @@ main.wrap:has(> .foc) { max-width: 1400px; }
 .sarow b mark { background: none; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
 .sarow span { font-size: .85rem; color: var(--muted); min-width: 0; }
 .sarow:hover b { text-decoration: underline; }
+/* one-letter swaps under them: the pattern, then the words (a sound-alike underlined) */
+.sub2 { margin: 14px 0 4px; font: 700 .72rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.grp.swg > b { width: auto; min-width: 6.5em; letter-spacing: .06em; }
+.words .w.sa { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+details.swmore > summary { cursor: pointer; font: 600 .85rem var(--display); color: var(--link); padding: 6px 0; }
