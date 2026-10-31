@@ -41,9 +41,10 @@ $("#form").addEventListener("submit", ev => {
   else { searchInNewTab(barSearch(q)); location.hash = "search"; }
 });
 $("#qClear").addEventListener("click", () => { $("#q").value = ""; $("#q").focus(); });
-// on the Word page the box holds the word being shown; tapping it starts a fresh word, and leaving it empty puts the word back
+// on the Word page the box holds the word being shown; tapping it starts a fresh word when that word was a random one
+// (see clearOnTap), and leaving it empty puts the word back
 const onWordPage = () => { const tab = location.hash.slice(1).split("/")[0]; return !VIEWS[tab] || tab === "w"; };
-$("#q").addEventListener("focus", () => { if (onWordPage() && $("#q").value === wordShown) $("#q").value = ""; });
+$("#q").addEventListener("focus", () => { if (onWordPage() && clearOnTap && $("#q").value === wordShown) $("#q").value = ""; });
 $("#q").addEventListener("blur", () => { if (onWordPage() && !$("#q").value) $("#q").value = wordShown; });
 // recent searches drop down under the empty bar; picking one runs it again (in the open search tab when on Search,
 // otherwise in a new one)
@@ -78,7 +79,7 @@ $("#randBtn").addEventListener("click", () => {
   const pools = range(lo, hi).map(n => (BYLEN[n] || []).filter(w => { const p = DICT.get(w).p; return p >= from && p <= to; })).filter(p => p.length);
   if (!pools.length) { location.hash = "settings"; return; }
   const pool = pools[Math.floor(Math.random() * pools.length)];
-  location.hash = "w/" + pool[Math.floor(Math.random() * pool.length)];
+  location.hash = "w/" + (randomPick = pool[Math.floor(Math.random() * pool.length)]);
 });
 document.addEventListener("click", ev => {
   const kb = ev.target.closest("[data-known]");

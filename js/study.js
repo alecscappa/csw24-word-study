@@ -7,17 +7,25 @@ phoneMQ.addEventListener?.("change", () => route());
 const sheetHTML = (id, body) => `<div class="sheetwrap" id="${id}" hidden><div class="scrim"></div><div class="sheet"><div class="grab"></div>${body}</div></div>`;
 function sheet(id, open) { const s = $("#" + id); if (!s) return; s.hidden = !open; document.body.classList.toggle("sheet-open", open); }
 
-let wordShown = "";
+// tapping the search bar clears the word shown only when it wasn't asked for: a Random word, or the one the app opens on
+let wordShown = "", randomPick = "", clearOnTap = false;
 VIEWS.w = (arg) => {
   const w = (arg || store.get("hist", [])[0] || "QI").toUpperCase().replace(/[^A-Z]/g, "");
   if (!w) return;
   $("#q").value = wordShown = w;
+  clearOnTap = !arg || w === randomPick;
   const e = DICT.get(w), valid = !!e;
   if (valid) addHistory(w);
   const ana = anagrams(w).filter(x => x !== w);
   const plus = plusOne(w), minus = minusOne(w);
   const plusN = plus.reduce((s, g) => s + g[1].length, 0), minusN = minus.reduce((s, g) => s + g[1].length, 0);
   const starred = getStars().includes(w);
+  // sound-alikes get their own section (a tab on a phone), each with its definition and the letter that changes marked
+  const sas = valid ? soundAlikes(w) : [];
+  const saWord = x => [...x].map((c, i) => c !== w[i] ? `<mark>${c}</mark>` : c).join("");
+  const swapsLink = `<a href="#search" data-swap="${w}">One-letter swaps ›</a>`;
+  const saNone = w.length < 7 || w.length > 8 ? "Sound-alikes are only looked for in 7s and 8s." : "No word sounds like this one.";
+  const saSection = `${sas.length ? `<div class="sarows">${sas.map(x => `<a class="sarow" href="#w/${x}"><b>${saWord(x)}</b><span>${defHTML(DICT.get(x).d)}</span></a>`).join("")}</div>` : `<p class="empty">${saNone}</p>`}<p class="saw">${swapsLink}</p>`;
   const qs = store.get("stats", {})[w];
   const inGroups = valid ? GROUPS.filter(g => g.test && !["threes", "twos", "fours", "jqxz", "j", "q", "x", "z"].includes(g.id) && g.test(w, e)) : [];
   const hooks = (s, side) => s
@@ -35,7 +43,7 @@ VIEWS.w = (arg) => {
     </div>
   </div>`;
   html += valid
-    ? `<div class="grid2"><div class="card"><h2 class="lbl">CSW24 definition</h2><p class="def">${defHTML(e.d)}</p><p class="saw">${soundAlikes(w).length ? `Sounds like ${saLinks(soundAlikes(w))} · ` : ""}<a href="#search" data-swap="${w}">One-letter swaps ›</a></p></div>
+    ? `<div class="grid2"><div class="card"><h2 class="lbl">CSW24 definition</h2><p class="def">${defHTML(e.d)}</p><p class="saw">${swapsLink}</p></div>
        <div class="card"><h2 class="lbl">Facts</h2><div class="stats">
          <div class="stat"><b>${alpha(w)}</b><span>alphagram</span></div>
          <div class="stat"><b>#${e.p.toLocaleString()}</b><span>probability of ${BYLEN[w.length].length.toLocaleString()} ${w.length}s</span></div>
@@ -45,6 +53,7 @@ VIEWS.w = (arg) => {
     : `<div class="card"><h2 class="lbl">Not in the lexicon</h2><p class="empty">${esc(w)} is not a valid CSW24 word.${ana.length ? " Valid anagrams of these letters:" : ""}</p>${ana.length ? `<div class="words" style="margin-top:8px">${ana.map(chip).join("")}</div>` : ""}</div>`;
   const groupsHTML = list => list.map(([L, g]) => `<div class="grp"><b>${L}</b><div class="words">${g.map(chip).join("")}</div></div>`).join("");
   html += `<div class="card"><h2 class="lbl">Anagrams (${ana.length})</h2>${ana.length ? `<div class="words">${ana.map(chip).join("")}</div>` : `<p class="empty">No other anagrams.</p>`}</div>
+  ${valid ? `<div class="card"><h2 class="lbl">Sound-alikes (${sas.length})</h2>${saSection}</div>` : ""}
   <div class="grid2">
     <div class="card"><h2 class="lbl">Add one letter (${plusN})${w.length === 6 ? " · 7-letter bingos" : ""}</h2>
       ${plus.length ? `<p class="small" style="margin:0 0 6px">Letters: <b style="color:var(--accent);letter-spacing:.08em">${plus.map(g => g[0]).join("")}</b></p>${groupsHTML(plus)}` : `<p class="empty">Nothing.</p>`}</div>
@@ -58,12 +67,13 @@ VIEWS.w = (arg) => {
     ${noteCard}`;
   // phone: tiles, hooks, badges and definition in a big header; Anagrams / +1 / −1 / Facts as tabs underneath
   if (phone()) {
-    const wt = store.get("wtab", "ana");
+    const wt = store.get("wtab", "ana") === "sa" && !valid ? "ana" : store.get("wtab", "ana");
     const hk = (s, side) => s ? `<div class="hk ${side}">${[...s].map(h => { const x = side === "f" ? h.toUpperCase() + w : w + h.toUpperCase(); return `<button type="button" data-go="${x}" title="${x}">${h}${(side === "f" ? e.fhNew : e.bhNew).includes(h) ? "<sup>+</sup>" : ""}</button>`; }).join("")}</div>` : `<div class="hk none ${side}">none</div>`;
     const panes = {
       ana: ana.length ? `<div class="bigchips">${ana.map(x => `<a href="#w/${x}">${x}${DICT.get(x).n ? "<sup>+</sup>" : ""}<small>›</small></a>`).join("")}</div>` : `<p class="empty">No other anagrams.</p>`,
       plus: `<div class="card">${plus.length ? `<p class="small" style="margin:0 0 6px">Letters: <b style="color:var(--accent);letter-spacing:.08em">${plus.map(g => g[0]).join("")}</b>${w.length === 6 ? " · 7-letter bingos" : ""}</p>${groupsHTML(plus)}` : `<p class="empty">Nothing.</p>`}</div>`,
       minus: `<div class="card">${minus.length ? groupsHTML(minus) : `<p class="empty">Nothing.</p>`}</div>`,
+      ...(valid ? { sa: `<div class="card">${saSection}</div>` } : {}),
       facts: valid ? `<div class="card"><div class="stats">
           <div class="stat"><b>${alpha(w)}</b><span>alphagram</span></div>
           <div class="stat"><b>#${e.pl.toLocaleString()}</b><span>playability</span></div>
@@ -77,9 +87,9 @@ VIEWS.w = (arg) => {
         ${valid ? `<div class="hooksline">${hk(e.fh, "f")}<span>hooks</span>${hk(e.bh, "b")}</div>` : ""}
         <div class="badges">${valid ? `<span class="badge ok">✓ Valid</span>` : `<span class="badge bad">✗ Phony</span>`}${e?.n ? `<span class="badge">New</span>` : ""}<span class="badge">${score(w)} pts</span>${valid ? `<span class="badge">#${e.p.toLocaleString()} of ${w.length}s</span>` : ""}</div>
         <p class="hdef">${valid ? defHTML(e.d) : "Not in the lexicon"}</p>
-        ${valid ? `<p class="saw">${soundAlikes(w).length ? `Sounds like ${saLinks(soundAlikes(w))} · ` : ""}<a href="#search" data-swap="${w}">One-letter swaps ›</a></p>` : ""}
+        ${valid ? `<p class="saw">${swapsLink}</p>` : ""}
         ${valid ? `<div class="hacts"><button type="button" class="btn sm ${getKnown().includes(w) ? "on" : ""}" id="knownBtnW">${getKnown().includes(w) ? "✓ Known" : "✓ Cross off"}</button><button type="button" class="btn sm" id="folderBtn">Add to folder</button></div>` : ""}</div>
-      <nav class="segtabs">${[["ana", "Anagrams", ana.length], ["plus", "Add one", plusN], ["minus", "Drop one", minusN], ["facts", "Facts"]].map(([k, n, c]) => `<button type="button" class="${k === wt ? "on" : ""}" data-wtab="${k}">${n}${c !== undefined ? `<em>${c}</em>` : ""}</button>`).join("")}</nav></div>
+      <nav class="segtabs">${[["ana", "Anagrams", ana.length], ["plus", "Add one", plusN], ["minus", "Drop one", minusN], ...(valid ? [["sa", "Sounds", sas.length]] : []), ["facts", "Facts"]].map(([k, n, c]) => `<button type="button" class="${k === wt ? "on" : ""}" data-wtab="${k}">${n}${c !== undefined ? `<em>${c}</em>` : ""}</button>`).join("")}</nav></div>
       ${Object.entries(panes).map(([k, h]) => `<div class="wpane" data-pane="${k}" ${k === wt ? "" : "hidden"}>${h}</div>`).join("")}
       ${valid ? noteCard : ""}`;
   }
