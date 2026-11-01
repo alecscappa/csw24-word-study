@@ -128,6 +128,10 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .r .wl mark { background: none; color: var(--accent); }
 .r .d { color: var(--muted); font-size: .93rem; min-width: 0; }
 .r .meta { font: .72rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* the rank: probability, or playability when sorted by it; the Playability box shows both, playability under */
+.r .mpl { display: none; color: var(--accent); }
+.rows.byplay .mp { display: none; } .rows.byplay .mpl, .rows.plshow .mpl, .rows.plshow .mp { display: block; }
+.rows.plshow .mpl { font-size: .9em; margin-top: 1px; }
 .r .ag { display: block; font: 400 .72rem var(--mono); color: var(--muted); letter-spacing: .06em; }
 .rows.nodefs .d, .rows.noprob .meta, .rows.noags .ag { display: none; }
 /* sound-alikes: a small line under the word, shown when the Sound-alikes box is ticked */
