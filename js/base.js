@@ -4,6 +4,8 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const alpha = w => w.split("").sort().join("");
 const vowels = w => (w.match(/[AEIOU]/g) || []).length;
+// side-by-side pairs of the same letter: BALLOON has 2 (LL, OO)
+const doubles = w => (w.match(/(.)\1/g) || []).length;
 const nOf = (w, ch) => w.split(ch).length - 1;
 const score = w => [...w].reduce((s, c) => s + (VALUES[c] || 0), 0);
 const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };

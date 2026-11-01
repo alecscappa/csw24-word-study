@@ -167,7 +167,7 @@ async function fetchOnline(w) {
 
 // ---------- search ----------
 // lens = the lengths picked with the chips; min and max are still understood (Practice uses them) but not shown
-const SEARCH_DEFAULT = { pattern: "", rack: "", mode: "exact", lens: "", min: "", max: "", starts: "", ends: "", contains: "", incl: "", excl: "", def: "", group: "", anas: "", pfrom: "", pto: "", pby: "rank", plax: "", from: "", to: "" };
+const SEARCH_DEFAULT = { pattern: "", rack: "", mode: "exact", lens: "", min: "", max: "", starts: "", ends: "", contains: "", incl: "", excl: "", def: "", group: "", anas: "", vows: "", dbls: "", pfrom: "", pto: "", pby: "rank", plax: "", from: "", to: "" };
 let searchState = Object.fromEntries(Object.keys(SEARCH_DEFAULT).map(k => [k, store.get("search", {})[k] ?? SEARCH_DEFAULT[k]]));
 if (store.get("search", {}).top && !searchState.pto) searchState.pto = store.get("search", {}).top;
 if (!groupOf(searchState.group) || groupOf(searchState.group).special) searchState.group = "";
@@ -206,7 +206,7 @@ function runSearch(s) {
   const incl = counts(letters(s.incl)), excl = new Set(letters(s.excl));
   const def = (s.def || "").trim().toLowerCase();
   const group = s.group ? groupOf(s.group) : null;
-  const ar = anaRange(s.anas);
+  const ar = anaRange(s.anas), vr = anaRange(s.vows), dr = anaRange(s.dbls);
   const rl = rack.replace(/\?/g, ""), rb = rack.length - rl.length, rc = counts(rl);
   const swap = rack && s.mode === "swap" ? rl : "";
   const masks = (rack && rb) || swap ? new Map() : null;
@@ -220,6 +220,8 @@ function runSearch(s) {
     if (contains && !w.includes(contains)) continue;
     if (re && !re.test(w)) continue;
     if (excl.size && [...w].some(c => excl.has(c))) continue;
+    if (vr) { const n = vowels(w); if (n < vr[0] || n > vr[1]) continue; }
+    if (dr) { const n = doubles(w); if (n < dr[0] || n > dr[1]) continue; }
     const e = DICT.get(w);
     if (ar) { const n = ANA.get(alpha(w)).length; if (n < ar[0] || n > ar[1]) continue; }
     if (group && !group.test(w, e)) continue;
@@ -283,7 +285,11 @@ const likelyText = (from, to, by = "rank", lax) => (+from > 1 ? (by === "place" 
   : +to ? (by === "place" ? `${to} most likely here` : `Top ${to} of each length`) : "") + (lax && (+from > 1 || +to) ? " (lax)" : "");
 // anagrams: how many words the rack makes, typed as 3, 2-4 or 5+
 const anaRange = v => { const m = String(v || "").match(/^\s*(\d+)\s*(?:([-–]\s*(\d+))|(\+))?\s*$/); if (!m) return null; const lo = +m[1], hi = m[4] ? Infinity : m[3] ? +m[3] : lo; return lo > hi ? [hi, lo] : [lo, hi]; };
-const anaText = v => { const r = anaRange(v); return r ? `${r[1] === Infinity ? r[0] + "+" : r[0] === r[1] ? r[0] : r[0] + "–" + r[1]} anagram${r[0] === 1 && r[1] === 1 ? "" : "s"}` : ""; };
+// the same kind of count for vowels and double letters
+const countText = (v, one, many) => { const r = anaRange(v); return r ? `${r[1] === Infinity ? r[0] + "+" : r[0] === r[1] ? r[0] : r[0] + "–" + r[1]} ${r[0] === 1 && r[1] === 1 ? one : many}` : ""; };
+const anaText = v => countText(v, "anagram", "anagrams");
+const vowText = v => countText(v, "vowel", "vowels");
+const dblText = v => countText(v, "double letter", "double letters");
 // the two search sections' fields (letters come from the top bar), shared by the folding form and the phone's sheets
 function searchSecs(s) {
   const f = (id, label, p, hint = "", cls = "") => `<div class="field"><label for="s_${id}">${label}</label><input id="s_${id}" class="${cls}" value="${esc(s[id])}" placeholder="${p}" spellcheck="false" autocorrect="off" autocapitalize="${cls ? "none" : "characters"}">${hint ? `<span class="hint">${hint}</span>` : ""}</div>`;
@@ -301,11 +307,13 @@ function searchSecs(s) {
         ${f("incl", "Must include", "e.g. VV")}
         ${f("excl", "Must exclude", "e.g. AEIOU")}
         ${f("anas", "Anagrams", "e.g. 3, 2-4 or 5+")}
+        ${f("vows", "Vowels", "e.g. 1, 2-3 or 4+", "A, E, I, O and U")}
+        ${f("dbls", "Double letters", "e.g. 1, 2 or 2+", "Side by side, like LL and OO")}
         ${likelyField("s_p", s.pfrom, s.pto, s.pby, s.plax)}
       </div>`,
   };
 }
-const SEARCH_SECS = { group: ["Group and length", ["group", "lens"]], narrow: ["Filters", ["def", "starts", "ends", "contains", "incl", "excl", "anas", "pfrom", "pto", "pby", "plax"]] };
+const SEARCH_SECS = { group: ["Group and length", ["group", "lens"]], narrow: ["Filters", ["def", "starts", "ends", "contains", "incl", "excl", "anas", "vows", "dbls", "pfrom", "pto", "pby", "plax"]] };
 VIEWS.search = () => {
   if (phone()) return searchPhone();
   const s = searchState, secs = searchSecs(s);
@@ -455,7 +463,7 @@ function accSummary(key, s = searchState) {
     group: [groupOf(s.group)?.name, lensText(s.lens)],
     letters: [s.pattern && patLabel(s.pattern), s.rack && `${s.mode === "swap" ? "swap one in" : "rack"} ${up(s.rack)}`],
     narrow: [s.def && `“${s.def}”`, s.starts && `${up(s.starts)}…`, s.ends && `…${up(s.ends)}`, s.contains && `has ${up(s.contains)}`,
-      s.incl && `uses ${up(s.incl)}`, s.excl && `no ${up(s.excl)}`, anaText(s.anas).toLowerCase(), likelyText(s.pfrom, s.pto, s.pby, s.plax).toLowerCase()],
+      s.incl && `uses ${up(s.incl)}`, s.excl && `no ${up(s.excl)}`, anaText(s.anas).toLowerCase(), vowText(s.vows), dblText(s.dbls), likelyText(s.pfrom, s.pto, s.pby, s.plax).toLowerCase()],
   }[key];
   return parts.filter(Boolean).join(" · ");
 }
@@ -483,7 +491,7 @@ function searchPhone() {
     ["group", groupOf(s.group)?.name, ["group"]], ["narrow", s.def && `“${s.def}”`, ["def"]],
     ["bar", s.pattern && patLabel(s.pattern), ["pattern"]], ["bar", s.rack && `Rack ${up(s.rack)}${s.mode === "build" ? " · subanagram" : s.mode === "super" ? " · superanagram" : s.mode === "swap" ? " · swap one" : ""}`, ["rack", "mode"]],
     ["group", lensText(s.lens), ["lens"]], ["narrow", s.starts && `${up(s.starts)}…`, ["starts"]], ["narrow", s.ends && `…${up(s.ends)}`, ["ends"]],
-    ["narrow", s.contains && `Has ${up(s.contains)}`, ["contains"]], ["narrow", s.incl && `Uses ${up(s.incl)}`, ["incl"]], ["narrow", s.excl && `No ${up(s.excl)}`, ["excl"]], ["narrow", anaText(s.anas), ["anas"]], ["narrow", likelyText(s.pfrom, s.pto, s.pby, s.plax), ["pfrom", "pto", "pby", "plax"]],
+    ["narrow", s.contains && `Has ${up(s.contains)}`, ["contains"]], ["narrow", s.incl && `Uses ${up(s.incl)}`, ["incl"]], ["narrow", s.excl && `No ${up(s.excl)}`, ["excl"]], ["narrow", anaText(s.anas), ["anas"]], ["narrow", vowText(s.vows), ["vows"]], ["narrow", dblText(s.dbls), ["dbls"]], ["narrow", likelyText(s.pfrom, s.pto, s.pby, s.plax), ["pfrom", "pto", "pby", "plax"]],
   ].filter(c => c[1]);
   const secs = searchSecs(s);
   $("#view").innerHTML = `${searchTabsHTML()}<div class="filterbar"><div class="hscroll">
