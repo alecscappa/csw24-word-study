@@ -40,7 +40,14 @@ $("#form").addEventListener("submit", ev => {
   if (onSearch) { searchState = { ...SEARCH_DEFAULT, ...keep, ...barSearch(q) }; store.set("search", searchState); VIEWS.search(); }
   else { searchInNewTab(barSearch(q)); location.hash = "search"; }
 });
-$("#qClear").addEventListener("click", () => { $("#q").value = ""; $("#q").focus(); });
+// on the Search page, emptying the bar drops the letters (URA?ITE, *ING) from the search but keeps the other filters
+function clearBarLetters() {
+  if (location.hash.slice(1).split("/")[0] !== "search" || $("#q").value || !barText(searchState)) return;
+  for (const k of LETTER_KEYS) searchState[k] = SEARCH_DEFAULT[k];
+  store.set("search", searchState); VIEWS.search();
+}
+$("#qClear").addEventListener("click", () => { $("#q").value = ""; $("#q").focus(); clearBarLetters(); });
+$("#q").addEventListener("input", clearBarLetters);
 // on the Word page the box holds the word being shown; tapping it starts a fresh word when that word was a random one
 // (see clearOnTap), and leaving it empty puts the word back
 const onWordPage = () => { const tab = location.hash.slice(1).split("/")[0]; return !VIEWS[tab] || tab === "w"; };
