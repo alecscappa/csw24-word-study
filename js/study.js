@@ -390,6 +390,8 @@ function searchTabsHTML() {
     <button type="button" class="stab plus" id="stabNew" ${searchTabs.length >= MAX_TABS ? `disabled title="Up to ${MAX_TABS} tabs: close one first"` : `title="New search tab"`} aria-label="New search tab">+</button></div>`;
 }
 function openSearchTab(id, s) {
+  // the open tab keeps what was typed since the page drew (Ends with ING, say), even if Search wasn't pressed
+  saveSearchTabs();
   const cur = searchTabs.find(t => t.id === searchTabOn);
   if (cur) cur.y = window.scrollY;
   if (s) { id = Math.max(...searchTabs.map(t => t.id)) + 1; searchTabs.push({ id, s, y: 0 }); }
