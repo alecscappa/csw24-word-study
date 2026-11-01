@@ -126,6 +126,8 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .r .bh { font: .85rem var(--mono); color: var(--link); overflow-wrap: anywhere; }
 .r .wl { font: 700 1rem var(--mono); letter-spacing: .04em; }
 .r .wl mark { background: none; color: var(--accent); }
+/* what the ? stands for, beside the word */
+.r .ql { margin-left: 8px; padding: 0 5px; border: 1px solid var(--line); border-radius: 4px; font: 600 .72rem var(--mono); color: var(--accent); letter-spacing: .04em; white-space: nowrap; vertical-align: 1px; }
 .r .d { color: var(--muted); font-size: .93rem; min-width: 0; }
 .r .meta { font: .72rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* the rank: probability, or playability when sorted by it; the Playability box shows both, playability under */

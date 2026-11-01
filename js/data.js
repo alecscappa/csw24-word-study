@@ -171,6 +171,8 @@ function tilesHTML(w, mini) {
   return `<div class="tiles${mini ? " mini" : ""}" style="--n:${w.length}">${[...w].map((c, i) => `<div class="tile" style="animation-delay:${i * 25}ms">${c}<sub>${VALUES[c]}</sub></div>`).join("")}</div>`;
 }
 
+// the letters a word has at the marked spots: the ? letters of a pattern or rack, or the one changed by a swap
+const qLetters = (w, m) => m ? [...w].filter((c, i) => m[i]).join("") : "";
 const SORTS = { prob: "Probability", alpha: "A–Z", len: "Length", score: "Points", play: "Playability" };
 const sorters = {
   prob: (a, b) => a.length - b.length || DICT.get(a).p - DICT.get(b).p,
@@ -212,7 +214,10 @@ function results(el, words, opts = {}) {
   const st = { sel: null, lens: new Set((mem.lens || (opts.len ? [opts.len] : [])).filter(n => lens.includes(n) && lens.length > 1)), shown: mem.shown || +SET.pageSize, from: +opts.range?.from || 0, to: +opts.range?.to || 0 };
   let first = true, shownList = [];
   function draw() {
-    const full = (st.lens.size ? words.filter(w => st.lens.has(w.length)) : [...words]).sort(sorters[SET.sort] || sorters.prob);
+    // "? letter" sorts by what the ? stands for (A to Z, then by probability); it's offered only when results have one
+    const hasQ = !!opts.masks?.size, byQ = hasQ && SET.sort === "blank";
+    const qOf = w => qLetters(w, opts.masks.get(w));
+    const full = (st.lens.size ? words.filter(w => st.lens.has(w.length)) : [...words]).sort(byQ ? (a, b) => (qOf(a) < qOf(b) ? -1 : qOf(a) > qOf(b) ? 1 : 0) || sorters.prob(a, b) : sorters[SET.sort] || sorters.prob);
     // grouped results (one-letter swaps): each group together under its heading, in the sort order within it
     const G = opts.groups, gw = {};
     if (G) { full.sort((a, b) => G.by(a) - G.by(b)); for (const w of full) (gw[G.by(w)] ||= []).push(w); }
@@ -225,7 +230,7 @@ function results(el, words, opts = {}) {
     el.innerHTML = `
       <div class="toolbar">
         <span class="count">${ranged ? `Words ${lo.toLocaleString()}–${Math.min(hi, full.length).toLocaleString()} <span class="small">of ${total}</span>` : total}</span>
-        <select id="sortSel" aria-label="Sort by">${Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${k === SET.sort ? "selected" : ""}>Sort: ${v}</option>`).join("")}</select>
+        <select id="sortSel" aria-label="Sort by">${Object.entries(hasQ ? { ...SORTS, blank: "? letter" } : SORTS).map(([k, v]) => `<option value="${k}" ${k === SET.sort ? "selected" : ""}>Sort: ${v}</option>`).join("")}</select>
         <label class="check small"><input type="checkbox" id="defChk" ${SET.defs ? "checked" : ""}> Definitions</label>
         <label class="check small"><input type="checkbox" id="agChk" ${SET.ags ? "checked" : ""}> Alphagrams</label>
         <label class="check small"><input type="checkbox" id="saChk" ${SET.sas ? "checked" : ""}> Sound-alikes</label>
@@ -313,6 +318,7 @@ function rowHTML(w, mask, rank, stars = new Set(getStars()), known = new Set(get
   const e = DICT.get(w);
   const sa = soundAlikes(w);
   const label = mask ? [...w].map((c, i) => mask[i] ? `<mark>${mask[i] === "up" ? c : c.toLowerCase()}</mark>` : c).join("") : w;
-  return `<div class="r${known.has(w) ? " known" : ""}${sel ? " sel" : ""}" data-go="${w}">${rank ? `<span class="rk">${rank}.</span>` : ""}<span class="meta"><span class="mp">#${e.p.toLocaleString()}</span><span class="mpl" title="Playability rank">pl ${e.pl.toLocaleString()}</span></span><span class="fh">${hookText(e.fh, e.fhNew)}</span><span class="wl">${label}${e.n ? "<sup>+</sup>" : ""}<span class="ag">${alpha(w)}</span>${sa.length ? `<span class="sa" data-swap="${w}" role="link" title="All one-letter swaps of ${w}">sounds like <b>${sa.join(", ")}</b> ›</span>` : ""}</span><span class="bh">${hookText(e.bh, e.bhNew)}</span><span class="d">${esc(e.d)}</span><span class="ra">${knownBtn(w, known.has(w))}${starBtn(w, stars.has(w))}</span></div>`;
+  const q = qLetters(w, mask);
+  return `<div class="r${known.has(w) ? " known" : ""}${sel ? " sel" : ""}" data-go="${w}">${rank ? `<span class="rk">${rank}.</span>` : ""}<span class="meta"><span class="mp">#${e.p.toLocaleString()}</span><span class="mpl" title="Playability rank">pl ${e.pl.toLocaleString()}</span></span><span class="fh">${hookText(e.fh, e.fhNew)}</span><span class="wl">${label}${e.n ? "<sup>+</sup>" : ""}${q ? `<span class="ql" title="The ? letter${q.length > 1 ? "s" : ""}">?=${[...q].join(" ")}</span>` : ""}<span class="ag">${alpha(w)}</span>${sa.length ? `<span class="sa" data-swap="${w}" role="link" title="All one-letter swaps of ${w}">sounds like <b>${sa.join(", ")}</b> ›</span>` : ""}</span><span class="bh">${hookText(e.bh, e.bhNew)}</span><span class="d">${esc(e.d)}</span><span class="ra">${knownBtn(w, known.has(w))}${starBtn(w, stars.has(w))}</span></div>`;
 }
 

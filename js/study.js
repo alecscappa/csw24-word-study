@@ -209,7 +209,10 @@ function runSearch(s) {
   const ar = anaRange(s.anas), vr = anaRange(s.vows), dr = anaRange(s.dbls);
   const rl = rack.replace(/\?/g, ""), rb = rack.length - rl.length, rc = counts(rl);
   const swap = rack && s.mode === "swap" ? rl : "";
-  const masks = (rack && rb) || swap ? new Map() : null;
+  // a pattern with ? or . and no *: which spots are open, so each word's letters there are marked (URA?ITE: the N)
+  const toks = pat && !pat.includes("*") ? pat.replace(/\^/g, "").match(/\[[^\]]*\]|./g) : null;
+  const open = toks && toks.some(t => t === "?" || t === "." || t[0] === "[") ? toks.map(t => t === "?" || t === "." || t[0] === "[") : null;
+  const masks = (rack && rb) || swap || open ? new Map() : null;
   const pool = (rack && s.mode === "exact") || swap ? BYLEN[(swap || rack).length] || [] : group ? groupWords(group) : ALL;
   const out = [];
   for (const w of pool) {
@@ -219,6 +222,7 @@ function runSearch(s) {
     if (ends && !w.endsWith(ends)) continue;
     if (contains && !w.includes(contains)) continue;
     if (re && !re.test(w)) continue;
+    if (open) masks.set(w, open.map(o => o && "up"));
     if (excl.size && [...w].some(c => excl.has(c))) continue;
     if (vr) { const n = vowels(w); if (n < vr[0] || n > vr[1]) continue; }
     if (dr) { const n = doubles(w); if (n < dr[0] || n > dr[1]) continue; }
