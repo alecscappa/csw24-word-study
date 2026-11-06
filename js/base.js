@@ -214,7 +214,7 @@ ${Object.entries(TILE_STYLES).map(([id, [, css, sub]]) => `.tstyles .tile.ts-${i
 const TEXT_SIZES = { xs: "14px", sm: "16px", md: "18px", lg: "20px", xl: "22px" };
 const SET_DEFAULT = { theme: "coffee", mode: "light", size: "md", values: true, sort: "prob", defs: true, sas: true, prob: true, plays: false, hooks: true, pageSize: 300, online: true, phony: 50, randMin: 2, randMax: 8, qcount: 20,
   tiles: "maple", tileCustom: "#f1dcaa", headCustom: "", accentCustom: "", glare: "dim", tileLook: "soft", tileFont: "sans", rackLook: "cherry",
-  bPal: "theme", bLabels: "letters", bCoords: true, bTile: "same", bStyle: "gaps", bMark: "bright", bTheme: "", bTileCol: "same", bArrows: false };
+  bPal: "theme", bLabels: "letters", bCoords: true, bTile: "same", bStyle: "gaps", bMark: "bright", bTheme: "", bTileCol: "same", bArrows: false, hideCount: false, rackSize: 0, recallHard: false };
 const hadSettings = !!store.get("settings", null);
 let SET = { ...SET_DEFAULT, ...store.get("settings", {}) };
 // once, on every device: the look settings move to the new defaults (Coffee, light, Dim, Maple tiles, Soft shadow,

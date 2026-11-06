@@ -201,7 +201,7 @@ const orderPick = (id, v, rev) => `<div class="seg" id="${id}">${Object.entries(
 let lastResults = [];
 // going back to a list, search or My words puts you where you were: the scroll position, plus each results
 // list's length chips and "Show more" count (kept per page and word count, for this visit to the site)
-const scrollMem = {}, resMem = {};
+const scrollMem = store.get("scrollMem", {}), resMem = {};
 let curHash = location.hash, pendingScroll = 0;
 function restoreScroll() {
   if (pendingScroll && document.documentElement.scrollHeight - innerHeight >= pendingScroll - 4) { window.scrollTo(0, pendingScroll); pendingScroll = 0; }

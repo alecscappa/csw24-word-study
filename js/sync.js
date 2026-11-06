@@ -3,7 +3,7 @@
 // changed; the newer copy wins. The first time a device signs in, what it already has is added to the account's
 // (stars, notes, games and so on are merged, not replaced). The look (theme, text size, tiles, the board's look)
 // stays each device's own ----------
-const SYNC_KEYS = ["stars", "missed", "notes", "notebook", "folders", "known", "hist", "stats", "plearnt", "pq", "pLast", "games", "boardStats", "labStats", "settings"];
+const SYNC_KEYS = ["stars", "missed", "notes", "notebook", "folders", "known", "hist", "stats", "plearnt", "pq", "pLast", "precall", "games", "boardStats", "labStats", "settings"];
 const LOOK_KEYS = ["theme", "mode", "glare", "size", "tiles", "tileCustom", "headCustom", "accentCustom", "tileLook", "tileFont", "rackLook", "values", "tones",
   "bPal", "bLabels", "bCoords", "bTile", "bStyle", "bMark", "bTheme", "bTileCol", "bArrows"];
 const FB_SDK = "https://www.gstatic.com/firebasejs/10.12.2/";

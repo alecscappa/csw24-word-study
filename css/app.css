@@ -579,6 +579,8 @@ main.wrap:has(> .foc) { max-width: 1400px; }
   body.full header { display: none; }
   body.full main.wrap { padding: calc(8px + env(safe-area-inset-top)) 12px calc(142px + env(safe-area-inset-bottom)); }
   body.full:has(#pa:not([hidden])) main.wrap { padding-bottom: calc(204px + env(safe-area-inset-bottom)); }
+  body.full:has(#rca) main.wrap { padding-bottom: calc(196px + env(safe-area-inset-bottom)); }
+  body.full .thumb.rcthumb .btn { min-height: 48px; border-radius: 14px; }
   /* the card (and the answers once shown) sits at the top; the rack and its buttons sit at the bottom, just above
      the ✗ ✓ bar, in thumb reach. A card with lots of answers grows and pushes the rack down, and the page scrolls
      (the bottom padding keeps it clear of the bar) */
@@ -1093,6 +1095,17 @@ main.wrap:has(> .foc) { max-width: 1400px; }
 .qinput.lgood { animation: lgood .35s; } .qinput.lbad { animation: shake .35s; }
 @keyframes lgood { 40% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 45%, transparent); border-color: var(--good); } }
 .lfound { justify-content: center; }
+/* options on a Practice or Quiz card */
+.copts { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.copts .pill { min-height: 32px; padding: 0 11px; font-size: .78rem; cursor: pointer; }
+/* list recall */
+.rccard { padding-inline: 14px; }
+.rctitle { font: 700 1.05rem var(--display); margin: 4px 0 0; }
+.rcmsg { margin: 0; min-height: 1.3em; text-align: center; font-size: .85rem; }
+.rclist { margin-top: 8px; text-align: left; }
+.rcsec .lbl { display: flex; justify-content: space-between; margin: 10px 0 4px; }
+.rcsec .found { justify-content: flex-start; margin-top: 0; }
+.rcthumb .acts > :only-child { grid-column: 1 / -1; }
 
 /* My words → Notes: each note a card with a title and text that grows as you write */
 .nbook { display: flex; flex-direction: column; gap: 12px; }

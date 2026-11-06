@@ -623,6 +623,7 @@ const MODES = {
   pattern: { name: "Patterns", help: "See a word with one letter gone, type every letter that fits the gap." },
   phony: { name: "Valid or phony", help: "Is the word good? Phonies are one letter off real words. Keys: V and P." },
   def: { name: "Definition", help: "Read the definition, type the word." },
+  recall: { name: "List recall", help: "Type every word on the list from memory, in any order. Only your count shows, with no hints." },
 };
 // hooks and patterns, for Quiz and Practice. A pattern is a word with one letter gone ("CA?E"); the answer is every
 // letter that makes a word there. The gap goes inside the word (an end gap is just a hook question) where it leaves
@@ -647,7 +648,7 @@ const gapTile = `<div class="tile gap">?</div>`, aTile = c => `<div class="tile"
 const gapHTML = pat => `<div class="tiles gapt">${[...pat].map(c => c === "?" ? gapTile : aTile(c)).join("")}</div>`;
 const hookHTML = w => `<div class="tiles gapt">${gapTile}${[...w].map(aTile).join("")}${gapTile}</div>`;
 // a pattern card while you play: each letter that fits makes a word, shown as it's found; dots for the rest
-const patChips = (pat, found) => `<div class="found lfound">${fitsOf(pat).map(c => { const w = pat.replace("?", c); return found.includes(c) ? `<a class="w got" href="#w/${w}">${w}</a>` : `<span class="w blank">${"•".repeat(w.length)}</span>`; }).join("")}</div>`;
+const patChips = (pat, found) => `<div class="found lfound">${fitsOf(pat).filter(c => !SET.hideCount || found.includes(c)).map(c => { const w = pat.replace("?", c); return found.includes(c) ? `<a class="w got" href="#w/${w}">${w}</a>` : `<span class="w blank">${"•".repeat(w.length)}</span>`; }).join("")}</div>`;
 // one letter typed into a pattern box: a fitting new letter is taken (true), anything else is refused (false)
 const flashBox = (el, good) => { el.classList.remove("lgood", "lbad"); void el.offsetWidth; el.classList.add(good ? "lgood" : "lbad"); };
 // what you typed against the answer: letters you got, letters you missed, and letters that don't fit
@@ -678,18 +679,40 @@ function sourceWords(src) {
   if (quizSetup.skipKnown) { const k = new Set(getKnown()); words = words.filter(w => !k.has(w)); }
   return words;
 }
+// how often each run of three letters comes up in real words, with word edges counted as a character. Built the first
+// time a phony is needed
+let triCounts = null;
+const triAt = (a, b, c) => a * 729 + b * 27 + c;
+const triCode = (w, i) => i < 0 || i >= w.length ? 26 : w.charCodeAt(i) - 65;
+function triTable() {
+  if (triCounts) return triCounts;
+  triCounts = new Int32Array(19683);
+  for (const w of ALL) for (let i = -1; i < w.length; i++) triCounts[triAt(triCode(w, i - 1), triCode(w, i), triCode(w, i + 1))]++;
+  return triCounts;
+}
+// how believable a swap at i is: the count of the rarest run of three that the new letter is part of
+function phonyScore(p, i) {
+  const T = triTable();
+  let low = Infinity;
+  for (let k = i - 1; k <= i + 1; k++) low = Math.min(low, T[triAt(triCode(p, k - 1), triCode(p, k), triCode(p, k + 1))]);
+  return low;
+}
+// a phony one letter off w, vowel for vowel and consonant for consonant, that looks like it could be a word: one of the
+// better swaps at random, so ISTVMUS (no real word has a TVM in it) never comes up when something more convincing can
+const PHONY_MIN = 40;
 function makePhony(w) {
-  const V = "AEIOU", C = "BCDFGHKLMNPRSTVWY";
-  for (let t = 0; t < 60; t++) {
-    const i = Math.floor(Math.random() * w.length), pool = V.includes(w[i]) ? V : C;
-    const p = w.slice(0, i) + pool[Math.floor(Math.random() * pool.length)] + w.slice(i + 1);
-    if (p !== w && !DICT.has(p)) return p;
-  }
-  return null;
+  const V = "AEIOU", C = "BCDFGHKLMNPRSTVWY", all = [];
+  [...w].forEach((c, i) => { for (const L of V.includes(c) ? V : C) { const p = w.slice(0, i) + L + w.slice(i + 1); if (L !== c && !DICT.has(p)) all.push({ p, s: phonyScore(p, i) }); } });
+  if (!all.length) return null;
+  const good = all.filter(x => x.s >= PHONY_MIN);
+  const from = good.length ? good : all.sort((a, b) => b.s - a.s).slice(0, 3);
+  return from[Math.floor(Math.random() * from.length)].p;
 }
 function buildQuestions(words, mode, n, order = "rand", rev = false) {
   let src = [...new Set(words.filter(w => DICT.has(w)))];
   if (mode === "def") src = src.filter(w => !DICT.get(w).d.startsWith("<"));
+  // recall: the whole list is the one question, so there's no count or order to apply
+  if (mode === "recall") return src.sort().map(w => ({ w, show: w }));
   // anagrams: one question per rack (the first of its words in the list), so a rack with three words is no likelier than one with one
   if (mode === "anagram") { const rep = new Map(); for (const w of src) if (!rep.has(alpha(w))) rep.set(alpha(w), w); src = ordered([...rep.keys()], order, true, rev).map(a => rep.get(a)); }
   else src = ordered(src, order, false, rev);
@@ -706,8 +729,9 @@ VIEWS.quiz = () => {
   if (Q && !Q.done && !Q.paused) return drawQuestion();
   document.body.classList.remove("full");
   const going = Q && !Q.done;
-  $("#view").innerHTML = `${going ? `<div class="cont" id="qGo"><div class="ct"><small>Quiz in progress</small><b>${MODES[Q.mode].name} · question ${Q.i + 1} of ${Q.qs.length}</b>
-      <div class="pbar"><div style="width:${Q.i / Q.qs.length * 100}%"></div></div><div class="small">${Q.right} right · ${Q.wrong.length} missed</div></div>
+  const rc = going && Q.mode === "recall", recallMode = quizSetup.mode === "recall";
+  $("#view").innerHTML = `${going ? `<div class="cont" id="qGo"><div class="ct"><small>Quiz in progress</small><b>${MODES[Q.mode].name} · ${rc ? `${Q.found?.length || 0} of ${Q.qs.length} found` : `question ${Q.i + 1} of ${Q.qs.length}`}</b>
+      <div class="pbar"><div style="width:${(rc ? Q.found?.length || 0 : Q.i) / Q.qs.length * 100}%"></div></div><div class="small">${rc ? esc(Q.name || "") : `${Q.right} right · ${Q.wrong.length} missed`}</div></div>
       <button type="button" class="go" aria-label="Carry on with the quiz">${ICON_PLAY}</button></div>
     <div class="row"><button type="button" class="btn sm" id="qEnd">End this quiz</button></div>` : ""}
   ${Q?.done ? summaryHTML() : ""}
@@ -718,8 +742,8 @@ VIEWS.quiz = () => {
       <optgroup label="Mine">${quizSources().map(([v, t]) => `<option value="${v}" ${v === quizSetup.source ? "selected" : ""}>${esc(t)}</option>`).join("")}</optgroup>
       ${groupOptions(quizSetup.source.replace("list:", ""), true).replace(/value="/g, 'value="list:')}</select></div>
     <div class="field wide"><span class="flabel">Length</span>${lenPick("qlens", quizSetup.lens)}</div>
-    <div class="field wide"><label for="qcount">Questions</label><div class="numpick"><input id="qcount" value="${SET.qcount}" inputmode="numeric" aria-label="Number of questions">${[10, 20, 50, 100].map(n => `<button type="button" class="btn sm ${n === +SET.qcount ? "on" : ""}" data-qn="${n}">${n}</button>`).join("")}</div></div>
-    <div class="field wide"><span class="flabel">Order</span>${orderPick("qorder", quizSetup.order, quizSetup.rev)}</div>
+    ${recallMode ? "" : `<div class="field wide"><label for="qcount">Questions</label><div class="numpick"><input id="qcount" value="${SET.qcount}" inputmode="numeric" aria-label="Number of questions">${[10, 20, 50, 100].map(n => `<button type="button" class="btn sm ${n === +SET.qcount ? "on" : ""}" data-qn="${n}">${n}</button>`).join("")}</div></div>
+    <div class="field wide"><span class="flabel">Order</span>${orderPick("qorder", quizSetup.order, quizSetup.rev)}</div>`}
     <div class="field wide"><label class="check"><input type="checkbox" id="qstar" ${quizSetup.starOnly ? "checked" : ""}> Only words I've starred</label>
       <label class="check"><input type="checkbox" id="qknown" ${quizSetup.skipKnown ? "checked" : ""}> Leave out words I've crossed off</label></div>
   </div></div>
@@ -731,10 +755,10 @@ VIEWS.quiz = () => {
   $("#qsrc").onchange = e => { quizSetup.source = e.target.value; const g = groupOf(e.target.value.replace("list:", "")); quizSetup.lens = g?.len ? [g.len] : []; store.set("quizSetup", quizSetup); VIEWS.quiz(); };
   // type any number of questions, or pick one of the usual ones
   const setCount = n => { n = Math.min(500, Math.max(1, parseInt(n) || 20)); saveSettings({ qcount: n }); $("#qcount").value = n; $("#view").querySelectorAll("[data-qn]").forEach(b => b.classList.toggle("on", +b.dataset.qn === n)); };
-  $("#qcount").onchange = e => setCount(e.target.value);
+  $("#qcount")?.addEventListener("change", e => setCount(e.target.value));
   $("#view").querySelectorAll("[data-qn]").forEach(b => b.onclick = () => setCount(b.dataset.qn));
   $("#qlens").onchange = e => { quizSetup.lens = lensOf(e.target.value); store.set("quizSetup", quizSetup); count(); };
-  $("#qstar").onchange = e => { quizSetup.starOnly = e.target.checked; count(); };
+  $("#qstar").onchange = e => { quizSetup.starOnly = e.target.checked; store.set("quizSetup", quizSetup); count(); };
   $("#qknown").onchange = e => { quizSetup.skipKnown = e.target.checked; store.set("quizSetup", quizSetup); count(); };
   const wireQOrder = () => {
     $("#view").querySelectorAll("#qorder [data-order]").forEach(b => b.onclick = () => { quizSetup.order = b.dataset.order; store.set("quizSetup", quizSetup); $("#qorder").outerHTML = orderPick("qorder", quizSetup.order, quizSetup.rev); wireQOrder(); });
@@ -742,45 +766,140 @@ VIEWS.quiz = () => {
   };
   wireQOrder();
   count();
-  const begin = (qs, mode = quizSetup.mode) => { Q = { mode, qs, i: 0, right: 0, wrong: [], answered: false, done: false, start: Date.now(), res: [] }; drawQuestion(); window.scrollTo(0, 0); };
+  const begin = (qs, mode = quizSetup.mode, name = quizListName()) => { Q = { mode, name, qs, i: 0, right: 0, wrong: [], answered: false, done: false, start: Date.now(), res: [] }; drawQuestion(); window.scrollTo(0, 0); };
   $("#qstart").onclick = () => {
     store.set("quizSetup", quizSetup);
     const qs = buildQuestions(sourceWords(quizSetup.source), quizSetup.mode, +SET.qcount, quizSetup.order, quizSetup.rev);
     if (!qs.length) { $("#qmsg").textContent = "No words there yet. Star some words or pick a list."; return; }
+    if (recallMode && qs.length > RECALL_MAX) { $("#qmsg").textContent = `${recallTooBig(qs.length)} Pick a shorter list or a length.`; return; }
     begin(qs);
   };
   $("#qGo")?.addEventListener("click", () => { Q.paused = false; drawQuestion(); window.scrollTo(0, 0); });
-  $("#qEnd")?.addEventListener("click", () => { commitQuiz(); Q.done = true; Q.answered = false; saveQ(); VIEWS.quiz(); });
-  $("#retryMissed")?.addEventListener("click", () => begin(buildQuestions(Q.wrong, Q.mode, 999, quizSetup.order, quizSetup.rev), Q.mode));
+  $("#qEnd")?.addEventListener("click", () => { if (Q.mode === "recall") endRecallQuiz(); else { commitQuiz(); Q.done = true; Q.answered = false; } saveQ(); VIEWS.quiz(); });
+  $("#retryMissed")?.addEventListener("click", () => begin(buildQuestions(Q.wrong, Q.mode, 999, quizSetup.order, quizSetup.rev), Q.mode, "Words missed last time"));
 };
+// what a recall quiz is on, since the name is all there is to go by
+function quizListName() {
+  const s = quizSetup.source, f = s.startsWith("folder:") ? folderById(s.slice(7)) : null;
+  const name = f ? f.name : { stars: "Starred words", missed: "Missed words", last: "Last search results" }[s] || groupOf(s.replace("list:", ""))?.name || "Words";
+  return [name, quizSetup.lens?.length && `${quizSetup.lens.join(", ")} letters`, quizSetup.starOnly && "★ only"].filter(Boolean).join(" · ");
+}
 function summaryHTML() {
   const n = Q.res.length;
   return `<div class="card"><h2 class="lbl">Last quiz${n < Q.qs.length ? ` · ended after ${n} of ${Q.qs.length}` : ""}</h2><p style="margin:0 0 10px"><b style="font:700 1.6rem var(--display)">${Q.right}/${n}</b> correct</p>
     ${Q.wrong.length ? `<p class="small">Missed:</p><div class="words">${Q.wrong.map(chip).join("")}</div><div class="actions"><button class="btn" id="retryMissed">Retry these ${Q.wrong.length}</button></div>` : n ? `<p class="fb ok">Clean sweep.</p>` : ""}</div>`;
 }
-function record(w, ok) {
-  const st = store.get("stats", {}); const s = st[w] || [0, 0]; s[ok ? 0 : 1]++; st[w] = s; store.set("stats", st);
-  const m = store.get("missed", []).filter(x => x !== w); if (!ok) m.unshift(w); store.set("missed", m.slice(0, 500));
+const record = (w, ok) => recordMany([[w, ok]]);
+// [word, right] pairs, saved in one go: a recall list can be hundreds of words
+function recordMany(pairs) {
+  const st = store.get("stats", {}), names = new Set(pairs.map(p => p[0]));
+  for (const [w, ok] of pairs) { const s = st[w] || [0, 0]; s[ok ? 0 : 1]++; st[w] = s; }
+  store.set("stats", st);
+  store.set("missed", [...pairs.filter(p => !p[1]).map(p => p[0]), ...store.get("missed", []).filter(x => !names.has(x))].slice(0, 500));
 }
+// ---------- list recall, for Quiz and Practice: the whole list from memory ----------
+const RECALL_MAX = 1000;
+const recallTooBig = n => `That's ${n.toLocaleString()} words. List recall takes up to ${RECALL_MAX.toLocaleString()}.`;
+// the typing box. A word is taken as soon as it's complete, unless a longer word still to find starts with it
+// (CAT before CATS): then Enter takes it. st holds found and shown; a word that was shown no longer counts
+function recallBox(box, words, st, took) {
+  const list = new Set(words), msg = $("#rcmsg");
+  const open = x => list.has(x) && !st.found.includes(x) && !st.shown.includes(x);
+  const say = (t, cls) => { msg.textContent = t; msg.className = `fb rcmsg ${cls}`; };
+  const read = () => box.value.toUpperCase().replace(/[^A-Z]/g, "");
+  const take = x => { st.found.push(x); box.value = ""; flashBox(box, true); say(`${x} ✓`, "ok"); took(); };
+  box.addEventListener("input", () => { const x = read(); if (open(x) && !words.some(w => w.length > x.length && w.startsWith(x) && open(w))) take(x); });
+  box.addEventListener("keydown", ev => {
+    if (ev.key !== "Enter") return;
+    ev.preventDefault();
+    const x = read(); if (!x) return;
+    if (open(x)) return take(x);
+    box.value = ""; flashBox(box, false);
+    say(st.found.includes(x) ? `You already have ${x}` : st.shown.includes(x) ? `${x} was already shown` : DICT.has(x) ? `${x} is a word, but not on this list` : `${x} isn't a word`, "no");
+  });
+}
+const recallRail = (st, total, start, cls) => { const mins = Math.round((Date.now() - start) / 60000), f = st.found.length, open = !SET.hideCount || st.done;
+  return `<aside class="rail ${cls}">
+    <div><h4>This list<em>${mins ? `${mins} min` : "just started"}</em></h4>
+      <div class="kpis"><div><b>${f}</b><span>found</span></div>${open ? `<div><b>${total - f - st.shown.length}</b><span>left</span></div>` : ""}
+        <div><b>${st.shown.length}</b><span>shown</span></div>${open ? `<div><b>${total ? Math.round(f / total * 100) : 0}%</b><span>from memory</span></div>` : ""}</div></div>
+    <div><h4>Latest</h4>${f ? `<div class="words">${st.found.slice(-12).reverse().map(w => `<span class="w">${w}</span>`).join("")}</div>` : `<p class="small" style="margin:0">Nothing yet.</p>`}</div>
+  </aside>`; };
+// after each word: the bar, the count and both copies of the stats panel
+function recallPaint(st, total, start, list) {
+  const f = st.found.length, v = $("#view"), hide = SET.hideCount;
+  v.querySelector(".fc-top .pbar div").style.width = `${total && !hide ? f / total * 100 : 0}%`;
+  v.querySelector(".fc-top .n").textContent = hide ? `${f}` : `${f} / ${total}`;
+  $("#rcleft").textContent = hide ? `${f} found` : `${f} of ${total} found · ${total - f - st.shown.length} left`;
+  $("#rclist").innerHTML = list();
+  v.querySelectorAll(".rail").forEach(r => r.outerHTML = recallRail(st, total, start, r.classList.contains("prail") ? "prail" : ""));
+}
+const RC_THUMB = (id, side) => `<div class="thumb rcthumb"><p class="fb rcmsg" id="rcmsg"></p><input class="qinput" id="rca" placeholder="Type a word from the list" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done">
+    <div class="acts">${side}<button type="button" class="btn yes" id="${id}">Finish</button></div></div>`;
+// the quiz keeps its count and the words found, with no letter guide
+function drawRecallQuiz() {
+  Q.found ||= []; Q.shown ||= [];
+  const words = Q.qs.map(q => q.w), total = words.length;
+  const got = () => Q.found.length ? `<div class="found">${[...Q.found].sort().map(w => `<a class="w got" href="#w/${w}">${w}</a>`).join("")}</div>` : "";
+  document.body.classList.add("full");
+  document.onkeydown = null;
+  $("#view").innerHTML = `<div class="foc"><div class="stage">
+    <div class="fc-top"><button type="button" class="ib2" id="qquit" aria-label="Leave the quiz" title="Leave the quiz (carry on later)">×</button><div class="pbar"><div></div></div>
+      <span class="n"></span><button type="button" class="ib2 phone-only" id="qStatsBtn" aria-label="Stats">${icon('<path d="M5 20V11M12 20V4M19 20v-6"/>')}</button></div>
+    ${cardOpts({})}
+    <div class="fc-card rccard"><p class="q" style="margin:0">${MODES.recall.name}</p><p class="rctitle">${esc(Q.name || "Words")}</p><p class="q" id="rcleft"></p><div id="rclist"></div></div>
+    ${RC_THUMB("rcEnd", "")}
+  </div>${recallRail(Q, total, Q.start, "prail")}</div>` + sheetHTML("qstats", `<h3>Stats<button type="button" id="qStatsDone">Done</button></h3>${recallRail(Q, total, Q.start, "")}`);
+  $("#qStatsBtn").onclick = () => sheet("qstats", true);
+  $("#qStatsDone").onclick = $("#qstats .scrim").onclick = () => sheet("qstats", false);
+  $("#qquit").onclick = () => { Q.paused = true; saveQ(); VIEWS.quiz(); window.scrollTo(0, 0); };
+  const finish = () => { endRecallQuiz(); saveQ(); VIEWS.quiz(); window.scrollTo(0, 0); };
+  wireCardOpts(drawRecallQuiz);
+  recallBox($("#rca"), words, Q, () => { saveQ(); recallPaint(Q, total, Q.start, got); if (!SET.hideCount && Q.found.length === total) finish(); });
+  confirmBtn($("#rcEnd"), finish);
+  recallPaint(Q, total, Q.start, got);
+  saveQ();
+  if (!phone()) $("#rca").focus();
+}
+// the words not found count as missed, the same as questions got wrong
+function endRecallQuiz() {
+  const words = Q.qs.map(q => q.w), f = new Set(Q.found || []);
+  Q.res = words.map(w => f.has(w)); Q.right = f.size; Q.wrong = words.filter(w => !f.has(w));
+  recordMany(words.map(w => [w, f.has(w)]));
+  Q.done = true; document.onkeydown = null;
+}
+// what a quiz anagram question asks for, and the options shown above it
+const quizWant = q => needed(q.all || anagrams(q.w), quizSetup.skipKnown);
+const quizOpts = q => Q.mode === "anagram" ? cardOpts({ rack: q.w.length <= RACK_LEN, skip: !!quizSetup.skipKnown }) : Q.mode === "pattern" ? cardOpts({}) : "";
 function drawQuestion() {
+  if (Q.mode === "recall") return drawRecallQuiz();
   const q = Q.qs[Q.i], e = DICT.get(q.w), mode = Q.mode;
   let prompt = "", input = "";
   // a new question starts empty; the same question drawn again (after leaving the tab or a reload) keeps what was found
-  if (Q.at !== Q.i) { Q.at = Q.i; Q.found = []; Q.answered = false; }
-  const nAna = anagrams(q.w).length;
+  if (Q.at !== Q.i) { Q.at = Q.i; Q.found = []; Q.answered = false; Q.typed = {}; }
+  Q.typed ||= {};
+  // anagrams: the rack is dealt when the question comes up, and again if the rack size is changed before answering
+  if (mode === "anagram" && !Q.answered && (q.size || 0) !== rackFor(alpha(q.w))) {
+    const size = rackFor(alpha(q.w)), d = size ? dealRack(alpha(q.w), [...sourceWords(quizSetup.source), q.w]) : null;
+    q.size = size; q.rack = d?.rack || ""; q.all = d?.all || null;
+    Q.found = Q.found.filter(x => (q.all || anagrams(q.w)).includes(x));
+  }
+  const want = mode === "anagram" ? quizWant(q) : [], hide = SET.hideCount, opts = quizOpts(q);
+  const typed = id => `value="${esc(Q.typed[id] || "")}"`;
   const typing = `autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"`;
   if (mode === "anagram") { prompt = `<div class="slots" id="qslots"></div>`; input = `<div class="rows" id="found" style="margin-top:8px"></div>`; }
   if (mode === "phony") prompt = `<div class="qprompt">${q.show}</div>`;
   if (mode === "pattern") { prompt = gapHTML(q.show); input = `<input class="qinput" id="qp" placeholder="type a letter" ${typing}><p class="q" id="qpleft" style="margin:10px 0 4px"></p><div id="qpchips"></div>`; }
-  if (mode === "hooks") { prompt = hookHTML(q.w); input = `<div class="pair"><input class="qinput" id="qf" placeholder="front hooks" ${typing}><input class="qinput" id="qb" placeholder="back hooks" ${typing}></div><p class="small" style="margin:6px 0 0">Leave blank if none, then press ✓.</p>`; }
-  if (mode === "def") { prompt = `<div class="qdef">${esc(e.d)}</div><p class="small" style="margin:0">${q.w.length} letters · <a href="#" id="hint">show tiles</a></p><div id="hintBox"></div>`; input = `<input class="qinput" id="qa" placeholder="The word" ${typing}><p class="small" style="margin:6px 0 0">The right word is taken as you type.</p>`; }
+  if (mode === "hooks") { prompt = hookHTML(q.w); input = `<div class="pair"><input class="qinput" id="qf" placeholder="front hooks" ${typed("qf")} ${typing}><input class="qinput" id="qb" placeholder="back hooks" ${typed("qb")} ${typing}></div><p class="small" style="margin:6px 0 0">Leave blank if none, then press ✓.</p>`; }
+  if (mode === "def") { prompt = `<div class="qdef">${esc(e.d)}</div><p class="small" style="margin:0">${q.w.length} letters · <a href="#" id="hint">show tiles</a></p><div id="hintBox"></div>`; input = `<input class="qinput" id="qa" placeholder="The word" ${typed("qa")} ${typing}><p class="small" style="margin:6px 0 0">The right word is taken as you type.</p>`; }
   const rack = mode === "anagram" ? `${rackHTML("qrack")}<div class="rackbtns"><button type="button" class="btn" id="qShuf" aria-label="Shuffle">${icon(ICON_SHUF)}</button><button type="button" class="btn" id="qBack" aria-label="Take back a letter">${icon(ICON_BACK)}</button></div>` : "";
   // full screen on a phone while a question is up, like Practice
   document.body.classList.add("full");
   $("#view").innerHTML = `<div class="foc"><div class="stage">
     <div class="fc-top"><button type="button" class="ib2" id="qquit" aria-label="Leave the quiz" title="Leave the quiz (carry on later)">×</button><div class="pbar"><div style="width:${(Q.i / Q.qs.length) * 100}%"></div></div>
       <span class="n">${Q.i + 1} / ${Q.qs.length}</span><button type="button" class="ib2 phone-only" id="qStatsBtn" aria-label="Stats">${icon('<path d="M5 20V11M12 20V4M19 20v-6"/>')}</button></div>
-    <div class="fc-card qcard ${rack ? "" : "solo"}"><p class="q" style="margin:0 0 12px">${MODES[mode].name}${mode === "anagram" ? ` · ${nAna > 1 ? `${nAna} words, find them all` : "one word"}` : ""}</p>
+    ${opts}
+    <div class="fc-card qcard ${rack ? "" : "solo"}"><p class="q" style="margin:0 0 12px">${MODES[mode].name}${mode === "anagram" ? ` · ${hide ? "find every word" : want.length > 1 ? `${want.length} words, find them all` : "one word"}` : ""}</p>
       ${prompt}<form id="qform" autocomplete="off">${input}</form><div id="qfb"></div></div>
     ${rack}
     <div class="thumb" id="qthumb"><div class="acts"><button type="button" class="btn mk" id="qAlt"></button><button type="button" class="btn mk" id="qMain"></button></div></div>
@@ -790,49 +909,55 @@ function drawQuestion() {
   // before answering: ✗ | ✓ (Phony | Valid in valid-or-phony). Once answered, the right button becomes Next
   // (green if right, orange if wrong) and the left one switches the mark.
   // ✓ means "knew it" for anagrams; for hooks and definitions it checks what was typed.
-  const key = k => `<kbd>${k}</kbd>`, tx = t => `<span class="tx">${t}</span>`;
+  // with the count hidden, ✓ becomes Done: it checks what was found, and a question never ends by itself
+  const key = k => `<kbd>${k}</kbd>`, tx = t => `<span class="tx">${t}</span>`, counted = hide && (mode === "anagram" || mode === "pattern");
   Q.marks = () => {
     const v = Q.answered ? Q.ok : null, a = $("#qAlt"), m = $("#qMain"), ph = mode === "phony" && v === null;
     a.className = `btn mk ${v === false ? "yes" : "no"}`; a.innerHTML = ph ? `${tx("Phony")}${key("P")}` : `${v === false ? "✓" : "✗"}${key("1")}`;
     a.setAttribute("aria-label", ph ? "Phony" : v === null ? "Didn't know" : v ? "Switch to wrong" : "Switch to right");
-    m.className = `btn mk ${v === null ? "yes" : v ? "yes on" : "no on"}`; m.innerHTML = ph ? `${tx("Valid")}${key("V")}` : v === null ? `✓${key("2")}` : `${tx(Q.i + 1 < Q.qs.length ? "Next" : "Finish")}${key("↵")}`;
-    m.setAttribute("aria-label", ph ? "Valid" : v === null ? (mode === "anagram" ? "Knew it" : "Check") : "Next question");
+    m.className = `btn mk ${v === null ? "yes" : v ? "yes on" : "no on"}`; m.innerHTML = ph ? `${tx("Valid")}${key("V")}` : v === null ? (counted ? `${tx("Done")}${key("2")}` : `✓${key("2")}`) : `${tx(Q.i + 1 < Q.qs.length ? "Next" : "Finish")}${key("↵")}`;
+    m.setAttribute("aria-label", ph ? "Valid" : v === null ? (mode === "anagram" && !hide ? "Knew it" : "Check") : "Next question");
   };
   Q.marks();
   $("#qAlt").onclick = () => Q.answered ? Q.mark(!Q.ok) : mode === "phony" ? check("phony") : check(undefined, false);
-  $("#qMain").onclick = () => Q.answered ? next() : mode === "phony" ? check("valid") : check(undefined, mode === "anagram" || mode === "pattern" ? true : undefined);
+  $("#qMain").onclick = () => Q.answered ? next() : mode === "phony" ? check("valid") : check(undefined, (mode === "anagram" || mode === "pattern") && !hide ? true : undefined);
   // × leaves the quiz without ending it; the setup page then has a card to carry on
   $("#qquit").onclick = () => { Q.paused = true; saveQ(); VIEWS.quiz(); window.scrollTo(0, 0); };
   $("#hint")?.addEventListener("click", ev => { ev.preventDefault(); $("#hintBox").innerHTML = tilesHTML(alpha(q.w), true); });
   // on a phone, focusing the box pops the keyboard up over the tiles, so only do it where there's a real keyboard
   if (!(mode === "anagram" && phone())) ($("#qa") || $("#qf") || $("#qp"))?.focus();
   // anagram questions: tiles can be dragged into the slots as well as typed
+  const takes = v => (q.all || anagrams(q.w)).includes(v) || bonusKnown(v, q.rack);
   const takeWord = v => {
-    const want = anagrams(q.w);
-    if (Q.answered || !want.includes(v) || Q.found.includes(v)) return false;
+    if (Q.answered || !takes(v) || Q.found.includes(v)) return false;
     Q.found.push(v); saveQ();
     $("#found").insertAdjacentHTML("beforeend", quizRow(v, "got"));
-    if (Q.found.length === want.length) check();
+    if (!hide && want.every(x => Q.found.includes(x))) check();
     return true;
   };
   let board = null;
   if (mode === "anagram") {
-    board = rackBoard($("#qslots"), $("#qrack"), alpha(q.w), x => { if (Q.answered) return null; const r = takeWord(x); return r && Q.answered ? "keep" : r; });
+    board = rackBoard($("#qslots"), $("#qrack"), q.rack || alpha(q.w), x => { if (Q.answered) return null; const r = takeWord(x); return r && Q.answered ? "keep" : r; },
+      q.rack ? { slots: Math.max(...q.all.map(w => w.length)), early: x => takes(x) && !Q.found.includes(x) && !want.some(w => w.length > x.length && w.startsWith(x) && !Q.found.includes(w)) } : {});
     $("#qShuf").onclick = board.shuffle; $("#qBack").onclick = board.back;
   }
   // take a correct answer the moment it is typed; with several anagrams, clear the box after each one
   // patterns: a letter at a time, each one that fits shows its word; all found ends the question
   const patDraw = () => { if (mode !== "pattern") return; const want = fitsOf(q.show), f = Q.found.length;
-    $("#qpleft").textContent = Q.answered ? "" : `${want.length} letter${want.length === 1 ? " fits" : "s fit"} · ${f} found · ${want.length - f} left`; $("#qpchips").innerHTML = Q.answered ? "" : patChips(q.show, Q.found.join("")); };
+    $("#qpleft").textContent = Q.answered ? "" : hide ? (f ? `${f} found` : "Find every letter") : `${want.length} letter${want.length === 1 ? " fits" : "s fit"} · ${f} found · ${want.length - f} left`; $("#qpchips").innerHTML = Q.answered ? "" : patChips(q.show, Q.found.join("")); };
   $("#qp")?.addEventListener("input", ev => {
     const t = ev.target.value.toUpperCase().replace(/[^A-Z]/g, ""), want = fitsOf(q.show); ev.target.value = "";
     if (Q.answered || !t) return;
     let good = false, bad = false;
     for (const c of t) { if (want.includes(c) && !Q.found.includes(c)) { Q.found.push(c); good = true; } else if (!Q.found.includes(c)) bad = true; }
     flashBox(ev.target, good && !bad); saveQ(); patDraw();
-    if (Q.found.length === want.length) check();
+    if (!hide && Q.found.length === want.length) check();
   });
   patDraw();
+  // what's typed in a box stays there if you leave and come back
+  ["qf", "qb", "qa"].forEach(id => $("#" + id)?.addEventListener("input", ev => { Q.typed[id] = ev.target.value; saveQ(); }));
+  // the options above the card: changing one redraws this question as it stands
+  wireCardOpts(drawQuestion, () => { quizSetup.skipKnown = !quizSetup.skipKnown; store.set("quizSetup", quizSetup); drawQuestion(); });
   $("#qa")?.addEventListener("input", ev => {
     if (Q.answered) return;
     const v = ev.target.value.toUpperCase().replace(/[^A-Z]/g, "");
@@ -876,7 +1001,7 @@ function check(ans, force) {
   let ok = false, reveal = "", rest = () => {};
   const letters = s => [...new Set((s || "").toUpperCase().replace(/[^A-Z]/g, ""))].sort().join("");
   if (mode === "anagram") {
-    const want = anagrams(q.w);
+    const want = quizWant(q);
     ok = want.every(a => Q.found.includes(a));
     // found words are already listed; add the rest, marked to match ✗ / ✓ (redrawn if the mark is switched)
     $("#found").insertAdjacentHTML("beforeend", `<div id="qrest"></div>`);
@@ -950,7 +1075,7 @@ function next() {
 let P = store.get("psess", null);
 const saveP = () => store.set("psess", { key: P.key, streak: P.streak, solved: P.solved, seen: P.seen, start: P.start, hist: P.hist.slice(-20) });
 // ok: the card's mark once it's marked (null before)
-const saveCard = () => store.set("pcur", { key: P.key, letters: P.letters, found: P.found, ok: P.verdict ? P.verdict.ok : null });
+const saveCard = () => store.set("pcur", { key: P.key, letters: P.letters, found: P.found, ok: P.verdict ? P.verdict.ok : null, rack: P.rack, size: P.size, all: P.all, want: P.want });
 // practice options: where words come from + the same filters as Search
 const PO_DEFAULT = { mode: "anagram", by: "rank", lax: false, src: "", lens: [7], top: "", starts: "", ends: "", contains: "", incl: "", excl: "", pattern: "", from: "", to: "", anas: "", order: "rand", rev: false };
 // the saved options, with a single length from before the length chips turned into a list
@@ -963,6 +1088,9 @@ function practiceOpts() {
   return o;
 }
 let poolCache = { key: "", pool: [] };
+// typed filters save themselves a moment after typing stops: poSoft does it now if one is waiting (Start and leaving the
+// page call it), and poDirty says the card behind the options sheet needs dealing again
+let poSoft = null, poDirty = false;
 // practice on "Last search results" keeps the results it started with: a later search doesn't change it
 const practiceLast = () => store.get("pLast", null) ?? lastResults;
 const keepLast = () => store.set("pLast", [...lastResults]);
@@ -981,7 +1109,7 @@ function practicePool(o) {
   pool = likelyRange(pool, o.from, o.to, o.by, o.lax);
   return (poolCache = { key, pool, error: r.error }).pool;
 }
-const leftText = () => { const n = P.want.length, f = P.found.length; return n === 1 ? (f ? "Found it" : "1 word") : `${n} words · ${f} found · ${n - f} left`; };
+const leftText = () => { const n = P.want.length, f = P.found.length; if (SET.hideCount) return f ? `${f} found` : "Find every word"; return n === 1 ? (f ? "Found it" : "1 word") : `${n} words · ${f} found · ${n - f} left`; };
 // Review queue, like a cardbox: a missed rack comes back ~4 cards later; each correct
 // answer on a review pushes it further out (10, then 25 cards); a third correct retires it.
 const GAPS = [4, 10, 25];
@@ -989,16 +1117,31 @@ const getLearnt = () => new Set(store.get("plearnt", []));
 function setLearnt(a, ok) { const L = getLearnt(); ok ? L.add(a) : L.delete(a); store.set("plearnt", [...L]); }
 // a practice card: a rack (anagrams), a word (hooks) or a pattern. Learnt and review keys say which ("h:ARE", "p:CA?E";
 // racks have none, as before)
-const PMODES = [["anagram", "Anagrams"], ["hooks", "Hooks"], ["pattern", "Patterns"]];
-const UNITS = { anagram: "racks", hooks: "words", pattern: "patterns" };
-const cardKey = (mode, id) => mode === "hooks" ? "h:" + id : mode === "pattern" ? "p:" + id : id;
-const cardName = k => k.startsWith("h:") ? k.slice(2) + " hooks" : k.startsWith("p:") ? k.slice(2) : k;
+const PMODES = [["anagram", "Anagrams"], ["hooks", "Hooks"], ["pattern", "Patterns"], ["phony", "Valid or phony"], ["def", "Definition"], ["recall", "List recall"]];
+const PHELP = { anagram: "A rack: find every word it makes.", hooks: "A word: which letters go on its front, and its back?", pattern: "A word with a letter gone: which letters fit the gap?",
+  phony: "A word: is it good? Phonies are one letter off real words.", def: "A definition: type the word.", recall: "The whole list: type its words from memory, with a letter guide and hints. Your place is kept." };
+const UNITS = { anagram: "racks", hooks: "words", pattern: "patterns", phony: "words", def: "words", recall: "words" };
+const CARD_PRE = { hooks: "h:", pattern: "p:", phony: "v:", def: "d:" };
+const cardKey = (mode, id) => (CARD_PRE[mode] || "") + id;
+// the review list mustn't give away a phony or definition card's word
+const cardName = k => k.startsWith("h:") ? k.slice(2) + " hooks" : k.startsWith("p:") ? k.slice(2) : /^[vd]:/.test(k) ? k[2] + "•".repeat(k.length - 3) : k;
 let cardsMemo = { pool: null, mode: "", cards: [] };
 function cardsOf(pool, mode) {
-  if (cardsMemo.pool !== pool || cardsMemo.mode !== mode) cardsMemo = { pool, mode, cards: [...new Set(mode === "hooks" ? pool : mode === "pattern" ? pool.map(patternOf) : pool.map(alpha))] };
+  if (cardsMemo.pool !== pool || cardsMemo.mode !== mode) cardsMemo = { pool, mode, cards: [...new Set(mode === "pattern" ? pool.map(patternOf) : mode === "def" ? pool.filter(w => !DICT.get(w).d.startsWith("<")) : mode === "anagram" ? pool.map(alpha) : pool)] };
   return cardsMemo.cards;
 }
+// recall in Practice: how far each list has got, kept per list (the last 20), so it carries on across visits.
+// Once finished, found and shown hold the whole list
+const recallKey = o => JSON.stringify({ ...o, order: "", rev: false });
+const recallGet = k => ({ found: [], shown: [], at: Date.now(), ...store.get("precall", {})[k] });
+function recallSet(k, e) {
+  const a = store.get("precall", {}); delete a[k];
+  if (e) a[k] = e;
+  const ks = Object.keys(a); if (ks.length > 20) delete a[ks[0]];
+  store.set("precall", a);
+}
 function progress(pool, mode = "anagram") {
+  if (mode === "recall") { const e = recallGet(recallKey(practiceOpts())); return { racks: e.found.length, racksAll: e.done ? e.found.length + e.shown.length : pool.length, unit: "words", recall: e }; }
   const L = getLearnt(), cards = cardsOf(pool, mode);
   return { racks: cards.filter(c => L.has(cardKey(mode, c))).length, racksAll: cards.length, unit: UNITS[mode] || "racks" };
 }
@@ -1032,8 +1175,8 @@ function pickPractice(pool, order = "rand", rev = false) {
 let cardCache = { pool: null, mode: "", order: "", rev: false, ids: [] };
 function pickCard(pool, mode, order = "rand", rev = false) {
   if (cardCache.pool !== pool || cardCache.mode !== mode || cardCache.order !== order || cardCache.rev !== rev) {
-    const ws = order === "rand" ? null : ordered([...new Set(pool)], order, false, rev);
-    cardCache = { pool, mode, order, rev, ids: !ws ? cardsOf(pool, mode) : mode === "hooks" ? ws : [...new Set(ws.map(patternOf))] };
+    const ws = order === "rand" ? null : ordered(mode === "pattern" ? [...new Set(pool)] : cardsOf(pool, mode), order, false, rev);
+    cardCache = { pool, mode, order, rev, ids: !ws ? cardsOf(pool, mode) : mode === "pattern" ? [...new Set(ws.map(patternOf))] : ws };
   }
   const q = getPQ(), ids = cardCache.ids, key = id => cardKey(mode, id), inPool = new Set(ids.map(key));
   const remember = k => { recent.unshift(k); recent.length = Math.min(recent.length, Math.min(20, Math.floor(ids.length / 2))); };
@@ -1057,10 +1200,13 @@ function commitPractice() {
   const card = c.mode && c.mode !== "anagram" ? cardKey(c.mode, c.card) : c.letters;
   schedule(card, c.ok); setLearnt(card, c.ok);
   if (c.ok) { P.streak++; P.solved++; } else P.streak = 0;
-  for (const x of c.mode === "hooks" ? [c.card] : c.mode === "pattern" ? fitWords(c.card) : anagrams(c.letters)) record(x, c.ok);
+  // a rack with extra letters: each answer on its own, since a rack can be half found
+  if (c.rack) { for (const x of c.want) record(x, c.ok || c.found.includes(x)); saveP(); return; }
+  for (const x of c.mode === "pattern" ? fitWords(c.card) : c.mode && c.mode !== "anagram" ? [c.card] : anagrams(c.letters)) record(x, c.ok);
   saveP();
 }
 VIEWS.practice = () => {
+  poSoft = null; poDirty = false;
   const o = practiceOpts();
   const pool = practicePool(o);
   const key = JSON.stringify(o);
@@ -1071,12 +1217,12 @@ VIEWS.practice = () => {
   // main: where the words come from and their lengths (always in view); more: the rest, folded on the setup page
   const main = `<div class="form">
         <div class="field wide"><span class="flabel">Type</span><div class="seg" id="po_mode">${PMODES.map(([k, n]) => `<button type="button" class="btn sm ${o.mode === k ? "on" : ""}" data-pmode="${k}">${n}</button>`).join("")}</div>
-          <p class="small" style="margin:6px 0 0">${o.mode === "hooks" ? "A word: which letters go on its front, and its back?" : o.mode === "pattern" ? "A word with a letter gone: which letters fit the gap?" : "A rack: find every word it makes."}</p></div>
+          <p class="small" style="margin:6px 0 0">${PHELP[o.mode] || PHELP.anagram}</p></div>
         <div class="field wide"><label for="po_src">Words from</label><select id="po_src"><option value="">Any word</option>
           <optgroup label="Mine"><option value="my:stars" ${o.src === "my:stars" ? "selected" : ""}>Starred words (${getStars().length})</option><option value="my:missed" ${o.src === "my:missed" ? "selected" : ""}>Missed words (${store.get("missed", []).length})</option><option value="my:last" ${o.src === "my:last" ? "selected" : ""}>Last search results (${o.src === "my:last" ? practiceLast().length : lastResults.length})</option>${getFolders().map(f => `<option value="f:${f.id}" ${o.src === "f:" + f.id ? "selected" : ""}>📁 ${esc(f.name)} (${f.words.length})</option>`).join("")}</optgroup>
           ${groupOptions(o.src.startsWith("g:") ? o.src.slice(2) : "").replace(/value="/g, 'value="g:')}</select></div>
         <div class="field wide"><span class="flabel">Length</span>${lenPick("po_lens", o.lens)}</div>
-        <div class="field wide"><span class="flabel">Order</span>${orderPick("po_order", o.order, o.rev)}</div>
+        ${o.mode === "recall" ? "" : `<div class="field wide"><span class="flabel">Order</span>${orderPick("po_order", o.order, o.rev)}</div>`}
       </div>`;
   const more = `
     <details class="card" id="pOpts" ${open ? "open" : ""}><summary class="lbl" style="cursor:pointer;margin:0">More options · ${pool.length.toLocaleString()} words in play</summary>
@@ -1089,29 +1235,36 @@ VIEWS.practice = () => {
       </div>
       <div style="margin-top:14px">${likelyField("po_", o.from, o.to, o.by, o.lax)}</div>
       <div class="row" style="margin-top:16px">
-        <span style="margin-left:auto"></span><button class="btn sm" id="poApply">Apply</button><button class="btn sm" id="poReset">Reset options</button><button class="btn sm" id="poForget">Reset learnt for these words</button>
+        <span style="margin-left:auto"></span><button class="btn sm" id="poReset">Reset options</button><button class="btn sm" id="poForget">${o.mode === "recall" ? "Start this list over" : "Reset learnt for these words"}</button>
       </div>
 
     </details>`;
+  // the saved options, including anything just typed
+  const latest = () => { poSoft?.(); return practiceOpts(); };
   const wireOrder = () => {
-    $("#view").querySelectorAll("#po_order [data-order]").forEach(b => b.onclick = () => { saveSettings({ practice: { ...o, order: b.dataset.order } }); VIEWS.practice(); });
-    $("#view").querySelectorAll("#po_order [data-rev]").forEach(b => b.onclick = () => { saveSettings({ practice: { ...o, rev: !o.rev } }); VIEWS.practice(); });
+    $("#view").querySelectorAll("#po_order [data-order]").forEach(b => b.onclick = () => { saveSettings({ practice: { ...latest(), order: b.dataset.order } }); VIEWS.practice(); });
+    $("#view").querySelectorAll("#po_order [data-rev]").forEach(b => b.onclick = () => { saveSettings({ practice: { ...latest(), rev: !o.rev } }); VIEWS.practice(); });
   };
   const wire = () => {
     // only the setup page's folding box remembers being open (the copy in the sheet is always open)
     if (!$("#pOpts").closest(".sheet")) $("#pOpts").addEventListener("toggle", e => store.set("pOpen", e.target.open));
     wireOrder();
-    $("#view").querySelectorAll("[data-pmode]").forEach(b => b.onclick = () => { saveSettings({ practice: { ...o, mode: b.dataset.pmode } }); VIEWS.practice(); });
-    $("#po_star").onchange = e => { saveSettings({ practice: { ...o, starOnly: e.target.checked } }); VIEWS.practice(); };
-    $("#po_known").onchange = e => { saveSettings({ practice: { ...o, skipKnown: e.target.checked } }); VIEWS.practice(); };
-    const read = () => { const n = { ...o }; for (const k of ["src", "starts", "ends", "contains", "incl", "excl", "pattern", "anas", "from", "to", "by"]) n[k] = $("#po_" + k).value.trim(); n.lax = $("#po_lax").checked; n.lens = lensOf($("#po_lens").value); saveSettings({ practice: n }); VIEWS.practice(); };
+    $("#view").querySelectorAll("[data-pmode]").forEach(b => b.onclick = () => { saveSettings({ practice: { ...latest(), mode: b.dataset.pmode } }); VIEWS.practice(); });
+    $("#po_star").onchange = e => { saveSettings({ practice: { ...latest(), starOnly: e.target.checked } }); VIEWS.practice(); };
+    $("#po_known").onchange = e => { saveSettings({ practice: { ...latest(), skipKnown: e.target.checked } }); VIEWS.practice(); };
+    const gather = () => { const n = { ...practiceOpts() }; for (const k of ["src", "starts", "ends", "contains", "incl", "excl", "pattern", "anas", "from", "to", "by"]) n[k] = $("#po_" + k).value.trim(); n.lax = $("#po_lax").checked; n.lens = lensOf($("#po_lens").value); return n; };
+    let timer = 0;
+    const read = () => { clearTimeout(timer); poSoft = null; saveSettings({ practice: gather() }); VIEWS.practice(); };
+    // while typing, save and refresh the counts without redrawing, so the box and a phone's keyboard stay put
+    const soft = () => { clearTimeout(timer); poSoft = null; if (!$("#pOpts")) return; saveSettings({ practice: gather() }); poDirty = true; const po = practiceOpts(), p = practicePool(po); $("#pOpts summary").textContent = `More options · ${p.length.toLocaleString()} words in play`; paintGo(p, po); };
+    $("#pOpts").querySelectorAll("input:not([type=checkbox])").forEach(i => { if (!i.closest(".likely")) i.addEventListener("input", () => { clearTimeout(timer); poSoft = soft; timer = setTimeout(soft, 350); }); });
     // picking a list picks its usual length too
-    $("#po_src").onchange = () => { const v = $("#po_src").value; if (v === "my:last") keepLast(); if (v) $("#po_lens").value = v.startsWith("g:") ? groupOf(v.slice(2))?.len || "" : ""; read(); }; $("#po_lens").onchange = read; $("#poApply").onclick = read;
+    $("#po_src").onchange = () => { const v = $("#po_src").value; if (v === "my:last") keepLast(); if (v) $("#po_lens").value = v.startsWith("g:") ? groupOf(v.slice(2))?.len || "" : ""; read(); }; $("#po_lens").onchange = read;
     $("#pOpts").querySelectorAll("input").forEach(i => i.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); read(); } });
     $("#pOpts .likely").addEventListener("likely", read); paintLikely($("#pOpts .likely"));
     $("#po_by").onchange = $("#po_lax").onchange = read;
-    $("#poReset").onclick = () => { saveSettings({ practice: { ...PO_DEFAULT } }); VIEWS.practice(); };
-    confirmBtn($("#poForget"), () => { const ks = new Set(cardsOf(pool, o.mode).map(c => cardKey(o.mode, c))); store.set("plearnt", [...getLearnt()].filter(a => !ks.has(a))); VIEWS.practice(); });
+    $("#poReset").onclick = () => { clearTimeout(timer); poSoft = null; saveSettings({ practice: { ...PO_DEFAULT } }); VIEWS.practice(); };
+    confirmBtn($("#poForget"), () => { const c0 = latest(); if (c0.mode === "recall") { recallSet(recallKey(c0), null); return VIEWS.practice(); } const ks = new Set(cardsOf(practicePool(c0), c0.mode).map(c => cardKey(c0.mode, c))); store.set("plearnt", [...getLearnt()].filter(a => !ks.has(a))); VIEWS.practice(); });
   };
   return location.hash === "#practice/go" ? practicePlay(pool, o, main + more, wire) : practiceSetup(pool, o, main, more, wire);
 };
@@ -1124,10 +1277,12 @@ let pSheetOpen = false;
 function practicePlay(pool, o, opts, wire) {
   const v = $("#view"), pq = getPQ().items.length, pr = progress(pool, o.mode);
   const src = o.src.startsWith("g:") ? groupOf(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src] || (o.src.startsWith("f:") ? folderById(o.src.slice(2))?.name : "");
-  const pills = [o.mode !== "anagram" && PMODES.find(m => m[0] === o.mode)?.[1], lensLabel(o), src, o.order !== "rand" && orderText(o.order, o.rev), o.starOnly && "★ only", likelyText(o.from, o.to, o.by, o.lax), anaText(o.anas), `Streak ${P.streak}`, pq && `${pq} to review`].filter(Boolean);
+  const pills = [o.mode !== "anagram" && PMODES.find(m => m[0] === o.mode)?.[1], lensLabel(o), src, o.order !== "rand" && orderText(o.order, o.rev), o.starOnly && "★ only", likelyText(o.from, o.to, o.by, o.lax), anaText(o.anas), o.mode !== "recall" && `Streak ${P.streak}`, o.mode !== "recall" && pq && `${pq} to review`].filter(Boolean);
+  const ana = o.mode === "anagram", rec = o.mode === "recall";
+  const copts = ana || rec || o.mode === "pattern" ? cardOpts({ rack: ana && pool.some(w => w.length <= RACK_LEN), skip: ana || rec ? !!o.skipKnown : undefined, hard: rec }) : "";
   const top = `<div class="fc-top"><button type="button" class="ib2" id="pExit" aria-label="Leave practice">×</button><div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div>
       <span class="n" title="${pr.unit} learnt">${pr.racks.toLocaleString()} / ${pr.racksAll.toLocaleString()}</span><button type="button" class="ib2 phone-only" id="pStatsBtn" aria-label="Stats">${icon('<path d="M5 20V11M12 20V4M19 20v-6"/>')}</button><button type="button" class="ib2" id="pOptBtn" aria-label="Options">${icon('<path d="M4 6h16M7 12h10M10 18h4"/>')}</button></div>
-    <div class="hscroll ppills">${pills.map(p => `<button type="button" class="pill" data-popt>${esc(p)}</button>`).join("")}</div>`;
+    <div class="hscroll ppills">${pills.map(p => `<button type="button" class="pill" data-popt>${esc(p)}</button>`).join("")}</div>${copts}`;
   const sh = sheetHTML("psheet", `<h3>Practice options<button type="button" id="pDone">Done</button></h3>${opts.replace('id="pOpts"', 'id="pOpts" open')}`)
     + sheetHTML("pstats", `<h3>Stats<button type="button" id="pStatsDone">Done</button></h3>${practiceRail(pr, "")}`);
   const openSheet = on => { pSheetOpen = on; sheet("psheet", on); };
@@ -1135,23 +1290,43 @@ function practicePlay(pool, o, opts, wire) {
     // × leaves to the Practice page (tabs and all); the card is kept and its Continue card brings it back
     $("#pExit").onclick = () => location.replace("#practice");
     v.querySelectorAll("#pOptBtn, [data-popt]").forEach(b => b.onclick = () => openSheet(true));
-    $("#pDone").onclick = $("#psheet .scrim").onclick = () => openSheet(false);
+    // options typed in the sheet deal a new card when it closes
+    $("#pDone").onclick = $("#psheet .scrim").onclick = () => { poSoft?.(); openSheet(false); if (poDirty) VIEWS.practice(); };
     $("#pStatsBtn").onclick = () => sheet("pstats", true);
     $("#pStatsDone").onclick = $("#pstats .scrim").onclick = () => sheet("pstats", false);
+    // crossed-off words change the pool, but this card and session carry on under the new options
+    wireCardOpts(() => VIEWS.practice(), () => {
+      poSoft?.(); const now = practiceOpts(); saveSettings({ practice: { ...now, skipKnown: !now.skipKnown } });
+      const k = JSON.stringify(practiceOpts()), c = store.get("pcur");
+      if (c?.key === P.key) store.set("pcur", { ...c, key: k });
+      P.key = k; saveP(); VIEWS.practice();
+    });
     wire();
     if (pSheetOpen) sheet("psheet", true);
   };
-  if (!pool.length) {
-    v.innerHTML = `<div class="foc"><div class="stage">${top}<div class="fc-card"><p class="empty">${esc(poolCache.error || "No words match these options. Tap ☰ to change them.")}</p></div></div>${practiceRail(pr, "prail")}</div>` + sh;
+  const big = o.mode === "recall" && !pr.recall.done && pool.length > RECALL_MAX;
+  if (!pool.length || big || (o.mode === "def" && !cardsOf(pool, "def").length)) {
+    v.innerHTML = `<div class="foc"><div class="stage">${top}<div class="fc-card"><p class="empty">${esc(big ? recallAdvice(pool.length) : poolCache.error || "No words match these options. Tap ☰ to change them.")}</p></div></div>${practiceRail(pr, "prail")}</div>` + sh;
     return wireTop();
   }
   if (o.mode === "hooks" || o.mode === "pattern") return practiceLetters(pool, o, top, sh, wireTop, pr);
+  if (o.mode === "phony" || o.mode === "def") return practiceWord(pool, o, top, sh, wireTop, pr);
+  if (o.mode === "recall") return practiceRecall(pool, o, top, sh, wireTop, pr, [src || "Any word", lensLabel(o), likelyText(o.from, o.to, o.by, o.lax), anaText(o.anas), o.starOnly && "★ only", o.starts && `starts ${o.starts}`, o.ends && `ends ${o.ends}`, o.contains && `contains ${o.contains}`, o.incl && `with ${o.incl}`, o.excl && `without ${o.excl}`, o.pattern && `pattern ${o.pattern}`].filter(Boolean).join(" · "));
   // the card left last time (same options) comes back with its found words, and its mark if it was marked;
   // otherwise deal a new one
   const cur = store.get("pcur");
   P.done = false; P.verdict = null;
-  if (cur?.key === P.key && ANA.has(cur.letters)) { P.letters = cur.letters; P.want = anagrams(cur.letters); P.found = cur.found.filter(x => P.want.includes(x)); }
-  else { const w = pickPractice(pool, o.order, !!o.rev); P.letters = alpha(w); P.want = anagrams(w); P.found = []; saveCard(); }
+  const same = cur?.key === P.key && ANA.has(cur.letters), marked = same && typeof cur.ok === "boolean";
+  if (same) { P.letters = cur.letters; P.found = cur.found; } else { P.letters = alpha(pickPractice(pool, o.order, !!o.rev)); P.found = []; }
+  // the rack stays as dealt unless the rack size was just changed
+  const size = rackFor(P.letters);
+  if (same && (marked || (cur.size || 0) === size)) { P.rack = cur.rack || ""; P.size = cur.size || 0; P.all = cur.all || anagrams(P.letters); }
+  else { const d = size ? dealRack(P.letters, pool) : null; P.rack = d?.rack || ""; P.size = size; P.all = d?.all || anagrams(P.letters); }
+  P.want = needed(P.all, o.skipKnown);
+  const takes = x => P.all.includes(x) || bonusKnown(x, P.rack);
+  P.found = P.found.filter(takes);
+  const allFound = () => P.want.every(x => P.found.includes(x));
+  saveCard();
   P.review = !!getPQ().items.find(x => x.a === P.letters);
   const n = P.letters.length, kbd = phone() && store.get("pKbd", false), pad = store.get("pPad", false);
   const key = k => `<kbd>${k}</kbd>`;
@@ -1168,9 +1343,9 @@ function practicePlay(pool, o, opts, wire) {
     ${practiceRail(pr, "prail")}</div>` + sh;
   // while playing: a chip per word (dots until found). Once marked: the words with hooks and definitions, in the
   // card at the top (each opens its word page; coming back finds this card as it was)
-  const chips = () => { $("#pchips").innerHTML = P.done
-    ? `<div class="rows sashow">${P.want.map(x => quizRow(x, P.found.includes(x) || P.verdict.ok ? "got" : "miss")).join("")}</div>${stemsHTML(P.letters)}`
-    : P.want.map(x => P.found.includes(x) ? `<a class="w got" href="#w/${x}">${x}</a>` : `<span class="w blank">${"•".repeat(x.length)}</span>`).join(""); };
+  const chips = () => { const seen = [...new Set([...P.want, ...P.found])]; $("#pchips").innerHTML = P.done
+    ? `<div class="rows sashow">${seen.map(x => quizRow(x, P.found.includes(x) || P.verdict.ok ? "got" : "miss")).join("")}</div>${stemsHTML(P.letters)}`
+    : seen.filter(x => !SET.hideCount || P.found.includes(x)).map(x => P.found.includes(x) ? `<a class="w got" href="#w/${x}">${x}</a>` : `<span class="w blank">${"•".repeat(x.length)}</span>`).join(""); };
   const finish = ok => {
     P.done = true; P.verdict = { letters: P.letters, want: P.want, ok };
     saveCard(); chips(); marks();
@@ -1180,17 +1355,18 @@ function practicePlay(pool, o, opts, wire) {
     const v = P.done && P.verdict, a = $("#pAlt"), m = $("#pMain");
     a.className = `btn mk ${v && !v.ok ? "yes" : "no"}`; a.innerHTML = `${v && !v.ok ? "✓" : "✗"}${key("1")}`;
     a.setAttribute("aria-label", v ? (v.ok ? "Switch to didn't know" : "Switch to knew it") : "Didn't know");
-    m.className = `btn mk ${v ? (v.ok ? "yes on" : "no on") : "yes"}`; m.innerHTML = v ? `<span class="tx">Next</span>${key("↵")}` : `✓${key("2")}`;
-    m.setAttribute("aria-label", v ? "Next card" : "Knew it");
+    m.className = `btn mk ${v ? (v.ok ? "yes on" : "no on") : "yes"}`; m.innerHTML = v ? `<span class="tx">Next</span>${key("↵")}` : SET.hideCount ? `<span class="tx">Done</span>${key("2")}` : `✓${key("2")}`;
+    m.setAttribute("aria-label", v ? "Next card" : SET.hideCount ? "Done, check my answers" : "Knew it");
   };
-  const found = x => { P.found.push(x); saveCard(); $("#pleft").textContent = leftText(); chips(); if (P.found.length === P.want.length) finish(true); };
+  // with the count hidden the card never ends by itself: that would give away that words are still left
+  const found = x => { P.found.push(x); saveCard(); $("#pleft").textContent = leftText(); chips(); if (!SET.hideCount && allFound()) finish(true); };
   // the word that finishes the card stays in the slots
-  const board = rackBoard($("#pslots"), $("#prack"), P.letters, x => {
+  const board = rackBoard($("#pslots"), $("#prack"), P.rack || P.letters, x => {
     if (P.done) return null;
-    const ok = P.want.includes(x) && !P.found.includes(x);
+    const ok = takes(x) && !P.found.includes(x);
     if (ok) found(x);
     return ok && P.done ? "keep" : ok;
-  });
+  }, P.rack ? { slots: Math.max(...P.all.map(w => w.length)), early: x => takes(x) && !P.found.includes(x) && !P.want.some(w => w.length > x.length && w.startsWith(x) && !P.found.includes(w)) } : {});
   $("#pShuf").onclick = board.shuffle;
   $("#pBack").onclick = board.back;
   const np = notepad($("#ppad"));
@@ -1199,11 +1375,18 @@ function practicePlay(pool, o, opts, wire) {
   $("#pKbd").onclick = () => { const k = !store.get("pKbd", false); store.set("pKbd", k); $("#pKbd").classList.toggle("on", k); $("#pa").hidden = !k; if (k) $("#pa").focus(); };
   $("#pa").addEventListener("input", ev => {
     const x = ev.target.value.toUpperCase().replace(/[^A-Z]/g, "");
-    if (P.done || !P.want.includes(x) || P.found.includes(x)) return;
+    if (P.done || !takes(x) || P.found.includes(x) || P.want.some(w => w.length > x.length && w.startsWith(x) && !P.found.includes(w))) return;
     ev.target.value = ""; found(x);
   });
   const nextCard = () => { commitPractice(); VIEWS.practice(); };
-  $("#pa").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); P.done ? nextCard() : finish(false); } });
+  $("#pa").addEventListener("keydown", ev => {
+    if (ev.key !== "Enter") return;
+    ev.preventDefault();
+    const x = ev.target.value.toUpperCase().replace(/[^A-Z]/g, "");
+    if (P.done) nextCard();
+    else if (takes(x) && !P.found.includes(x)) { ev.target.value = ""; found(x); }
+    else finish(SET.hideCount ? allFound() : false);
+  });
   // a keyboard: letters place tiles, Backspace takes one back, Space shuffles, 1 is the left button, 2 or Enter the right
   document.onkeydown = e => {
     if (pSheetOpen || pkOpen || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.("input, select, textarea") || !$("#prack")) return;
@@ -1216,11 +1399,141 @@ function practicePlay(pool, o, opts, wire) {
     else if (e.key === "2" || e.key === "Enter") { e.preventDefault(); $("#pMain").click(); }
   };
   $("#pAlt").onclick = () => finish(P.done ? !P.verdict.ok : false);
-  $("#pMain").onclick = () => P.done ? nextCard() : finish(true);
+  $("#pMain").onclick = () => P.done ? nextCard() : finish(SET.hideCount ? allFound() : true);
   marks(); chips(); wireTop();
   // a card that was marked (or fully found) before leaving comes back marked
-  if (typeof cur?.ok === "boolean" && cur.key === P.key && cur.letters === P.letters) finish(cur.ok);
-  else if (P.found.length === P.want.length) finish(true);
+  if (marked) finish(cur.ok);
+  else if (!SET.hideCount && allFound()) finish(true);
+}
+// ---------- options on the Practice and Quiz cards, kept in Settings so both share them ----------
+// extra letters: 2 and 3-letter cards only, dealt from a real bag. The answers are the words of up to 3 letters in the
+// filtered list that the rack makes; longer words it happens to make don't count
+const RACK_LEN = 3, RACK_SIZES = [0, 5, 7];
+const rackFor = letters => letters.length <= RACK_LEN && +SET.rackSize > letters.length ? +SET.rackSize : 0;
+const canMake = (w, rack) => { const c = {}; for (const ch of rack) c[ch] = (c[ch] || 0) + 1; for (const ch of w) if (!c[ch]--) return false; return true; };
+// a rack with too many answers is dealt again, so a card stays a sensible size (if none fits, the one with the fewest)
+const RACK_MAX_ANSWERS = 15;
+function dealRack(letters, pool) {
+  const size = rackFor(letters), short = [...new Set(pool)].filter(w => w.length <= RACK_LEN);
+  const bag = [...Object.entries(BAG).map(([c, n]) => c.repeat(n)).join("")];
+  for (const c of letters) bag.splice(bag.indexOf(c), 1);
+  let best = null;
+  // common letters make the most words, so the later tries leave them out of the extra tiles
+  const rare = bag.filter(c => !"AEIOUSTRLN".includes(c));
+  for (let t = 0; t < 40; t++) {
+    const rack = alpha(letters + shuffle(t < 20 ? bag : rare).slice(0, size - letters.length).join(""));
+    const all = [...new Set([...anagrams(letters).filter(w => short.includes(w)), ...short.filter(w => canMake(w, rack))])];
+    if (!best || all.length < best.all.length) best = { rack, all };
+    if (all.length <= RACK_MAX_ANSWERS) return { rack, all };
+  }
+  return best;
+}
+// the answers still asked for, leaving out crossed-off words if that's on (unless that would leave none)
+const needed = (all, skip) => { if (!skip) return all; const k = new Set(getKnown()), w = all.filter(x => !k.has(x)); return w.length ? w : all; };
+// a crossed-off word the rack makes isn't asked for, but typing it isn't a mistake either
+const bonusKnown = (x, rack) => !!rack && x.length <= RACK_LEN && DICT.has(x) && getKnown().includes(x) && canMake(x, rack);
+const cardOpts = ({ rack, skip, hard }) => `<div class="copts">
+    <button type="button" class="pill ${SET.hideCount ? "on" : ""}" data-copt="count">Hide count</button>
+    ${rack ? `<button type="button" class="pill ${+SET.rackSize ? "on" : ""}" data-copt="rack">Rack: ${+SET.rackSize ? `${SET.rackSize} tiles` : "exact"}</button>` : ""}
+    ${skip !== undefined ? `<button type="button" class="pill ${skip ? "on" : ""}" data-copt="skip">Skip crossed off</button>` : ""}
+    ${hard ? `<button type="button" class="pill ${SET.recallHard ? "on" : ""}" data-copt="hard">Hard: no hints</button>` : ""}</div>`;
+function wireCardOpts(redraw, toggleSkip) {
+  $("#view").querySelectorAll("[data-copt]").forEach(b => b.onclick = () => {
+    const k = b.dataset.copt;
+    if (k === "skip") return toggleSkip();
+    if (k === "count") saveSettings({ hideCount: !SET.hideCount });
+    if (k === "hard") saveSettings({ recallHard: !SET.recallHard });
+    if (k === "rack") saveSettings({ rackSize: RACK_SIZES[(RACK_SIZES.indexOf(+SET.rackSize || 0) + 1) % RACK_SIZES.length] });
+    redraw();
+  });
+}
+// a valid-or-phony or definition card. Each deal of a word is freshly real or phony, at the share set in Settings;
+// the card left last time comes back as it was
+function practiceWord(pool, o, top, sh, wireTop, pr) {
+  const v = $("#view"), mode = o.mode, ph = mode === "phony", cur = store.get("pcur");
+  let card, show, phony = false, typed = "", ok = null;
+  if (cur?.key === P.key && cur.mode === mode && DICT.has(cur.card)) { card = cur.card; show = cur.show || card; phony = !!cur.phony; typed = cur.typed || ""; ok = typeof cur.ok === "boolean" ? cur.ok : null; }
+  else { card = pickCard(pool, mode, o.order, !!o.rev); const p = ph && Math.random() * 100 < SET.phony && makePhony(card); show = p || card; phony = !!p; }
+  const save = () => store.set("pcur", { key: P.key, mode, card, show, phony, typed, ok });
+  save();
+  const e = DICT.get(card), review = !!getPQ().items.find(x => x.a === cardKey(mode, card)), kb = k => `<kbd>${k}</kbd>`, tx = t => `<span class="tx">${t}</span>`;
+  v.innerHTML = `<div class="foc"><div class="stage">${top}<div class="fc-card lcard">
+      <p class="q" style="margin:0 0 12px">${ph ? "Valid or phony?" : "Which word is this?"}${review ? ` · <b style="color:var(--warn)">review</b>` : ""}</p>
+      ${ph ? `<div class="qprompt">${show}</div>` : `<div class="qdef">${esc(e.d)}</div><p class="small" style="margin:8px 0 0">${card.length} letters · <a href="#" id="pHint">show tiles</a></p><div id="pHintBox"></div>
+        <form id="lform" class="lform"><label><span>The word</span><input class="qinput" id="lf" value="${esc(typed)}" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done"></label><button type="submit" hidden></button></form>`}
+      <div id="lres"></div></div>
+    <div class="thumb"><div class="acts"><button type="button" class="btn mk" id="pAlt"></button><button type="button" class="btn mk" id="pMain"></button></div></div></div>
+    ${practiceRail(pr, "prail")}</div>` + sh;
+  const marks = () => {
+    const a = $("#pAlt"), m = $("#pMain"), ask = ph && ok === null;
+    a.className = `btn mk ${ok === false ? "yes" : "no"}`; a.innerHTML = ask ? `${tx("Phony")}${kb("P")}` : `${ok === false ? "✓" : "✗"}${kb("1")}`;
+    a.setAttribute("aria-label", ask ? "Phony" : ok === null ? "Didn't know" : ok ? "Switch to didn't know" : "Switch to knew it");
+    m.className = `btn mk ${ok === null ? "yes" : ok ? "yes on" : "no on"}`; m.innerHTML = ask ? `${tx("Valid")}${kb("V")}` : ok === null ? `✓${kb("2")}` : `${tx("Next")}${kb("↵")}`;
+    m.setAttribute("aria-label", ask ? "Valid" : ok === null ? "Check" : "Next card");
+  };
+  const reveal = () => {
+    if (ok === null) { $("#lres").innerHTML = ""; return; }
+    $("#lres").innerHTML = `<p class="fb ${ok ? "ok" : "no"}" style="margin:12px 0 6px">${ok ? "Correct" : "Not quite"}</p>
+      ${phony ? `<p class="lans">${show} is phony. It came from ${card}.</p>` : ph ? `<p class="lans">${card} is valid.</p>` : ""}<div class="rows">${rowHTML(card)}</div>`;
+  };
+  const mark = v => { ok = v; save(); reveal(); marks(); };
+  const defRight = g => g === card || (g.length === card.length && DICT.get(g)?.d === e.d);
+  const typedNow = () => ($("#lf")?.value || "").toUpperCase().replace(/[^A-Z]/g, "");
+  const nextCard = () => { commitPractice(); VIEWS.practice(); };
+  $("#lform")?.addEventListener("submit", ev => { ev.preventDefault(); ok === null ? mark(defRight(typedNow())) : nextCard(); });
+  $("#lf")?.addEventListener("input", () => { typed = typedNow(); if (ok === null) { save(); if (defRight(typed)) mark(true); } });
+  $("#pHint")?.addEventListener("click", ev => { ev.preventDefault(); $("#pHintBox").innerHTML = tilesHTML(alpha(card), true); });
+  $("#pAlt").onclick = () => ok !== null ? mark(!ok) : mark(ph ? phony : false);
+  $("#pMain").onclick = () => ok !== null ? nextCard() : mark(ph ? !phony : defRight(typedNow()));
+  document.onkeydown = ev => {
+    if (pSheetOpen || pkOpen || ev.metaKey || ev.ctrlKey || ev.altKey || ev.target.closest?.("input, select, textarea")) return;
+    if (ph && ok === null) { if (/^[vp]$/i.test(ev.key)) $(ev.key.toLowerCase() === "v" ? "#pMain" : "#pAlt").click(); return; }
+    if (ev.key === "1") $("#pAlt").click();
+    else if (ev.key === "2" || ev.key === "Enter") { ev.preventDefault(); $("#pMain").click(); }
+  };
+  marks(); reveal(); wireTop();
+  if (!ph && ok === null && !phone()) $("#lf").focus();
+}
+const recallAdvice = n => `${recallTooBig(n)} Pick a shorter list, or a Top number under Probability in the options.`;
+// the list, a section per first letter: found words, words shown or missed, and a dotted blank for each one to find
+function recallGrid(words, st) {
+  const found = new Set(st.found), shown = new Set(st.shown), secs = new Map();
+  for (const w of words) { if (!secs.has(w[0])) secs.set(w[0], []); secs.get(w[0]).push(w); }
+  return [...secs].map(([c, ws]) => `<div class="rcsec"><p class="lbl"><span>${c}</span><span>${ws.filter(w => found.has(w)).length}/${ws.length}</span></p><div class="found">${ws.map(w => found.has(w) ? `<a class="w got" href="#w/${w}">${w}</a>` : shown.has(w) ? `<a class="w miss" href="#w/${w}">${w}</a>` : `<span class="w blank">${"•".repeat(w.length)}</span>`).join("")}</div></div>`).join("");
+}
+// list recall in Practice: a letter guide and Show one to help, and the list keeps its place until it's finished.
+// Finish scores it: only then do the words go into stats and Missed words (so a list of missed words holds still)
+function practiceRecall(pool, o, top, sh, wireTop, pr, title) {
+  const v = $("#view"), k = recallKey(o), e = pr.recall;
+  document.onkeydown = null;
+  if (e.done) {
+    const words = [...e.found, ...e.shown].sort(), f = e.found.length;
+    v.innerHTML = `<div class="foc"><div class="stage">${top}<div class="fc-card rccard"><p class="rctitle">${esc(title)}</p>
+        <p class="fb ${e.shown.length ? "no" : "ok"}" style="margin:6px 0">${f} of ${words.length} from memory</p>
+        ${e.shown.length ? `<p class="q" style="margin:0 0 8px">The orange ones went to Missed words.</p>` : ""}<div class="rclist">${recallGrid(words, e)}</div></div>
+      <div class="thumb rcthumb"><div class="acts"><button type="button" class="btn yes on" id="rcAgain">Start this list over</button></div></div></div>${practiceRail(pr, "prail")}</div>` + sh;
+    $("#rcAgain").onclick = () => { recallSet(k, null); VIEWS.practice(); window.scrollTo(0, 0); };
+    return wireTop();
+  }
+  const words = [...new Set(pool)].sort(), inList = new Set(words), total = words.length;
+  e.found = e.found.filter(w => inList.has(w)); e.shown = e.shown.filter(w => inList.has(w));
+  // hard mode, or a hidden count: no blanks, just what's been found
+  const list = () => SET.recallHard || SET.hideCount ? (e.found.length ? `<div class="found">${[...e.found].sort().map(w => `<a class="w got" href="#w/${w}">${w}</a>`).join("")}</div>` : "") : recallGrid(words, e);
+  v.innerHTML = `<div class="foc"><div class="stage">${top}<div class="fc-card rccard"><p class="rctitle">${esc(title)}</p><p class="q" id="rcleft" style="margin:4px 0 0"></p><div id="rclist" class="rclist"></div></div>
+    ${RC_THUMB("rcEnd", SET.recallHard ? "" : `<button type="button" class="btn no" id="rcShow">Show one</button>`)}</div>${practiceRail(pr, "prail")}</div>` + sh;
+  const finish = () => {
+    const f = new Set(e.found), shown = words.filter(w => !f.has(w));
+    recordMany(words.map(w => [w, f.has(w)]));
+    recallSet(k, { ...e, shown, done: true });
+    VIEWS.practice(); window.scrollTo(0, 0);
+  };
+  const changed = () => { recallSet(k, e); recallPaint(e, total, e.at, list); if (!SET.hideCount && e.found.length + e.shown.length === total) finish(); };
+  recallBox($("#rca"), words, e, changed);
+  if ($("#rcShow")) $("#rcShow").onclick = () => { const left = words.filter(w => !e.found.includes(w) && !e.shown.includes(w)); if (!left.length) return; e.shown.push(left[Math.floor(Math.random() * left.length)]); changed(); };
+  confirmBtn($("#rcEnd"), finish);
+  wireTop();
+  recallPaint(e, total, e.at, list);
+  if (!pSheetOpen && !phone()) $("#rca").focus();
 }
 // the Practice notepad: write with a finger, pen or mouse. It starts blank on each card; Clear wipes it
 function notepad(box) {
@@ -1273,12 +1586,12 @@ function practiceLetters(pool, o, top, sh, wireTop, pr) {
   // patterns are typed a letter at a time (each one that fits is kept); hooks are read from their two boxes
   const read = () => { if (mode !== "pattern") typed = { f: $("#lf").value, b: $("#lb")?.value || "" }; };
   const chipsDraw = () => { if (mode !== "pattern") return; const n = want.f.length, f = typed.f.length;
-    $("#lleft").textContent = ok !== null ? "" : `${n} letter${n === 1 ? " fits" : "s fit"} · ${f} found · ${n - f} left`; $("#lchips").innerHTML = ok !== null ? "" : patChips(card, typed.f); };
+    $("#lleft").textContent = ok !== null ? "" : SET.hideCount ? (f ? `${f} found` : "Find every letter") : `${n} letter${n === 1 ? " fits" : "s fit"} · ${f} found · ${n - f} left`; $("#lchips").innerHTML = ok !== null ? "" : patChips(card, typed.f); };
   const marks = () => {
     const a = $("#pAlt"), m = $("#pMain");
     a.className = `btn mk ${ok === false ? "yes" : "no"}`; a.innerHTML = `${ok === false ? "✓" : "✗"}${kb("1")}`;
     a.setAttribute("aria-label", ok === null ? "Didn't know" : ok ? "Switch to didn't know" : "Switch to knew it");
-    m.className = `btn mk ${ok === null ? "yes" : ok ? "yes on" : "no on"}`; m.innerHTML = ok === null ? `✓${kb("2")}` : `<span class="tx">Next</span>${kb("↵")}`;
+    m.className = `btn mk ${ok === null ? "yes" : ok ? "yes on" : "no on"}`; m.innerHTML = ok !== null ? `<span class="tx">Next</span>${kb("↵")}` : mode === "pattern" && SET.hideCount ? `<span class="tx">Done</span>${kb("2")}` : `✓${kb("2")}`;
     m.setAttribute("aria-label", ok === null ? "Check" : "Next card");
   };
   const show = () => {
@@ -1296,12 +1609,12 @@ function practiceLetters(pool, o, top, sh, wireTop, pr) {
     let good = false, bad = false;
     for (const c of typedNow) { if (want.f.includes(c) && !typed.f.includes(c)) { typed.f += c; good = true; } else if (!typed.f.includes(c)) bad = true; }
     flashBox(ev.target, good && !bad); save(); chipsDraw();
-    if (typed.f.length === want.f.length) finish(true);
+    if (!SET.hideCount && typed.f.length === want.f.length) finish(true);
   });
   else v.querySelectorAll("#lform input").forEach(i => i.addEventListener("input", () => { read(); if (ok === null) save(); }));
   $("#pAlt").onclick = () => { if (ok === null) finish(false); else { ok = !ok; save(); show(); marks(); } };
   // ✓ before the end: "knew it" for a pattern (as with anagrams); for hooks it checks the boxes
-  $("#pMain").onclick = () => ok === null ? finish(mode === "pattern" ? true : undefined) : nextCard();
+  $("#pMain").onclick = () => ok === null ? finish(mode === "pattern" && !SET.hideCount ? true : undefined) : nextCard();
   document.onkeydown = ev => {
     if (pSheetOpen || pkOpen || ev.metaKey || ev.ctrlKey || ev.altKey || ev.target.closest?.("input, select, textarea")) return;
     if (ev.key === "1") $("#pAlt").click();
@@ -1319,11 +1632,12 @@ const rackHTML = (id, inner = "") => `<div class="rack wood-${SET.rackLook || "o
 // slots and a rack of tiles. A tap puts a rack tile in the next empty slot (or sends a slot tile back); a drag drops
 // it into any slot (a tile already there swaps places or goes back to the rack) or moves it along the rack.
 // A full row goes to word(x): true lights it up, false shakes it, null (nothing to answer) just clears it.
-function rackBoard(slotsEl, rackEl, letters, word) {
-  const n = letters.length, rt = rackEl.querySelector(".tiles");
-  slotsEl.style.setProperty("--n", n); rt.style.setProperty("--n", n);
+// With extra letters (opts) there are fewer slots than tiles, and opts.early(x) says a shorter row is a finished word.
+function rackBoard(slotsEl, rackEl, letters, word, opts = {}) {
+  const n = letters.length, ns = opts.slots || n, rt = rackEl.querySelector(".tiles");
+  slotsEl.style.setProperty("--n", ns); rt.style.setProperty("--n", n);
   // rack = tiles in the order shown; slots = which rack tile sits in each slot (null = empty); order = the order they went in
-  let rack = [...letters].map((c, i) => ({ c, i })), slots = Array(n).fill(null), order = [], busy = false, drag = null;
+  let rack = [...letters].map((c, i) => ({ c, i })), slots = Array(ns).fill(null), order = [], busy = false, drag = null;
   const tile = (t, cls = "", s) => `<div class="tile ${cls}" data-i="${t.i}"${s !== undefined ? ` data-s="${s}"` : ""}>${t.c}<sub>${VALUES[t.c]}</sub></div>`;
   const byI = i => rack.find(t => t.i === i);
   const draw = () => {
@@ -1335,8 +1649,9 @@ function rackBoard(slotsEl, rackEl, letters, word) {
   // a full row is checked at once: a right word stays lit for a moment, anything else shakes; then the tiles go back.
   // "keep" (the last word, which finishes the card) stays lit in the slots and the board stops taking tiles.
   const check = () => {
-    if (slots.includes(null)) return;
-    const ok = word(slots.map(i => byI(i).c).join(""));
+    const row = slots.filter(i => i !== null).map(i => byI(i).c).join("");
+    if (slots.includes(null) && !opts.early?.(row)) return;
+    const ok = word(row);
     flash(ok === true || ok === "keep" ? "good" : ok === false ? "bad" : ""); busy = true;
     if (ok !== "keep") setTimeout(() => { busy = false; slots.fill(null); order = []; flash(""); draw(); }, ok ? 350 : 450);
   };
@@ -1396,6 +1711,7 @@ function rackBoard(slotsEl, rackEl, letters, word) {
 }
 // the stats panel beside the card: this session, the last few marks, and the review queue
 function practiceRail(pr, cls) {
+  if (pr.recall) return recallRail(pr.recall, pr.racksAll, pr.recall.at, cls);
   const q = getPQ(), mins = Math.round((Date.now() - P.start) / 60000), last = P.hist.slice(-20), ok = last.filter(Boolean).length;
   const due = x => x.due <= q.n ? `<em class="due">due now</em>` : `<em>in ${x.due - q.n} card${x.due - q.n === 1 ? "" : "s"}</em>`;
   return `<aside class="rail ${cls}">
@@ -1409,18 +1725,35 @@ function practiceRail(pr, cls) {
   </aside>`;
 }
 
+// what the setup page's Start button and summary line say for these words
+function goState(pool, o) {
+  const pr = progress(pool, o.mode), big = o.mode === "recall" && !pr.recall.done && pool.length > RECALL_MAX;
+  return { pr, big, can: !!pool.length && !big, line: `${pr.racks.toLocaleString()} of ${pr.racksAll.toLocaleString()} ${pr.unit} ${pr.recall ? "found" : "learnt"} · ${pool.length.toLocaleString()} words`,
+    start: going => big ? "Too many words for recall" : pool.length ? (going ? "Carry on" : "Start practice") : "No words match these options" };
+}
+// refresh the setup page after typing in a filter, without redrawing it
+function paintGo(pool, o) {
+  if (!$("#pStart")) return;
+  const go = goState(pool, o);
+  $("#pGoLine").textContent = go.line;
+  $("#pGo .pbar div").style.width = `${go.pr.racksAll ? go.pr.racks / go.pr.racksAll * 100 : 0}%`;
+  $("#pBig").hidden = !go.big; $("#pBig").textContent = go.big ? recallAdvice(pool.length) : "";
+  $("#pStart").disabled = !go.can; $("#pStart").textContent = go.start(false);
+}
 // practice setup: what to practise; Start (or the play button) goes full screen
 function practiceSetup(pool, o, main, more, wire) {
-  const pr = progress(pool, o.mode), going = P.seen || store.get("pcur")?.key === P.key;
+  const pr = progress(pool, o.mode), going = P.seen || store.get("pcur")?.key === P.key || pr.recall?.found.length || pr.recall?.shown.length;
+  const go = goState(pool, o);
   const src = o.src.startsWith("g:") ? groupOf(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src] || (o.src.startsWith("f:") ? folderById(o.src.slice(2))?.name : "") || "Any word";
   $("#view").innerHTML = `<div class="cont" id="pGo"><div class="ct"><small>${going ? "Continue" : "Ready to practise"}${o.mode !== "anagram" ? " · " + PMODES.find(m => m[0] === o.mode)[1].toLowerCase() : ""}</small><b>${esc(src)} · ${lensLabel(o).toLowerCase()}</b>
-      <div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div><div class="small">${pr.racks.toLocaleString()} of ${pr.racksAll.toLocaleString()} ${pr.unit} learnt · ${pool.length.toLocaleString()} words</div></div>
+      <div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div><div class="small" id="pGoLine">${go.line}</div></div>
       <button type="button" class="go" aria-label="${going ? "Carry on practising" : "Start practice"}">${ICON_PLAY}</button></div>
     <div class="card">${main}</div>
     ${more}
-    <button type="button" class="btn primary block" id="pStart" ${pool.length ? "" : "disabled"}>${pool.length ? (going ? "Carry on" : "Start practice") : "No words match these options"}</button>`;
+    <p class="small" id="pBig" style="text-align:center;margin:0" ${go.big ? "" : "hidden"}>${go.big ? esc(recallAdvice(pool.length)) : ""}</p>
+    <button type="button" class="btn primary block" id="pStart" ${go.can ? "" : "disabled"}>${go.start(going)}</button>`;
   wire();
-  $("#pGo").onclick = $("#pStart").onclick = () => { if (pool.length) location.hash = "practice/go"; };
+  $("#pGo").onclick = $("#pStart").onclick = () => { poSoft?.(); const po = practiceOpts(); if (goState(practicePool(po), po).can) location.hash = "practice/go"; };
 }
 
 // ---------- my words ----------
@@ -1478,6 +1811,7 @@ function folderView(id) {
   const f = folderById(id);
   if (!f) { location.replace("#mine/folders"); return; }
   const known = new Set(getKnown()), k = f.words.filter(w => known.has(w)).length;
+  const keepDraft = text => store.set("folderDraft", text === null ? null : { id, text });
   $("#view").innerHTML = `<div class="fhead"><a class="bbk" href="#mine/folders">‹ Folders</a><input class="ftitle" id="fTitle" value="${esc(f.name)}" maxlength="40" aria-label="Folder name"></div>
     <p class="sub" style="margin:4px 0 12px">${f.words.length} word${f.words.length === 1 ? "" : "s"} · ${k} crossed off</p>
     <div class="row" style="margin-bottom:12px"><button class="btn" id="fEdit">Add or remove words</button><button class="btn" id="fDel">Delete folder</button></div>
@@ -1488,15 +1822,20 @@ function folderView(id) {
   if (f.words.length) results($("#mres"), f.words.filter(w => DICT.has(w)));
   else $("#mres").innerHTML = `<p class="empty">No words yet. Press Add or remove words, or use Add to folder on a word page or any list.</p>`;
   $("#fTitle").onchange = () => saveFolder(id, { name: $("#fTitle").value.trim() || "Folder" });
-  $("#fEdit").onclick = () => { $("#fBox").hidden = !$("#fBox").hidden; if (!$("#fBox").hidden) $("#fWords").focus(); };
-  $("#fCancel").onclick = () => { $("#fBox").hidden = true; $("#fWords").value = f.words.join("\n"); };
+  // the edit box and what's typed in it stay until Save or Cancel, even if you leave the page
+  const draft = store.get("folderDraft", null);
+  if (draft?.id === id) { $("#fBox").hidden = false; $("#fWords").value = draft.text; }
+  $("#fWords").oninput = () => keepDraft($("#fWords").value);
+  $("#fEdit").onclick = () => { const open = $("#fBox").hidden; $("#fBox").hidden = !open; keepDraft(open ? $("#fWords").value : null); if (open) $("#fWords").focus(); };
+  $("#fCancel").onclick = () => { $("#fBox").hidden = true; $("#fWords").value = f.words.join("\n"); keepDraft(null); };
   $("#fSave").onclick = () => {
     const { good, bad } = wordsIn($("#fWords").value);
+    keepDraft(null);
     saveFolder(id, { words: good });
     if (bad.length) { folderView(id); $("#fBox").hidden = false; $("#fMsg").textContent = `Not in CSW24, so left out: ${bad.slice(0, 12).join(", ")}${bad.length > 12 ? "…" : ""}`; }
     else folderView(id);
   };
-  confirmBtn($("#fDel"), () => { store.set("folders", getFolders().filter(x => x.id !== id)); location.hash = "mine/folders"; });
+  confirmBtn($("#fDel"), () => { keepDraft(null); store.set("folders", getFolders().filter(x => x.id !== id)); location.hash = "mine/folders"; });
 }
 // the folder picker: for one word, a tick for each folder it's in; for a list, a button per folder to add them all
 // (pick, when given, offers to choose some of the words instead)
@@ -1561,6 +1900,8 @@ function confirmBtn(el, fn) {
 }
 
 // ---------- settings ----------
+// More themes starts closed each time Settings is opened (see route); picking a theme redraws the page and keeps it open
+let themesOpen = false;
 VIEWS.settings = () => {
   const seg = (key, opts) => `<div class="seg">${opts.map(([v, t]) => `<button type="button" class="btn ${String(SET[key]) === String(v) ? "on" : ""}" data-set="${key}" data-val="${v}">${t}</button>`).join("")}</div>`;
   const chk = (key, label) => `<label class="check"><input type="checkbox" data-chk="${key}" ${SET[key] ? "checked" : ""}> ${label}</label>`;
@@ -1583,7 +1924,7 @@ VIEWS.settings = () => {
   $("#view").innerHTML = `<div><h3 class="title">Settings</h3><p class="sub">Saved in this browser and applied straight away.</p></div>
   <div class="card">
     <div class="fs"><h2 class="lbl">Colour theme</h2><div class="swatches">${themeList.slice(0, 5).map(([id, t]) => swatch(id, t)).join("")}</div>
-      <details class="more-themes" id="moreThemes" ${store.get("themesOpen", false) ? "open" : ""}><summary>More themes (${themeList.length - 5})${themeList.findIndex(([id]) => id === SET.theme) >= 5 ? ` · using ${esc(THEMES[SET.theme].name)}` : ""}</summary>
+      <details class="more-themes" id="moreThemes" ${themesOpen ? "open" : ""}><summary>More themes (${themeList.length - 5})${themeList.findIndex(([id]) => id === SET.theme) >= 5 ? ` · using ${esc(THEMES[SET.theme].name)}` : ""}</summary>
         ${moreGroups.map(([g, ids]) => `<div class="sect" style="margin:14px 0 0">${g}</div><div class="swatches">${ids.map(id => swatch(id, THEMES[id])).join("")}</div>`).join("")}</details></div>
     <div class="fs"><h2 class="lbl">Light or dark</h2>${seg("mode", [["auto", "Match my device"], ["light", "Light"], ["dark", "Dark"]])}</div>
     <div class="fs"><h2 class="lbl">Light mode brightness</h2>${seg("glare", [["bright", "Bright"], ["soft", "Soft"], ["dim", "Dim"]])}<p class="small" style="margin:8px 0 0">How white the page and cards are in light mode.</p></div>
@@ -1628,7 +1969,7 @@ VIEWS.settings = () => {
   v.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => { saveSettings({ theme: b.dataset.theme }); VIEWS.settings(); });
   v.querySelectorAll("[data-tone]").forEach(b => b.onclick = () => { saveSettings({ theme: b.dataset.tid, tones: { ...SET.tones, [b.dataset.tid]: b.dataset.tone } }); VIEWS.settings(); });
   v.querySelectorAll("[data-set]").forEach(b => b.onclick = () => { saveSettings({ [b.dataset.set]: b.dataset.val }); VIEWS.settings(); });
-  $("#moreThemes").addEventListener("toggle", e => store.set("themesOpen", e.target.open));
+  $("#moreThemes").addEventListener("toggle", e => themesOpen = e.target.open);
   v.querySelectorAll("[data-rack-pick]").forEach(b => b.onclick = () => { saveSettings({ rackLook: b.dataset.rackPick }); VIEWS.settings(); });
   v.querySelectorAll("[data-tstyle-pick]").forEach(b => b.onclick = () => { saveSettings({ tileLook: b.dataset.tstylePick }); VIEWS.settings(); });
   v.querySelectorAll("[data-tiles]").forEach(b => b.onclick = () => { saveSettings({ tiles: b.dataset.tiles }); VIEWS.settings(); });

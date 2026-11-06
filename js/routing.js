@@ -1,17 +1,42 @@
 // ---------- routing ----------
+// scroll spots are kept across reloads too: a page's spot is saved on leaving it, or when the app is put away
+if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+let routed = false;
+function saveScroll() {
+  delete scrollMem[curHash]; scrollMem[curHash] = window.scrollY;
+  const ks = Object.keys(scrollMem); if (ks.length > 60) delete scrollMem[ks[0]];
+  store.set("scrollMem", scrollMem);
+}
+addEventListener("pagehide", saveScroll);
+document.addEventListener("visibilitychange", () => { if (document.hidden) saveScroll(); });
 function route() {
+  poSoft?.();
   closePicker();
   if (AZY?.sim?.running && location.hash !== "#board/analyse") { ENG.stop(AZY.sim.job); AZY.sim.running = false; }
-  scrollMem[curHash] = window.scrollY; curHash = location.hash;
+  if (routed) saveScroll();
+  routed = true;
+  const from = curHash.slice(1).split("/")[0] || "w";
+  curHash = location.hash;
   const [tab, arg] = decodeURIComponent(location.hash.slice(1)).split("/");
   const t = VIEWS[tab] ? tab : "w";
   // Lists, Practice and Quiz share the Study tab, which goes back to exactly where you were: the list that was
   // open, or the practice card
   if (STUDY.includes(t)) store.set("studyLast", location.hash.slice(1));
+  // My words does the same: the folder or list that was open, at the same spot
+  if (t === "mine") store.set("mineLast", location.hash.slice(1));
+  // and Board: the game, review or tool that was open
+  if (t === "board") store.set("boardLast", location.hash.slice(1));
+  if (t === "settings") themesOpen = false;
+  // Search's and Practice's folding sections start as new when you come from another tab; opening a word and coming back
+  // leaves them as they were, so the page stays put
+  if (t === "search" && from !== "search" && from !== "w") store.set("searchOpen", { group: true });
+  if (t === "practice" && from !== "practice" && from !== "w") store.set("pOpen", false);
   // the search bar only keeps its text on the Word and Search pages
   if (t !== "w" && t !== "search") $("#q").value = "";
   const fresh = searchFromBar;
   $('#tabs [data-tab="study"]').href = "#" + store.get("studyLast", "lists");
+  $('#tabs [data-tab="mine"]').href = "#" + store.get("mineLast", "mine");
+  $('#tabs [data-tab="board"]').href = "#" + store.get("boardLast", "board");
   document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === t || (a.dataset.tab === "study" && STUDY.includes(t))));
   // each page sets its own keys (Quiz again when a question is drawn), so none carry over from the last page
   document.onkeydown = null;
@@ -22,9 +47,10 @@ function route() {
   if (t !== "practice") pSheetOpen = false;
   VIEWS[t](arg);
   window.scrollTo({ top: 0 });
-  // lists, search and My words go back to where they were scrolled (results that build a moment later restore it themselves)
-  pendingScroll = ["lists", "search", "mine"].includes(t) && !fresh ? scrollMem[curHash] || 0 : 0;
-  restoreScroll();
+  // every page goes back to where it was scrolled; results that build a moment later restore it themselves
+  const back = fresh ? 0 : scrollMem[curHash] || 0;
+  pendingScroll = ["lists", "search", "mine"].includes(t) ? back : 0;
+  if (pendingScroll) restoreScroll(); else window.scrollTo({ top: back });
 }
 window.addEventListener("hashchange", route);
 $("#form").addEventListener("submit", ev => {
@@ -33,7 +59,7 @@ $("#form").addEventListener("submit", ev => {
   if (!q) return;
   const tab = location.hash.slice(1).split("/")[0], onSearch = tab === "search";
   // on the Word page a plain word opens that word; everything else is a search
-  if (/^[A-Z]+$/.test(q) && (!VIEWS[tab] || tab === "w")) { location.hash = "w/" + q; return; }
+  if (/^[A-Z]+$/.test(q) && (!VIEWS[tab] || tab === "w")) { freshWord(q); location.hash = "w/" + q; return; }
   // on the Search page the bar replaces just the letters, keeping the group, length and other filters
   const keep = onSearch ? Object.fromEntries(Object.entries(searchState).filter(([k]) => !LETTER_KEYS.includes(k))) : {};
   searchFromBar = true;
@@ -86,8 +112,12 @@ $("#randBtn").addEventListener("click", () => {
   const pools = range(lo, hi).map(n => (BYLEN[n] || []).filter(w => { const p = DICT.get(w).p; return p >= from && p <= to; })).filter(p => p.length);
   if (!pools.length) { location.hash = "settings"; return; }
   const pool = pools[Math.floor(Math.random() * pools.length)];
-  location.hash = "w/" + (randomPick = pool[Math.floor(Math.random() * pool.length)]);
+  randomPick = pool[Math.floor(Math.random() * pool.length)]; freshWord(randomPick);
+  location.hash = "w/" + randomPick;
 });
+// a word opened afresh starts at the top; only coming back to one (the Word tab, or Back) returns to its spot
+const freshWord = w => { delete scrollMem["#w/" + w]; };
+document.addEventListener("click", ev => { const a = ev.target.closest?.('a[href^="#w/"]'); if (a && !a.closest("#tabs")) delete scrollMem[a.getAttribute("href")]; }, true);
 document.addEventListener("click", ev => {
   const kb = ev.target.closest("[data-known]");
   if (kb) {
@@ -104,6 +134,6 @@ document.addEventListener("click", ev => {
     return;
   }
   const t = ev.target.closest("[data-go]");
-  if (t) { ev.preventDefault(); location.hash = "w/" + t.dataset.go; }
+  if (t) { ev.preventDefault(); freshWord(t.dataset.go); location.hash = "w/" + t.dataset.go; }
 });
 route();
