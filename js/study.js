@@ -798,7 +798,7 @@ function recordMany(pairs) {
   store.set("missed", [...pairs.filter(p => !p[1]).map(p => p[0]), ...store.get("missed", []).filter(x => !names.has(x))].slice(0, 500));
 }
 // ---------- list recall, for Quiz and Practice: the whole list from memory ----------
-const RECALL_MAX = 1000;
+const RECALL_MAX = 2000;
 const recallTooBig = n => `That's ${n.toLocaleString()} words. List recall takes up to ${RECALL_MAX.toLocaleString()}.`;
 // the typing box. A word is taken as soon as it's complete, unless a longer word still to find starts with it
 // (CAT before CATS): then Enter takes it. st holds found and shown; a word that was shown no longer counts
