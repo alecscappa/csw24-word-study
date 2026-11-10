@@ -40,11 +40,11 @@ function draws(a) {
 const ALL = [...DICT.keys()];
 
 const anagrams = w => ANA.get(alpha(w)) || [];
-// sound-alikes: 7s and 8s that differ by one letter, in the same spot, for one that sounds like it (URANITE, URANIDE)
+// sound-alikes: 2s to 8s that differ by one letter, in the same spot, for one that sounds like it (URANITE, URANIDE)
 const SOUND_PAIRS = ["DT", "BP", "CGK", "SZ", "FV", "MN", "GJ"];
 const saCache = new Map();
 function soundAlikes(w) {
-  if (w.length < 7 || w.length > 8) return [];
+  if (w.length < 2 || w.length > 8) return [];
   if (saCache.has(w)) return saCache.get(w);
   const out = new Set();
   [...w].forEach((c, i) => SOUND_PAIRS.forEach(g => { if (g.includes(c)) for (const L of g) { const x = w.slice(0, i) + L + w.slice(i + 1); if (L !== c && DICT.has(x)) out.add(x); } }));

@@ -23,7 +23,7 @@ VIEWS.w = (arg) => {
   // sound-alikes get their own section (a tab on a phone), each with its definition and the letter that changes marked
   const sas = valid ? soundAlikes(w) : [];
   const saWord = x => [...x].map((c, i) => c !== w[i] ? `<mark>${c}</mark>` : c).join("");
-  const saNone = w.length < 7 || w.length > 8 ? "Sound-alikes are only looked for in 7s and 8s." : "No word sounds like this one.";
+  const saNone = w.length < 2 || w.length > 8 ? "Sound-alikes are only looked for in 2s to 8s." : "No word sounds like this one.";
   // and under them every one-letter swap, grouped by the spot that changes (?RANITE, U?ANITE…); past about 24 words
   // the rest fold away under "Show all"
   const swaps = [...w].map((c, i) => [`${w.slice(0, i)}?${w.slice(i + 1)}`, [...AZ].map(L => w.slice(0, i) + L + w.slice(i + 1)).filter(x => x !== w && DICT.has(x))]).filter(g => g[1].length);
@@ -551,7 +551,7 @@ VIEWS.lists = (id) => {
   // forget what's been learnt in Practice for this list (asks once more before it clears)
   const racks = new Set(g.special ? [] : groupWords(g).map(alpha)), L = getLearnt(), nL = [...racks].filter(a => L.has(a)).length;
   if (nL) {
-    $("#toSearch").insertAdjacentHTML("afterend", `<button type="button" class="btn sm" id="forgetList">Reset learnt (${nL.toLocaleString()})</button>`);
+    $("#toSearch").insertAdjacentHTML("afterend", `<button type="button" class="btn sm" id="forgetList">Reset study progress (${nL.toLocaleString()})</button>`);
     confirmBtn($("#forgetList"), () => { store.set("plearnt", [...getLearnt()].filter(a => !racks.has(a))); VIEWS.lists(g.id); });
   }
   $("#toSearch").onclick = ev => { ev.preventDefault(); searchInNewTab({ group: g.id }); location.hash = "search"; };
@@ -1244,7 +1244,7 @@ VIEWS.practice = () => {
       </div>
       <div style="margin-top:14px">${likelyField("po_", o.from, o.to, o.by, o.lax)}</div>
       <div class="row" style="margin-top:16px">
-        <span style="margin-left:auto"></span><button class="btn sm" id="poReset">Reset options</button><button class="btn sm" id="poForget">${o.mode === "recall" ? "Start this list over" : "Reset learnt for these words"}</button>
+        <span style="margin-left:auto"></span><button class="btn sm" id="poReset">Reset options</button><button class="btn sm" id="poForget">${o.mode === "recall" ? "Start this list over" : "Reset study progress"}</button>
       </div>
 
     </details>`;
@@ -1802,7 +1802,20 @@ function newFolder(name, words = []) {
   store.set("folders", [...getFolders(), f]);
   return f;
 }
-function toggleKnown(w) { const k = getKnown(), i = k.indexOf(w); i >= 0 ? k.splice(i, 1) : k.unshift(w); store.set("known", k); return i < 0; }
+function toggleKnown(w) { const k = getKnown(), i = k.indexOf(w); i >= 0 ? k.splice(i, 1) : k.unshift(w); store.set("known", k); tickLearnt([w], i < 0); return i < 0; }
+// a word crossed off counts as learnt in Practice: its Valid or phony and Definition cards, and its rack once every word
+// of the rack is crossed off (hooks and patterns still have to be learnt there). Uncrossing takes it back.
+// Reset study progress clears these too, and the words stay crossed off
+function tickLearnt(words, on) {
+  const L = getLearnt(), k = new Set(getKnown());
+  for (const w of words) {
+    for (const p of ["v:", "d:"]) on ? L.add(p + w) : L.delete(p + w);
+    if (!on) L.delete(alpha(w)); else if (anagrams(w).every(x => k.has(x))) L.add(alpha(w));
+  }
+  store.set("plearnt", [...L]);
+}
+// words crossed off before this came in count as learnt once
+if (!store.get("tickSeeded")) { tickLearnt(getKnown().filter(w => DICT.has(w)), true); store.set("tickSeeded", true); }
 // words typed or pasted in any form (one a line, commas, spaces): the real ones, and the ones that aren't words
 const wordsIn = text => { const all = [...new Set(String(text).toUpperCase().split(/[^A-Z]+/).filter(Boolean))]; return { good: all.filter(w => DICT.has(w)), bad: all.filter(w => !DICT.has(w)) }; };
 function folderList() {
