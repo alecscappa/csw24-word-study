@@ -1924,7 +1924,11 @@ function confirmBtn(el, fn) {
 // ---------- settings ----------
 // More themes starts closed each time Settings is opened (see route); picking a theme redraws the page and keeps it open
 let themesOpen = false;
-VIEWS.settings = () => {
+// Settings: on a phone, a short menu of rows (each showing what it's set to) that open their own pages, with a live
+// preview pinned at the top of Look and Tiles; on a computer, the pages down the left, the page in the middle and the
+// preview on the right. Each change applies to the whole app straight away
+const SET_PAGES = [["look", "Look", "Theme, light or dark, text size"], ["tiles", "Tiles", "Colour, style, letters, rack"], ["study", "Study", "Lists, quiz, random word"], ["data", "Data", "Lexicon, sync, your data"]];
+VIEWS.settings = (arg) => {
   const seg = (key, opts) => `<div class="seg">${opts.map(([v, t]) => `<button type="button" class="btn ${String(SET[key]) === String(v) ? "on" : ""}" data-set="${key}" data-val="${v}">${t}</button>`).join("")}</div>`;
   const chk = (key, label) => `<label class="check"><input type="checkbox" data-chk="${key}" ${SET[key] ? "checked" : ""}> ${label}</label>`;
   const tileBtn = (id, name, c) => { const tok = c ? { tile: c, ink: inkOn(c) === "#ffffff" ? "#fbf6ea" : "#2a1f0e", edge: mix(c, "#000000", .26) } : null;
@@ -1943,79 +1947,124 @@ VIEWS.settings = () => {
       <div class="bar" style="background:${c.head}"><i style="background:${c.tile}"></i><i style="background:${c.tile}"></i><i style="background:${c.accent}"></i></div>
       <div class="body" style="background:${c.bg}"><i style="width:40%;background:${c.ink}"></i><i style="width:20%;background:${c.link}"></i></div>
       <span>${t.name}</span></button>${t.mellow && !isDark() ? `<div class="tones">${tone(id, t, "bright", "Bright")}${tone(id, t, "mellow", "Mellow")}</div>` : ""}</div>`; };
-  $("#view").innerHTML = `<div><h3 class="title">Settings</h3><p class="sub">Saved in this browser and applied straight away.</p></div>
-  <div class="card">
-    <div class="fs"><h2 class="lbl">Colour theme</h2><div class="swatches">${themeList.slice(0, 5).map(([id, t]) => swatch(id, t)).join("")}</div>
+  // each part of the page on its own, so the layouts can put them together differently
+  const P = {
+    theme: () => `<div class="fs"><h2 class="lbl">Colour theme</h2><div class="swatches">${themeList.slice(0, 5).map(([id, t]) => swatch(id, t)).join("")}</div>
       <details class="more-themes" id="moreThemes" ${themesOpen ? "open" : ""}><summary>More themes (${themeList.length - 5})${themeList.findIndex(([id]) => id === SET.theme) >= 5 ? ` · using ${esc(THEMES[SET.theme].name)}` : ""}</summary>
-        ${moreGroups.map(([g, ids]) => `<div class="sect" style="margin:14px 0 0">${g}</div><div class="swatches">${ids.map(id => swatch(id, THEMES[id])).join("")}</div>`).join("")}</details></div>
-    <div class="fs"><h2 class="lbl">Light or dark</h2>${seg("mode", [["auto", "Match my device"], ["light", "Light"], ["dark", "Dark"]])}</div>
-    <div class="fs"><h2 class="lbl">Light mode brightness</h2>${seg("glare", [["bright", "Bright"], ["soft", "Soft"], ["dim", "Dim"]])}<p class="small" style="margin:8px 0 0">How white the page and cards are in light mode.</p></div>
-    <div class="fs"><h2 class="lbl">Text size</h2>${seg("size", [["xs", "Extra small"], ["sm", "Small"], ["md", "Normal"], ["lg", "Large"], ["xl", "Extra large"]])}</div>
-    <div class="fs"><h2 class="lbl">Tile colour</h2><div class="tilepick">${Object.entries(TILES).map(([id, [n, c]]) => tileBtn(id, n, c || (isDark() ? (THEMES[SET.theme] || THEMES.board).dark : lightOf(SET.theme, THEMES[SET.theme] || THEMES.board)).tile)).join("")}
+        ${moreGroups.map(([g, ids]) => `<div class="sect" style="margin:14px 0 0">${g}</div><div class="swatches">${ids.map(id => swatch(id, THEMES[id])).join("")}</div>`).join("")}</details></div>`,
+    mode: () => `<div class="fs"><h2 class="lbl">Light or dark</h2>${seg("mode", [["auto", "Match my device"], ["light", "Light"], ["dark", "Dark"]])}</div>
+    <div class="fs"><h2 class="lbl">Light mode brightness</h2>${seg("glare", [["bright", "Bright"], ["soft", "Soft"], ["dim", "Dim"]])}<p class="small" style="margin:8px 0 0">How white the page and cards are in light mode.</p></div>`,
+    size: () => `<div class="fs"><h2 class="lbl">Text size</h2>${seg("size", [["xs", "Extra small"], ["sm", "Small"], ["md", "Normal"], ["lg", "Large"], ["xl", "Extra large"]])}</div>`,
+    tiles: (pv = true) => `<div class="fs"><h2 class="lbl">Tile colour</h2><div class="tilepick">${Object.entries(TILES).map(([id, [n, c]]) => tileBtn(id, n, c || (isDark() ? (THEMES[SET.theme] || THEMES.board).dark : lightOf(SET.theme, THEMES[SET.theme] || THEMES.board)).tile)).join("")}
       <label class="pickc ${SET.tiles === "custom" ? "on" : ""}"><div class="tile" style="background:conic-gradient(#e74c3c,#f1c40f,#2ecc71,#3498db,#9b59b6,#e74c3c);color:#fff">?</div>Pick…<input type="color" id="tileCustom" value="${SET.tileCustom}" aria-label="Pick a tile colour"></label></div>
       <h2 class="lbl" style="margin-top:18px">Tile style</h2>
       <div class="tilepick tstyles"><button type="button" class="${SET.tileLook === "theme" ? "on" : ""}" data-tstyle-pick="theme" title="Each theme picks its own: ${esc(TILE_STYLES[THEME_TSTYLE[SET.theme] || "soft"][0])}"><div class="tile ts-${THEME_TSTYLE[SET.theme] || "soft"}">A<sub>1</sub></div>Theme</button>${Object.entries(TILE_STYLES).map(([id, [n]]) => `<button type="button" class="${SET.tileLook === id ? "on" : ""}" data-tstyle-pick="${id}"><div class="tile ts-${id}">A<sub>1</sub></div>${n}</button>`).join("")}</div>
       <h2 class="lbl" style="margin-top:18px">Tile letters</h2>${seg("tileFont", [["sans", "Bold"], ["serif", "Serif"], ["mono", "Typewriter"]])}
-      <div style="margin-top:16px">${tilesHTML(sampleWord())}</div>
+      ${pv ? `<div style="margin-top:16px">${tilesHTML(sampleWord())}</div>` : ""}
       <div style="margin-top:12px">${chk("values", "Show letter values on tiles")}</div>
       <h2 class="lbl" style="margin-top:18px">Rack</h2>
-      <div class="rackpick">${RACKS.map(([id, n]) => `<button type="button" class="${(SET.rackLook || "oak") === id ? "on" : ""}" data-rack-pick="${id}"><div class="rack wood-${id}"><div class="tiles">${[..."RACK"].map(c => `<div class="tile">${c}<sub>${VALUES[c]}</sub></div>`).join("")}</div></div>${n}</button>`).join("")}</div></div>
-    <div class="fs"><h2 class="lbl">Custom colours</h2><p class="small" style="margin:0 0 10px">Tap a colour to open the colour wheel. These sit on top of whichever theme you pick.</p>
-      <div class="colours">${colour("headCustom", "Header", "From the theme")}${colour("accentCustom", "Accent", "Buttons and highlights, from the theme")}</div></div>
-  </div>
-  <div class="card">
-    <div class="fs"><h2 class="lbl">Word lists and search results</h2><div class="form">
+      <div class="rackpick">${RACKS.map(([id, n]) => `<button type="button" class="${(SET.rackLook || "oak") === id ? "on" : ""}" data-rack-pick="${id}"><div class="rack wood-${id}"><div class="tiles">${[..."RACK"].map(c => `<div class="tile">${c}<sub>${VALUES[c]}</sub></div>`).join("")}</div></div>${n}</button>`).join("")}</div></div>`,
+    custom: () => `<div class="fs"><h2 class="lbl">Custom colours</h2><p class="small" style="margin:0 0 10px">Tap a colour to open the colour wheel. These sit on top of whichever theme you pick.</p>
+      <div class="colours">${colour("headCustom", "Header", "From the theme")}${colour("accentCustom", "Accent", "Buttons and highlights, from the theme")}</div></div>`,
+    lists: () => `<div class="fs"><h2 class="lbl">Word lists and search results</h2><div class="form">
       <div class="field"><label for="setSort">Default sort</label><select id="setSort">${Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${k === SET.sort ? "selected" : ""}>${v}</option>`).join("")}</select></div>
       <div class="field"><label for="setPage">Words per page</label><select id="setPage">${[100, 300, 1000, 3000].map(n => `<option ${n === +SET.pageSize ? "selected" : ""}>${n}</option>`).join("")}</select></div>
       <div class="field" style="gap:8px"><span class="flabel">Show in each row</span>${chk("defs", "Definitions")}${chk("ags", "Alphagrams")}${chk("sas", "Sound-alikes")}${chk("hooks", "Hooks")}${chk("prob", "Probability rank")}${chk("plays", "Playability rank too")}</div>
-    </div></div>
-    <div class="fs"><h2 class="lbl">Word page</h2>${chk("online", "Look up pronunciation, examples and origin online")}</div>
-    <div class="fs"><h2 class="lbl">Quiz</h2><div class="form">
+    </div></div>`,
+    wordpage: () => `<div class="fs"><h2 class="lbl">Word page</h2>${chk("online", "Look up pronunciation, examples and origin online")}</div>`,
+    quiz: () => `<div class="fs"><h2 class="lbl">Quiz</h2><div class="form">
       <div class="field"><label for="setPhony">Phony share in Valid-or-phony</label><select id="setPhony">${[25, 50, 75].map(n => `<option value="${n}" ${n === +SET.phony ? "selected" : ""}>${n}% phonies</option>`).join("")}</select></div>
-    </div></div>
-    <div class="fs"><h2 class="lbl">Random word</h2><div class="form"><div class="field"><span class="flabel">Length range</span><div class="pair">
+    </div></div>`,
+    random: () => `<div class="fs"><h2 class="lbl">Random word</h2><div class="form"><div class="field"><span class="flabel">Length range</span><div class="pair">
       <select id="setRmin" aria-label="Shortest">${range(2, 15).map(n => `<option ${n === +SET.randMin ? "selected" : ""}>${n}</option>`).join("")}</select>
       <select id="setRmax" aria-label="Longest">${range(2, 15).map(n => `<option ${n === +SET.randMax ? "selected" : ""}>${n}</option>`).join("")}</select></div></div>
       <div class="field"><span class="flabel">Probability rank</span><div class="pair"><input id="setRfrom" inputmode="numeric" placeholder="1" value="${SET.randFrom || ""}" aria-label="From rank"><input id="setRto" inputmode="numeric" placeholder="any" value="${SET.randTo || ""}" aria-label="To rank"></div>
-        <p class="small" style="margin:4px 0 0">Within each length: 1 to 5000 gives only the 5,000 most likely words of that length.</p></div></div></div>
-  </div>
-  <div class="card">
-    <div class="fs"><h2 class="lbl">Lexicon</h2>${LEX.html()}</div>
-  </div>
-  <div class="card" id="syncCard">${syncHTML()}</div>
-  <div class="card">
-    <div class="fs"><h2 class="lbl">Your data</h2><p class="small" style="margin:0 0 10px">Starred ${getStars().length} · notes ${Object.keys(getNotes()).length} · quiz records ${Object.keys(store.get("stats", {})).length}</p>
-      <div class="row"><button class="btn sm" id="clrHist">Clear history</button><button class="btn sm" id="clrStats">Clear quiz records</button><button class="btn sm" id="clrReview">Clear practice review (${getPQ().items.length})</button><button class="btn sm" id="resetSet">Reset settings</button></div></div>
-  </div>`;
-  const v = $("#view");
-  v.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => { saveSettings({ theme: b.dataset.theme }); VIEWS.settings(); });
-  v.querySelectorAll("[data-tone]").forEach(b => b.onclick = () => { saveSettings({ theme: b.dataset.tid, tones: { ...SET.tones, [b.dataset.tid]: b.dataset.tone } }); VIEWS.settings(); });
-  v.querySelectorAll("[data-set]").forEach(b => b.onclick = () => { saveSettings({ [b.dataset.set]: b.dataset.val }); VIEWS.settings(); });
-  $("#moreThemes").addEventListener("toggle", e => themesOpen = e.target.open);
-  v.querySelectorAll("[data-rack-pick]").forEach(b => b.onclick = () => { saveSettings({ rackLook: b.dataset.rackPick }); VIEWS.settings(); });
-  v.querySelectorAll("[data-tstyle-pick]").forEach(b => b.onclick = () => { saveSettings({ tileLook: b.dataset.tstylePick }); VIEWS.settings(); });
-  v.querySelectorAll("[data-tiles]").forEach(b => b.onclick = () => { saveSettings({ tiles: b.dataset.tiles }); VIEWS.settings(); });
+        <p class="small" style="margin:4px 0 0">Within each length: 1 to 5000 gives only the 5,000 most likely words of that length.</p></div></div></div>`,
+    lexicon: () => `<div class="card"><div class="fs"><h2 class="lbl">Lexicon</h2>${LEX.html()}</div></div>`,
+    sync: () => `<div class="card" id="syncCard">${syncHTML()}</div>`,
+    data: () => `<div class="card"><div class="fs"><h2 class="lbl">Your data</h2><p class="small" style="margin:0 0 10px">Starred ${getStars().length} · notes ${Object.keys(getNotes()).length} · quiz records ${Object.keys(store.get("stats", {})).length}</p>
+      <div class="row"><button class="btn sm" id="clrHist">Clear history</button><button class="btn sm" id="clrStats">Clear quiz records</button><button class="btn sm" id="clrReview">Clear practice review (${getPQ().items.length})</button><button class="btn sm" id="resetSet">Reset settings</button></div></div></div>`,
+  };
+  const card = (...ks) => `<div class="card">${ks.map(k => P[k]()).join("")}</div>`;
+  // what each page of the split layouts holds
+  const PAGE = { look: (pv) => card("theme", "mode", "size", "custom"), tiles: (pv) => `<div class="card">${P.tiles(pv)}</div>`, study: () => card("lists", "wordpage", "quiz", "random"), data: () => P.lexicon() + P.sync() + P.data() };
+  // a live preview: a small word page drawn with the app's own styles, so it changes the moment a setting does
+  // a live preview: a small word page drawn with the app's own styles, so it changes the moment a setting does. Its
+  // last card is a list row laid out by the row settings (definitions, hooks, ranks and so on)
+  const preview = () => { const w = sampleWord(), e = DICT.get(w), ana = anagrams(w).filter(x => x !== w).slice(0, 4), sa = SET.sas ? soundAlikes(w) : [];
+    const second = ana.length ? `<p class="lbl" style="margin:0 0 6px">Anagrams</p><div class="words">${ana.map(chip).join("")}</div>`
+      : e ? `<p class="lbl" style="margin:0 0 6px">Hooks</p><div class="spv-hk"><b>${hookText(e.fh, e.fhNew) || "–"}</b><span>${w}</span><b>${hookText(e.bh, e.bhNew) || "–"}</b></div>` : "";
+    return `<div class="setprev" inert><p class="lbl">Live preview<span class="small">${esc(THEMES[SET.theme]?.name || "")}</span></p><div class="spv">
+      <div class="spv-hd"><span>Word Study</span><i></i></div>
+      <div class="card spv-c">${tilesHTML(w)}${e ? `<p class="small" style="margin:8px 0 0">${esc(e.d)}</p>` : ""}</div>
+      ${second ? `<div class="card spv-c">${second}<div class="row" style="margin-top:8px"><span class="btn sm primary">Practise</span><span class="btn sm">Quiz</span></div></div>` : ""}
+      ${e ? `<div class="card spv-c"><p class="lbl" style="margin:0 0 6px">In a list</p><div class="spv-row">${SET.prob ? `<span class="m">#${e.p.toLocaleString()}${SET.plays ? ` · pl ${e.pl.toLocaleString()}` : ""}</span>` : ""}
+        <span class="ln">${SET.hooks ? `<i>${hookText(e.fh, e.fhNew)}</i>` : ""}<b>${w}</b>${SET.hooks ? `<i>${hookText(e.bh, e.bhNew)}</i>` : ""}${SET.ags ? `<em>${alpha(w)}</em>` : ""}</span>
+        ${SET.defs ? `<span class="d">${esc(e.d)}</span>` : ""}${sa.length ? `<span class="sa">sounds like <b>${sa.join(", ")}</b></span>` : ""}</div></div>` : ""}
+    </div></div>`; };
+  const lay = phone() ? "menu" : "side", page = SET_PAGES.some(p => p[0] === arg) ? arg : "";
+  const titleOf = id => SET_PAGES.find(p => p[0] === id)[1];
+  // what each menu row says it's set to now
+  const tileName = SET.tiles === "custom" ? "Your colour" : TILES[SET.tiles]?.[0] || "Theme", styleName = SET.tileLook === "theme" ? "theme style" : TILE_STYLES[SET.tileLook]?.[0] || "";
+  const modeName = { auto: "Match my device", light: "Light", dark: "Dark" }[SET.mode] || "", sizeName = { xs: "Extra small", sm: "Small", md: "Normal", lg: "Large", xl: "Extra large" }[SET.size] || "Normal";
+  const sw = t => { const c = isDark() ? t.dark : lightOf(SET.theme, t); return `<span class="nsw"><i style="background:${c.head}"></i><i style="background:${c.tile}"></i><i style="background:${c.accent}"></i></span>`; };
+  const ICONS = { look: '<circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h9"/>', mode: '<path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/>', size: '<path d="M4 20h4M6 20 11 4h2l5 16M16 20h4M8 14h8"/>', tiles: '<rect x="4" y="4" width="16" height="16" rx="3"/>', study: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>', quiz: '<path d="M5 12l4 4 10-10"/>', random: '<path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>', data: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>', sync: '<path d="M21 12a9 9 0 0 1-15 6.7L3 16M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M3 21v-5h5"/>', lex: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21V5"/>' };
+  const li = (href, ic, colr, title, val, extra = "") => `<a class="li" href="${href}"><span class="ic" style="background:${colr}">${icon(ICONS[ic])}</span><span class="lt"><b>${title}</b>${extra}</span><span class="val">${val}</span><span class="chev">›</span></a>`;
+  const menuN = () => `<div><h3 class="title">Settings</h3><p class="sub">Saved in this browser and applied straight away.</p></div>
+    <div class="ig"><h4>Look</h4><div class="box">
+      ${li("#settings/look", "look", "#1f5c4a", "Colour theme", sw(THEMES[SET.theme] || THEMES.board), `<span>${esc(THEMES[SET.theme]?.name || "")}</span>`)}
+      ${li("#settings/look", "mode", "#3b4a63", "Light or dark", esc(modeName), SET.mode !== "dark" ? `<span>${esc({ bright: "Bright", soft: "Soft", dim: "Dim" }[SET.glare] || "")} in light mode</span>` : "")}
+      ${li("#settings/look", "size", "#7d50c4", "Text size", esc(sizeName))}
+      ${li("#settings/tiles", "tiles", "#b08a4a", "Tiles and rack", tilesHTML("A"), `<span>${esc(tileName)} · ${esc(styleName)}</span>`)}</div></div>
+    <div class="ig"><h4>Study</h4><div class="box">
+      ${li("#settings/study", "study", "#2b74a8", "Lists and results", esc(SORTS[SET.sort] || ""), `<span>${[SET.defs && "definitions", SET.hooks && "hooks", SET.sas && "sound-alikes"].filter(Boolean).join(", ") || "plain rows"}</span>`)}
+      ${li("#settings/study", "quiz", "#22804e", "Quiz", `${SET.phony}% phonies`)}
+      ${li("#settings/study", "random", "#a66300", "Random word", `${Math.min(SET.randMin, SET.randMax)}–${Math.max(SET.randMin, SET.randMax)} letters`)}
+      <label class="li"><span class="ic" style="background:#5d6f8a">${icon('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>')}</span><span class="lt"><b>Look words up online</b><span>Pronunciation, examples, origin</span></span><input type="checkbox" class="tgl" data-chk="online" ${SET.online ? "checked" : ""}></label></div></div>
+    <div class="ig"><h4>Your data</h4><div class="box">
+      ${li("#settings/data", "lex", "#6b5a48", "Lexicon", LEX.source === "saved" ? "On this device" : LEX.source === "file" ? "words.js" : "None")}
+      ${li("#settings/data", "sync", "#3a6a8a", "Sync", SYNC.user ? "On" : "Off")}
+      ${li("#settings/data", "data", "#5b6a62", "Your data", `${getStars().length} starred`)}</div></div>`;
+  const back = id => `<div class="sethd"><a class="btn sm" href="#settings">‹ Settings</a><h3 class="title">${titleOf(id)}</h3></div>`;
+  let html;
+  if (lay === "menu") html = !page ? menuN() : back(page) + (page === "look" || page === "tiles" ? `<div class="pinprev">${preview()}</div>` : "") + PAGE[page](false);
+  else { const pg = page || "look";
+    html = `<div class="seto"><nav class="setmenu"><h3 class="title">Settings</h3>${SET_PAGES.map(([id, n, s]) => `<a href="#settings/${id}" class="${id === pg ? "on" : ""}"><b>${n}</b><small>${s}</small></a>`).join("")}<span class="small">✓ Saved in this browser</span></nav>
+      <div class="setform">${PAGE[pg](false)}</div><aside class="setside">${preview()}<p class="small">Changes apply to the whole app as you click; the preview shows them without leaving this page.</p></aside></div>`; }
+  $("#view").innerHTML = html;
+  // the pinned preview and the side columns sit just under the header, which stays at the top
+  document.documentElement.style.setProperty("--hdr", (document.querySelector("header")?.offsetHeight || 0) + "px");
+  const v = $("#view"), on = (s, ev, fn) => { const el = $(s); if (el) el[ev] = fn; };
+  v.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => { saveSettings({ theme: b.dataset.theme }); VIEWS.settings(arg); });
+  v.querySelectorAll("[data-tone]").forEach(b => b.onclick = () => { saveSettings({ theme: b.dataset.tid, tones: { ...SET.tones, [b.dataset.tid]: b.dataset.tone } }); VIEWS.settings(arg); });
+  v.querySelectorAll("[data-set]").forEach(b => b.onclick = () => { saveSettings({ [b.dataset.set]: b.dataset.val }); VIEWS.settings(arg); });
+  $("#moreThemes")?.addEventListener("toggle", e => themesOpen = e.target.open);
+  v.querySelectorAll("[data-rack-pick]").forEach(b => b.onclick = () => { saveSettings({ rackLook: b.dataset.rackPick }); VIEWS.settings(arg); });
+  v.querySelectorAll("[data-tstyle-pick]").forEach(b => b.onclick = () => { saveSettings({ tileLook: b.dataset.tstylePick }); VIEWS.settings(arg); });
+  v.querySelectorAll("[data-tiles]").forEach(b => b.onclick = () => { saveSettings({ tiles: b.dataset.tiles }); VIEWS.settings(arg); });
   // colour inputs preview live while the wheel is open and redraw the page once a colour is chosen
   const tc = $("#tileCustom");
-  tc.oninput = () => saveSettings({ tiles: "custom", tileCustom: tc.value });
-  tc.onchange = () => VIEWS.settings();
-  v.querySelectorAll("[data-colour]").forEach(i => { i.oninput = () => saveSettings({ [i.dataset.colour]: i.value }); i.onchange = () => VIEWS.settings(); });
-  v.querySelectorAll("[data-uncolour]").forEach(a => a.onclick = ev => { ev.preventDefault(); saveSettings({ [a.dataset.uncolour]: "" }); VIEWS.settings(); });
+  if (tc) { tc.oninput = () => saveSettings({ tiles: "custom", tileCustom: tc.value }); tc.onchange = () => VIEWS.settings(arg); }
+  v.querySelectorAll("[data-colour]").forEach(i => { i.oninput = () => saveSettings({ [i.dataset.colour]: i.value }); i.onchange = () => VIEWS.settings(arg); });
+  v.querySelectorAll("[data-uncolour]").forEach(a => a.onclick = ev => { ev.preventDefault(); saveSettings({ [a.dataset.uncolour]: "" }); VIEWS.settings(arg); });
   v.querySelectorAll("[data-chk]").forEach(c => c.onchange = () => saveSettings({ [c.dataset.chk]: c.checked }));
-  $("#setSort").onchange = e => saveSettings({ sort: e.target.value });
-  $("#setPage").onchange = e => saveSettings({ pageSize: +e.target.value });
-  $("#setPhony").onchange = e => saveSettings({ phony: +e.target.value });
-  $("#setRmin").onchange = e => saveSettings({ randMin: +e.target.value, randMax: Math.max(+e.target.value, SET.randMax) });
-  $("#setRmax").onchange = e => saveSettings({ randMax: +e.target.value, randMin: Math.min(+e.target.value, SET.randMin) });
+  on("#setSort", "onchange", e => saveSettings({ sort: e.target.value }));
+  on("#setPage", "onchange", e => saveSettings({ pageSize: +e.target.value }));
+  on("#setPhony", "onchange", e => saveSettings({ phony: +e.target.value }));
+  on("#setRmin", "onchange", e => saveSettings({ randMin: +e.target.value, randMax: Math.max(+e.target.value, SET.randMax) }));
+  on("#setRmax", "onchange", e => saveSettings({ randMax: +e.target.value, randMin: Math.min(+e.target.value, SET.randMin) }));
   const rankRange = () => { let a = parseInt($("#setRfrom").value) || "", b = parseInt($("#setRto").value) || ""; if (a && b && b < a) [a, b] = [b, a]; saveSettings({ randFrom: a, randTo: b }); $("#setRfrom").value = a; $("#setRto").value = b; };
-  $("#setRfrom").onchange = $("#setRto").onchange = rankRange;
-  LEX.wire(); syncWire();
+  on("#setRfrom", "onchange", rankRange); on("#setRto", "onchange", rankRange);
+  if ($("#lexFile")) LEX.wire();
+  syncWire();
   confirmBtn($("#lexDel"), () => LEX.put(null).then(() => location.reload()));
-  confirmBtn($("#clrHist"), () => { store.set("hist", []); VIEWS.settings(); });
-  confirmBtn($("#clrReview"), () => { store.set("pq", { n: getPQ().n, items: [] }); VIEWS.settings(); });
-  confirmBtn($("#clrStats"), () => { store.set("stats", {}); store.set("missed", []); VIEWS.settings(); });
-  confirmBtn($("#resetSet"), () => { SET = { ...SET_DEFAULT }; store.set("settings", SET); applySettings(); VIEWS.settings(); });
+  confirmBtn($("#clrHist"), () => { store.set("hist", []); VIEWS.settings(arg); });
+  confirmBtn($("#clrReview"), () => { store.set("pq", { n: getPQ().n, items: [] }); VIEWS.settings(arg); });
+  confirmBtn($("#clrStats"), () => { store.set("stats", {}); store.set("missed", []); VIEWS.settings(arg); });
+  confirmBtn($("#resetSet"), () => { SET = { ...SET_DEFAULT }; store.set("settings", SET); applySettings(); VIEWS.settings(arg); });
 };
+// turning a phone sideways (or resizing a window) past the phone width swaps the layout
+phoneMQ.addEventListener?.("change", () => { const [t, arg] = location.hash.slice(1).split("/"); if (t === "settings") VIEWS.settings(arg); });
 // the tile-colour preview shows the word in the search bar, else the last word viewed
 const sampleWord = () => [$("#q").value, store.get("hist", [])[0], "SCRABBLE"].map(w => (w || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 15)).find(Boolean);
 

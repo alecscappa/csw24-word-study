@@ -110,7 +110,7 @@ phoneMQ.addEventListener?.("change", qHint); qHint();
 $("#randBtn").addEventListener("click", () => {
   const lo = Math.min(SET.randMin, SET.randMax), hi = Math.max(SET.randMin, SET.randMax), from = +SET.randFrom || 1, to = +SET.randTo || Infinity;
   const pools = range(lo, hi).map(n => (BYLEN[n] || []).filter(w => { const p = DICT.get(w).p; return p >= from && p <= to; })).filter(p => p.length);
-  if (!pools.length) { location.hash = "settings"; return; }
+  if (!pools.length) { location.hash = "settings/study"; return; }
   const pool = pools[Math.floor(Math.random() * pools.length)];
   randomPick = pool[Math.floor(Math.random() * pool.length)]; freshWord(randomPick);
   location.hash = "w/" + randomPick;
