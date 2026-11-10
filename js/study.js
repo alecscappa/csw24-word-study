@@ -562,11 +562,12 @@ VIEWS.lists = (id) => {
   }, 10);
 };
 // lists home: a Continue card for the last list opened, then a row per section (sideways on a phone).
-// Bars show how much of each list is learnt in Practice (racks marked known there).
+// Bars show how much of each list is learnt (racks marked known in Practice, or words crossed off).
 function listsHome() {
-  const L = getLearnt();
+  const L = getLearnt(), K = new Set(getKnown());
+  // a word counts once its rack is learnt in Practice, or it's crossed off
   const words = x => x.special === "stems" ? stems(x.n).flatMap(s => s.words) : groupWords(x);
-  const learnt = x => { const ws = words(x); return [ws.filter(w => L.has(alpha(w))).length, ws.length]; };
+  const learnt = x => { const ws = words(x); return [ws.filter(w => L.has(alpha(w)) || K.has(w)).length, ws.length]; };
   // a sample word for the mini tiles: the first valid example in the blurb, else filled in once the list is built
   const sample = x => x.special === "stems" ? "" : (x.blurb.match(/\b[A-Z]{2,8}\b/g) || []).find(t => DICT.has(t)) || "";
   const last = groupOf(store.get("lastList"));
