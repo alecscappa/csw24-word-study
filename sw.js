@@ -1,4 +1,5 @@
-// Offline copy of the app for the phone. Network first so updates show straight away.
+// Offline copy of the app for the phone. Network first so updates show straight away; no-cache asks the server
+// each time, as GitHub Pages otherwise lets the browser reuse its copy of a file for 10 minutes.
 // The word list isn't cached here: it lives in IndexedDB, loaded from Settings → Lexicon.
 const CACHE = "csw24-v5";
 const SHELL = ["./", "index.html", "manifest.json", "icons/icon-32.png", "icons/icon-64.png", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png",
@@ -8,7 +9,7 @@ self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c =>
 self.addEventListener("activate", e => e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET" || new URL(e.request.url).origin !== location.origin) return;
-  e.respondWith(fetch(e.request)
+  e.respondWith(fetch(e.request, { cache: "no-cache" })
     .then(r => { if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); } return r; })
     .catch(() => caches.match(e.request, { ignoreSearch: true }).then(r => r || Response.error())));
 });

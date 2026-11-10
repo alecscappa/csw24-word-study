@@ -669,14 +669,15 @@ function quizSources() {
   return [["stars", `Starred words (${getStars().length})`], ["missed", `Missed words (${store.get("missed", []).length})`], ["last", `Last search results (${lastResults.length})`],
     ...getFolders().map(f => ["folder:" + f.id, `📁 ${f.name} (${f.words.length})`])];
 }
-function sourceWords(src) {
+// withKnown: crossed-off words stay in, for a rack's answers
+function sourceWords(src, withKnown = false) {
   const g = groupOf(src.replace("list:", ""));
   let words = src === "stars" ? getStars() : src === "missed" ? store.get("missed", []) : src === "last" ? lastResults : src.startsWith("folder:") ? folderById(src.slice(7))?.words || []
     : !g ? [] : g.special === "stems" ? stems(g.n).flatMap(s => s.words) : groupWords(g);
   const lens = quizSetup.lens || [];
   if (lens.length) words = words.filter(w => lens.includes(w.length));
   if (quizSetup.starOnly && src !== "stars") { const s = new Set(getStars()); words = words.filter(w => s.has(w)); }
-  if (quizSetup.skipKnown) { const k = new Set(getKnown()); words = words.filter(w => !k.has(w)); }
+  if (quizSetup.skipKnown && !withKnown) { const k = new Set(getKnown()); words = words.filter(w => !k.has(w)); }
   return words;
 }
 // how often each run of three letters comes up in real words, with word edges counted as a character. Built the first
@@ -880,7 +881,7 @@ function drawQuestion() {
   Q.typed ||= {};
   // anagrams: the rack is dealt when the question comes up, and again if the rack size is changed before answering
   if (mode === "anagram" && !Q.answered && (q.size || 0) !== rackFor(alpha(q.w))) {
-    const size = rackFor(alpha(q.w)), d = size ? dealRack(alpha(q.w), [...sourceWords(quizSetup.source), q.w]) : null;
+    const size = rackFor(alpha(q.w)), d = size ? dealRack(alpha(q.w), [...sourceWords(quizSetup.source, true), q.w]) : null;
     q.size = size; q.rack = d?.rack || ""; q.all = d?.all || null;
     Q.found = Q.found.filter(x => (q.all || anagrams(q.w)).includes(x));
   }
@@ -927,7 +928,7 @@ function drawQuestion() {
   // on a phone, focusing the box pops the keyboard up over the tiles, so only do it where there's a real keyboard
   if (!(mode === "anagram" && phone())) ($("#qa") || $("#qf") || $("#qp"))?.focus();
   // anagram questions: tiles can be dragged into the slots as well as typed
-  const takes = v => (q.all || anagrams(q.w)).includes(v) || bonusKnown(v, q.rack);
+  const takes = v => (q.all || anagrams(q.w)).includes(v);
   const takeWord = v => {
     if (Q.answered || !takes(v) || Q.found.includes(v)) return false;
     Q.found.push(v); saveQ();
@@ -1108,6 +1109,14 @@ function practicePool(o) {
   // optional rank range, counted in probability order within each length (e.g. ranks 1–50 or 30–80)
   pool = likelyRange(pool, o.from, o.to, o.by, o.lax);
   return (poolCache = { key, pool, error: r.error }).pool;
+}
+// a rack's answers keep the crossed-off words in the list: not asked for, but taken if typed. Kept beside poolCache
+// (which it leaves alone) so dealing a card doesn't search the list again
+let rackMemo = {};
+function rackPool(o, pool) {
+  if (!o.skipKnown) return pool;
+  if (rackMemo.key !== poolCache.key) { const keep = poolCache; rackMemo = { key: keep.key, pool: practicePool({ ...o, skipKnown: false }) }; poolCache = keep; }
+  return rackMemo.pool;
 }
 const leftText = () => { const n = P.want.length, f = P.found.length; if (SET.hideCount) return f ? `${f} found` : "Find every word"; return n === 1 ? (f ? "Found it" : "1 word") : `${n} words · ${f} found · ${n - f} left`; };
 // Review queue, like a cardbox: a missed rack comes back ~4 cards later; each correct
@@ -1321,9 +1330,9 @@ function practicePlay(pool, o, opts, wire) {
   // the rack stays as dealt unless the rack size was just changed
   const size = rackFor(P.letters);
   if (same && (marked || (cur.size || 0) === size)) { P.rack = cur.rack || ""; P.size = cur.size || 0; P.all = cur.all || anagrams(P.letters); }
-  else { const d = size ? dealRack(P.letters, pool) : null; P.rack = d?.rack || ""; P.size = size; P.all = d?.all || anagrams(P.letters); }
+  else { const d = size ? dealRack(P.letters, rackPool(o, pool)) : null; P.rack = d?.rack || ""; P.size = size; P.all = d?.all || anagrams(P.letters); }
   P.want = needed(P.all, o.skipKnown);
-  const takes = x => P.all.includes(x) || bonusKnown(x, P.rack);
+  const takes = x => P.all.includes(x);
   P.found = P.found.filter(takes);
   const allFound = () => P.want.every(x => P.found.includes(x));
   saveCard();
@@ -1429,9 +1438,8 @@ function dealRack(letters, pool) {
   return best;
 }
 // the answers still asked for, leaving out crossed-off words if that's on (unless that would leave none)
+// (a crossed-off word left out still counts if typed). Only words in the filtered list count: BA isn't taken on a 3s rack
 const needed = (all, skip) => { if (!skip) return all; const k = new Set(getKnown()), w = all.filter(x => !k.has(x)); return w.length ? w : all; };
-// a crossed-off word the rack makes isn't asked for, but typing it isn't a mistake either
-const bonusKnown = (x, rack) => !!rack && x.length <= RACK_LEN && DICT.has(x) && getKnown().includes(x) && canMake(x, rack);
 const cardOpts = ({ rack, skip, hard }) => `<div class="copts">
     <button type="button" class="pill ${SET.hideCount ? "on" : ""}" data-copt="count">Hide count</button>
     ${rack ? `<button type="button" class="pill ${+SET.rackSize ? "on" : ""}" data-copt="rack">Rack: ${+SET.rackSize ? `${SET.rackSize} tiles` : "exact"}</button>` : ""}
