@@ -200,24 +200,51 @@ const orderText = (order, rev) => `${ORDERS[order] || ORDERS.rand} order${rev &&
 const orderPick = (id, v, rev) => `<div class="seg" id="${id}">${Object.entries(ORDERS).map(([k, t]) => `<button type="button" class="btn sm ${k === (v || "rand") ? "on" : ""}" data-order="${k}">${t}</button>`).join("")}<button type="button" class="btn sm ${rev && v !== "rand" ? "on" : ""}" data-rev aria-pressed="${!!rev}" ${!v || v === "rand" ? "disabled" : ""}>⇅ Reverse</button></div>`;
 let lastResults = [];
 // going back to a list, search or My words puts you where you were: the scroll position, plus each results
-// list's length chips and "Show more" count (kept per page and word count, for this visit to the site)
+// list's length chips and page (kept per page and word count, for this visit to the site)
 const scrollMem = store.get("scrollMem", {}), resMem = {};
 let curHash = location.hash, pendingScroll = 0;
 function restoreScroll() {
   if (pendingScroll && document.documentElement.scrollHeight - innerHeight >= pendingScroll - 4) { window.scrollTo(0, pendingScroll); pendingScroll = 0; }
 }
-// Results component: toolbar (count, length chips, sort, toggles, actions) + rows + paging
+// words come a page at a time: 10, 25, 50 or 100 to a page, picked under the words or in Settings
+const PER_PAGE = [10, 25, 50, 100];
+const perPage = () => PER_PAGE.includes(+SET.pageSize) ? +SET.pageSize : 50;
+const pagerHTML = (page, pages, n) => `<div class="pager" role="navigation" aria-label="Pages">
+    <button type="button" class="pg-ar" data-page="${page - 1}" ${page ? "" : "disabled"} aria-label="Previous page"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <span class="pg-n">Page <b>${page + 1}</b> of ${pages.toLocaleString()}</span>
+    <button type="button" class="pg-ar" data-page="${page + 1}" ${page + 1 < pages ? "" : "disabled"} aria-label="Next page"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <span class="pg-per" role="group" aria-label="Words per page">${PER_PAGE.map(k => `<button type="button" class="${k === n ? "on" : ""}" data-per="${k}">${k}</button>`).join("")}</span></div>`;
+// a new page starts at the top of el
+const pageTop = el => { const y = el.getBoundingClientRect().top + scrollY - (document.querySelector("header")?.offsetHeight || 0) - 8; if (scrollY > y) scrollTo(0, y); };
+// any other list a page at a time, with the same pager: head (toolbar and so on) stays at the top, each item is
+// drawn by draw(item, index) inside a div of class wrap (when given), and the page is kept for this visit like a results list's
+function pagedList(el, items, draw, head = "", wrap = "") {
+  const mem = resMem[location.hash + ":p" + items.length] ||= { page: 0 };
+  const show = () => {
+    const per = perPage(), pages = Math.max(1, Math.ceil(items.length / per)); mem.page = Math.min(mem.page, pages - 1);
+    const at = mem.page * per;
+    const rows = items.slice(at, at + per).map((x, i) => draw(x, at + i)).join("");
+    el.innerHTML = head + (wrap ? `<div class="${wrap}">${rows}</div>` : rows) + (items.length > PER_PAGE[0] ? pagerHTML(mem.page, pages, per) : "");
+    el.querySelectorAll("[data-page]").forEach(b => b.onclick = () => { mem.page = +b.dataset.page; show(); pageTop(el); });
+    el.querySelectorAll("[data-per]").forEach(b => b.onclick = () => { const first = mem.page * per; saveSettings({ pageSize: +b.dataset.per }); mem.page = Math.floor(first / +b.dataset.per); show(); });
+    el.dispatchEvent(new Event("paged"));
+  };
+  show();
+}
+// Results component: toolbar (count, length chips, sort, toggles, actions) + rows + pages
 function results(el, words, opts = {}) {
   // range = which ranks to show, counted in the current sort order (e.g. 1–100 or 30–50); the rows shown are numbered from 1
   const mem = resMem[location.hash + ":" + words.length] ||= {};
   const lens = [...new Set(words.map(w => w.length))].sort((a, b) => a - b);
-  const st = { sel: null, lens: new Set((mem.lens || (opts.len ? [opts.len] : [])).filter(n => lens.includes(n) && lens.length > 1)), shown: mem.shown || +SET.pageSize, from: +opts.range?.from || 0, to: +opts.range?.to || 0 };
+  const st = { sel: null, lens: new Set((mem.lens || (opts.len ? [opts.len] : [])).filter(n => lens.includes(n) && lens.length > 1)), page: mem.page || 0, from: +opts.range?.from || 0, to: +opts.range?.to || 0 };
   let first = true, shownList = [];
   function draw() {
     // "? letter" sorts by what the ? stands for (A to Z, then by probability); it's offered only when results have one
     const hasQ = !!opts.masks?.size, byQ = hasQ && SET.sort === "blank";
     const qOf = w => qLetters(w, opts.masks.get(w));
-    const full = (st.lens.size ? words.filter(w => st.lens.has(w.length)) : [...words]).sort(byQ ? (a, b) => (qOf(a) < qOf(b) ? -1 : qOf(a) > qOf(b) ? 1 : 0) || sorters.prob(a, b) : sorters[SET.sort] || sorters.prob);
+    // Hide crossed off leaves out the words ticked as known (they still count everywhere else)
+    const hideK = SET.hideKnown ? new Set(getKnown()) : null, nHid = hideK ? words.filter(w => hideK.has(w) && (!st.lens.size || st.lens.has(w.length))).length : 0;
+    const full = (st.lens.size ? words.filter(w => st.lens.has(w.length)) : [...words]).filter(w => !hideK?.has(w)).sort(byQ ? (a, b) => (qOf(a) < qOf(b) ? -1 : qOf(a) > qOf(b) ? 1 : 0) || sorters.prob(a, b) : sorters[SET.sort] || sorters.prob);
     // grouped results (one-letter swaps): each group together under its heading, in the sort order within it
     const G = opts.groups, gw = {};
     if (G) { full.sort((a, b) => G.by(a) - G.by(b)); for (const w of full) (gw[G.by(w)] ||= []).push(w); }
@@ -225,6 +252,9 @@ function results(el, words, opts = {}) {
     const lo = Math.max(1, st.from || 1), hi = st.to ? Math.max(st.to, lo) : full.length;
     const list = ranged ? full.slice(lo - 1, hi) : full;
     lastResults = shownList = list;
+    const per = perPage(), pages = Math.max(1, Math.ceil(list.length / per));
+    st.page = Math.min(st.page, pages - 1);
+    const at = st.page * per, view = list.slice(at, at + per);
     const starSet = new Set(getStars()), knownSet = new Set(getKnown()), allStarred = list.length > 0 && list.every(w => starSet.has(w));
     const total = st.lens.size ? `${full.length.toLocaleString()} ${[...st.lens].sort((a, b) => a - b).join(", ")}-letter words <span class="small">(${words.length.toLocaleString()} in all)</span>` : `${full.length.toLocaleString()} word${full.length === 1 ? "" : "s"}`;
     el.innerHTML = `
@@ -235,6 +265,7 @@ function results(el, words, opts = {}) {
         <label class="check small"><input type="checkbox" id="agChk" ${SET.ags ? "checked" : ""}> Alphagrams</label>
         <label class="check small"><input type="checkbox" id="saChk" ${SET.sas ? "checked" : ""}> Sound-alikes</label>
         <label class="check small"><input type="checkbox" id="plChk" ${SET.plays ? "checked" : ""}> Playability</label>
+        <label class="check small"><input type="checkbox" id="hkChk" ${SET.hideKnown ? "checked" : ""}> Hide crossed off${nHid ? ` (${nHid.toLocaleString()})` : ""}</label>
         <div class="tacts"><button class="btn sm" id="quizThese">Quiz these</button>
         <button class="btn sm" id="practiceThese">Practice these</button>
         <button class="btn sm" id="starAll">${allStarred ? "Unstar all" : "Star all"}</button>
@@ -252,30 +283,33 @@ function results(el, words, opts = {}) {
         <span class="small">in ${SORTS[SET.sort] || "Probability"} order</span>
       </div>
       ${lens.length > 1 ? `<div class="chips" style="margin:10px 0 6px"><button class="btn sm ${st.lens.size ? "" : "on"}" data-len="0">All lengths</button>${lens.map(n => `<button class="btn sm ${st.lens.has(n) ? "on" : ""}" data-len="${n}">${n}</button>`).join("")}</div>` : ""}
-      ${list.length ? `<div class="rows ${st.sel ? "selecting" : ""} ${ranged ? "ranked" : ""} ${SET.defs ? "" : "nodefs"} ${SET.ags ? "" : "noags"} ${SET.sas ? "sashow" : ""} ${SET.prob ? "" : "noprob"} ${SET.sort === "play" ? "byplay" : ""} ${SET.plays ? "plshow" : ""} ${SET.hooks ? "" : "nohooks"}">${list.slice(0, st.shown).map((w, i) => (G && (!i || G.by(w) !== G.by(list[i - 1])) ? `<h3 class="rhead">${G.name(G.by(w), gw[G.by(w)])}<span class="small">${gw[G.by(w)].length}</span></h3>` : "") + rowHTML(w, opts.masks?.get(w), ranged ? i + 1 : 0, starSet, knownSet, st.sel?.has(w))).join("")}</div>` : `<p class="empty" style="margin-top:10px">${ranged && full.length ? `There are only ${full.length.toLocaleString()} words, so rank ${lo.toLocaleString()} is past the end.` : "No words match."}</p>`}
-      ${list.length > st.shown ? `<button class="btn more" id="moreBtn">Show ${Math.min(+SET.pageSize, list.length - st.shown).toLocaleString()} more</button>` : ""}
+      ${list.length ? `<div class="rows ${st.sel ? "selecting" : ""} ${ranged ? "ranked" : ""} ${SET.defs ? "" : "nodefs"} ${SET.ags ? "" : "noags"} ${SET.sas ? "sashow" : ""} ${SET.prob ? "" : "noprob"} ${SET.sort === "play" ? "byplay" : ""} ${SET.plays ? "plshow" : ""} ${SET.hooks ? "" : "nohooks"}">${view.map((w, i) => (G && (!i || G.by(w) !== G.by(view[i - 1])) ? `<h3 class="rhead">${G.name(G.by(w), gw[G.by(w)])}<span class="small">${gw[G.by(w)].length}</span></h3>` : "") + rowHTML(w, opts.masks?.get(w), ranged ? at + i + 1 : 0, starSet, knownSet, st.sel?.has(w))).join("")}</div>` : `<p class="empty" style="margin-top:10px">${ranged && full.length ? `There are only ${full.length.toLocaleString()} words, so rank ${lo.toLocaleString()} is past the end.` : "No words match."}</p>`}
+      ${list.length > PER_PAGE[0] ? pagerHTML(st.page, pages, per) : ""}
       ${st.sel ? `<div class="selbar"><span class="count" id="selN"></span><button class="btn sm" id="selAll"></button><button class="btn sm primary" id="selFolder">Add to folder</button><button class="btn sm" id="selStar">☆ Star</button><button class="btn sm" id="selKnown">✓ Cross off</button><button class="btn sm" id="selDone">Done</button></div>` : ""}`;
     // length chips: tap several to see them together; All lengths clears them
     el.querySelectorAll("[data-len]").forEach(b => b.onclick = () => {
       const n = +b.dataset.len; if (!n) st.lens.clear(); else st.lens.has(n) ? st.lens.delete(n) : st.lens.add(n);
-      st.shown = +SET.pageSize; mem.lens = [...st.lens]; mem.shown = 0; draw();
+      st.page = mem.page = 0; mem.lens = [...st.lens]; draw();
     });
     const setRange = (from, to) => {
       from = Math.max(0, parseInt(from) || 0); to = Math.max(0, parseInt(to) || 0);
       if (from && to && to < from) [from, to] = [to, from];
-      st.from = from; st.to = to; st.shown = +SET.pageSize; opts.range?.save?.(from || "", to || ""); draw();
+      st.from = from; st.to = to; st.page = mem.page = 0; opts.range?.save?.(from || "", to || ""); draw();
     };
     el.querySelectorAll("[data-top]").forEach(b => b.onclick = () => setRange(0, +b.dataset.top));
     for (const id of ["#rFrom", "#rTo"]) {
       el.querySelector(id).onchange = () => setRange(el.querySelector("#rFrom").value, el.querySelector("#rTo").value);
       el.querySelector(id).onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); e.target.dispatchEvent(new Event("change")); } };
     }
-    el.querySelector("#sortSel").onchange = e => { saveSettings({ sort: e.target.value }); draw(); };
+    el.querySelector("#sortSel").onchange = e => { saveSettings({ sort: e.target.value }); st.page = mem.page = 0; draw(); };
+    el.querySelector("#hkChk").onchange = e => { saveSettings({ hideKnown: e.target.checked }); st.page = mem.page = 0; draw(); };
     el.querySelector("#defChk").onchange = e => { saveSettings({ defs: e.target.checked }); el.querySelector(".rows")?.classList.toggle("nodefs", !SET.defs); };
     el.querySelector("#agChk").onchange = e => { saveSettings({ ags: e.target.checked }); el.querySelector(".rows")?.classList.toggle("noags", !SET.ags); };
     el.querySelector("#plChk").onchange = e => { saveSettings({ plays: e.target.checked }); el.querySelector(".rows")?.classList.toggle("plshow", SET.plays); };
     el.querySelector("#saChk")?.addEventListener("change", e => { saveSettings({ sas: e.target.checked }); el.querySelector(".rows")?.classList.toggle("sashow", SET.sas); });
-    el.querySelector("#moreBtn")?.addEventListener("click", () => { st.shown += +SET.pageSize; mem.shown = st.shown; draw(); });
+    // a new page starts at the top of the words; a new page size keeps the first word that was showing
+    el.querySelectorAll("[data-page]").forEach(b => b.onclick = () => { st.page = mem.page = +b.dataset.page; draw(); pageTop(el); });
+    el.querySelectorAll("[data-per]").forEach(b => b.onclick = () => { const first = st.page * per; saveSettings({ pageSize: +b.dataset.per }); st.page = mem.page = Math.floor(first / +b.dataset.per); draw(); });
     el.querySelector("#quizThese").onclick = () => { quizSetup.source = "last"; quizSetup.lens = []; quizSetup.starOnly = false; location.hash = "quiz"; };
     el.querySelector("#practiceThese").onclick = () => { store.set("pLast", [...lastResults]); saveSettings({ practice: { ...PO_DEFAULT, mode: SET.practice?.mode || "anagram", order: SET.practice?.order || "rand", rev: !!SET.practice?.rev, src: "my:last", lens: [] } }); location.hash = "practice"; };
     el.querySelector("#toFolder").onclick = () => folderSheet(list, () => { st.sel = new Set(); draw(); });

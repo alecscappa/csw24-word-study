@@ -601,20 +601,15 @@ function listsHome() {
 function drawStems(box, g) {
   const data = stems(g.n);
   lastResults = data.flatMap(s => s.words);
-  let shown = 25;
-  const draw = () => {
-    box.innerHTML = `<div class="toolbar"><span class="count">Top ${data.length} stems</span><button class="btn sm" id="quizThese">Quiz the bingos</button></div>
-      <p class="small" style="margin:10px 0 0">Learn the red letter string for each stem. Any of those letters plus the stem makes a bingo.</p>` +
-      data.slice(0, shown).map(s => {
-        const groups = plusOne(s.stem);
-        return `<div class="stem"><div class="row">${tilesHTML(s.stem, true)}<b style="font-family:var(--display)">${s.n} bingos</b></div>
-          <div class="letters">+ ${groups.map(x => x[0]).join(" ")}</div>
-          ${groups.map(([L, ws]) => `<div class="grp"><b>${L}</b><div class="words">${ws.map(chip).join("")}</div></div>`).join("")}</div>`;
-      }).join("") + (shown < data.length ? `<button class="btn more" id="moreBtn">Show 25 more</button>` : "");
-    $("#moreBtn")?.addEventListener("click", () => { shown += 25; draw(); });
-    $("#quizThese").onclick = () => { lastResults = data.flatMap(s => s.words); quizSetup.source = "last"; quizSetup.mode = "anagram"; quizSetup.lens = []; location.hash = "quiz"; };
-  };
-  draw();
+  // the stems come a page at a time, like every other list
+  box.addEventListener("paged", () => { $("#quizThese").onclick = () => { lastResults = data.flatMap(s => s.words); quizSetup.source = "last"; quizSetup.mode = "anagram"; quizSetup.lens = []; location.hash = "quiz"; }; });
+  pagedList(box, data, s => {
+    const groups = plusOne(s.stem);
+    return `<div class="stem"><div class="row">${tilesHTML(s.stem, true)}<b style="font-family:var(--display)">${s.n} bingos</b></div>
+      <div class="letters">+ ${groups.map(x => x[0]).join(" ")}</div>
+      ${groups.map(([L, ws]) => `<div class="grp"><b>${L}</b><div class="words">${ws.map(chip).join("")}</div></div>`).join("")}</div>`;
+  }, `<div class="toolbar"><span class="count">Top ${data.length} stems</span><button class="btn sm" id="quizThese">Quiz the bingos</button></div>
+    <p class="small" style="margin:10px 0 0">Learn the red letter string for each stem. Any of those letters plus the stem makes a bingo.</p>`);
 }
 
 // ---------- quiz ----------
@@ -1785,7 +1780,8 @@ VIEWS.mine = (tab) => {
   if (tab === "folders") return folderList();
   const words = tabs[tab][1].filter(w => DICT.has(w));
   if (tab === "notes") {
-    $("#mres").innerHTML = words.length ? `<div class="rows">${words.map(w => `<div class="r" data-go="${w}"><span class="meta"></span><span class="fh"></span><span class="wl">${w}</span><span class="bh"></span><span class="d">${esc(notes[w])}</span><span></span></div>`).join("")}</div>` : `<p class="empty">Write notes on any word page and it shows up here.</p>`;
+    if (!words.length) $("#mres").innerHTML = `<p class="empty">Write notes on any word page and it shows up here.</p>`;
+    else pagedList($("#mres"), words, w => `<div class="r" data-go="${w}"><span class="meta"></span><span class="fh"></span><span class="wl">${w}</span><span class="bh"></span><span class="d">${esc(notes[w])}</span><span></span></div>`, `<div class="toolbar"><span class="count">${words.length.toLocaleString()} word${words.length === 1 ? "" : "s"} with notes</span></div>`, "rows");
   } else if (words.length) results($("#mres"), words);
   else $("#mres").innerHTML = `<p class="empty">${tab === "stars" ? "Press ☆ Star on a word, or Star all on any list." : "Nothing here yet."}</p>`;
   $("#copyList")?.addEventListener("click", () => navigator.clipboard?.writeText(getStars().join("\n")).then(() => $("#msg").textContent = "Copied").catch(() => $("#msg").textContent = "Copy blocked by the browser"));
@@ -1968,7 +1964,7 @@ VIEWS.settings = (arg) => {
       <div class="colours">${colour("headCustom", "Header", "From the theme")}${colour("accentCustom", "Accent", "Buttons and highlights, from the theme")}</div></div>`,
     lists: () => `<div class="fs"><h2 class="lbl">Word lists and search results</h2><div class="form">
       <div class="field"><label for="setSort">Default sort</label><select id="setSort">${Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${k === SET.sort ? "selected" : ""}>${v}</option>`).join("")}</select></div>
-      <div class="field"><label for="setPage">Words per page</label><select id="setPage">${[100, 300, 1000, 3000].map(n => `<option ${n === +SET.pageSize ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+      <div class="field"><label for="setPage">Words per page</label><select id="setPage">${PER_PAGE.map(n => `<option ${n === perPage() ? "selected" : ""}>${n}</option>`).join("")}</select></div>
       <div class="field" style="gap:8px"><span class="flabel">Show in each row</span>${chk("defs", "Definitions")}${chk("ags", "Alphagrams")}${chk("sas", "Sound-alikes")}${chk("hooks", "Hooks")}${chk("prob", "Probability rank")}${chk("plays", "Playability rank too")}</div>
     </div></div>`,
     wordpage: () => `<div class="fs"><h2 class="lbl">Word page</h2>${chk("online", "Look up pronunciation, examples and origin online")}</div>`,

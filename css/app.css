@@ -1242,3 +1242,21 @@ details.swmore > summary { cursor: pointer; font: 600 .85rem var(--display); col
 .spv-row .ln em { font-style: normal; color: var(--muted); font-size: .8em; margin-left: 4px; }
 .spv-row .d { color: var(--muted); font-size: .85rem; }
 .spv-row .sa { font-size: .78rem; color: var(--muted); } .spv-row .sa b { color: var(--link); }
+
+/* ---------- pages of words: ‹ Page 1 of 4 › and how many to a page ---------- */
+.pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; padding: 10px 0 2px; border-top: 1px solid var(--line); }
+.pg-ar { width: 36px; height: 36px; flex: none; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; display: grid; place-items: center; padding: 0; }
+.pg-ar svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.pg-ar:not(:disabled) { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.pg-ar:disabled { opacity: .35; cursor: default; }
+.pg-n { font: 600 .86rem var(--display); color: var(--muted); min-width: 7.5em; text-align: center; white-space: nowrap; }
+.pg-n b { color: var(--ink); }
+.pg-per { display: inline-flex; flex: none; border: 1px solid var(--line); border-radius: 99px; overflow: hidden; margin-left: 6px; }
+.pg-per button { border: 0; background: none; color: var(--muted); font: 600 .76rem var(--display); padding: 5px 9px; cursor: pointer; }
+.pg-per button.on { background: var(--ink); color: var(--bg); }
+@media (max-width: 620px) {
+  .pager { gap: 6px; }
+  .pg-ar { width: 32px; height: 32px; }
+  .pg-n { min-width: 0; font-size: .8rem; }
+  .pg-per { margin-left: 2px; } .pg-per button { padding: 5px 7px; font-size: .72rem; }
+}

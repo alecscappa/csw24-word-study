@@ -123,7 +123,9 @@ document.addEventListener("click", ev => {
   if (kb) {
     ev.preventDefault();
     const w = kb.dataset.known, on = toggleKnown(w);
-    document.querySelectorAll(`[data-known="${w}"]`).forEach(b => { b.closest(".r")?.classList.toggle("known", on); b.outerHTML = knownBtn(w, on); });
+    document.querySelectorAll(`[data-known="${w}"]`).forEach(b => { const row = b.closest(".r"); row?.classList.toggle("known", on); b.outerHTML = knownBtn(w, on);
+      // with Hide crossed off on, a word ticked in a list leaves it
+      if (on && SET.hideKnown && row?.closest("#view .rows")) row.remove(); });
     return;
   }
   const sb = ev.target.closest("[data-star]");
