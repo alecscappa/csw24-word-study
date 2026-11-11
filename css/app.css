@@ -118,17 +118,23 @@ textarea { width: 100%; min-height: 70px; border: 1px solid var(--line); border-
 .tacts { display: flex; gap: 10px; flex-wrap: wrap; }
 .chips { display: flex; gap: 4px; flex-wrap: wrap; }
 select, .field input { border: 1px solid var(--line); background: var(--chip); border-radius: 6px; padding: 7px 9px; min-width: 0; }
-.rows { display: flex; flex-direction: column; }
-.r { display: grid; grid-template-columns: 4.6em 4.5em max-content 4.5em minmax(0,1fr) auto; gap: 10px; align-items: baseline; padding: 6px 4px; border-top: 1px solid var(--line); cursor: pointer; }
+/* the rows share one set of columns (subgrid), so the probability, front hooks and definitions line up down the list;
+   each word keeps its back hooks right beside it (.wb), and the definitions start after the widest of those */
+.rows { display: grid; grid-template-columns: 4.6em 4.5em fit-content(16em) minmax(0,1fr) auto; column-gap: 10px; }
+.rows > * { grid-column: 1 / -1; }
+.r { display: grid; grid-template-columns: subgrid; row-gap: 4px; align-items: baseline; padding: 6px 4px; border-top: 1px solid var(--line); cursor: pointer; }
 .r:first-child { border-top: 0; }
+/* Word notes: the word, then its note */
+.r.nrow { grid-template-columns: 9em minmax(0, 1fr); }
 .r:hover { background: var(--chip); }
 .r .fh { text-align: right; font: .85rem var(--mono); color: var(--link); overflow-wrap: anywhere; }
 .r .bh { font: .85rem var(--mono); color: var(--link); overflow-wrap: anywhere; }
+.r .wb { display: flex; align-items: baseline; gap: 10px; min-width: 0; } .r .wb .wl { flex: none; } .r .wb .bh { min-width: 0; }
 .r .wl { font: 700 1rem var(--mono); letter-spacing: .04em; }
 .r .wl mark { background: none; color: var(--accent); }
 /* what the ? stands for, beside the word */
 .r .ql { margin-left: 8px; padding: 0 5px; border: 1px solid var(--line); border-radius: 4px; font: 600 .72rem var(--mono); color: var(--accent); letter-spacing: .04em; white-space: nowrap; vertical-align: 1px; }
-.r .d { color: var(--muted); font-size: .93rem; min-width: 0; }
+.r .d { color: var(--muted); font-size: .93rem; min-width: 0; overflow-wrap: anywhere; }
 .r .meta { font: .72rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* the rank: probability, or playability when sorted by it; the Playability box shows both, playability under */
 .r .mpl { display: none; color: var(--accent); }
@@ -136,8 +142,8 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .rows.plshow .mpl { font-size: .9em; margin-top: 1px; }
 .r .ag { display: block; font: 400 .72rem var(--mono); color: var(--muted); letter-spacing: .06em; }
 .rows.nodefs .d, .rows.noprob .meta, .rows.noags .ag { display: none; }
-/* sound-alikes: a small line under the word, shown when the Sound-alikes box is ticked */
-.r .sa { display: none; font: 400 .72rem var(--body, inherit); color: var(--muted); letter-spacing: 0; white-space: nowrap; }
+/* sound-alikes: a small line under the definition, shown when the Sound-alikes box is ticked */
+.r .sa { display: none; font: 400 .72rem/1.35 var(--body, inherit); color: var(--muted); letter-spacing: 0; }
 .r .sa { cursor: pointer; } .r .sa b { color: var(--link); font: 600 .72rem var(--mono); letter-spacing: .04em; }
 .r .sa:hover b { text-decoration: underline; }
 .rhead { display: flex; align-items: baseline; gap: 8px; margin: 16px 0 4px; font: 700 .95rem var(--mono); letter-spacing: .08em; }
@@ -145,24 +151,28 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .rhead .badge { font: 600 .66rem var(--display); letter-spacing: .02em; }
 .rhead + .r { border-top: 0; }
 .r .sa a, .saw a { color: var(--link); font-family: var(--mono); font-weight: 600; text-decoration: none; letter-spacing: .04em; }
-.rows.sashow .r .sa { display: block; }
+/* sound-alikes go under the definition, so they never push the back hooks out; with definitions hidden they still show */
+.rows.sashow .r .d .sa { display: block; margin-top: 2px; }
+.rows.nodefs.sashow .r .d { display: block; font-size: 0; }
 .saw { margin: 4px 0 0; font-size: .8rem; color: var(--muted); }
-.rows.noprob .r { grid-template-columns: 4.5em max-content 4.5em minmax(0,1fr) auto; }
+.rows.noprob { grid-template-columns: 4.5em fit-content(16em) minmax(0,1fr) auto; }
 /* numbered rows (a Show range is set) get a rank column first; the phone's own columns follow below */
-.rows.ranked .r { grid-template-columns: 3em 4.6em 4.5em max-content 4.5em minmax(0,1fr) auto; }
-.rows.ranked.noprob .r { grid-template-columns: 3em 4.5em max-content 4.5em minmax(0,1fr) auto; }
+.rows.ranked { grid-template-columns: 3em 4.6em 4.5em fit-content(16em) minmax(0,1fr) auto; }
+.rows.ranked.noprob { grid-template-columns: 3em 4.5em fit-content(16em) minmax(0,1fr) auto; }
 .rows.nohooks .fh, .rows.nohooks .bh { visibility: hidden; }
 @media (max-width: 620px) {
   /* hooks get a wider, smaller column so long hook lists take two lines at most */
-  .r { grid-template-columns: 3.7em 5em max-content minmax(0,1fr) auto; gap: 7px; }
+  .rows, .rows.noprob, .rows.ranked, .rows.ranked.noprob { display: flex; flex-direction: column; }
+  .r { grid-template-columns: 3.7em 5em minmax(0,1fr) auto; gap: 4px 7px; } .r .wb { gap: 7px; }
   .r .fh, .r .bh { font-size: .76rem; }
   .r .meta { font-size: .62rem; }
   .r .ra { grid-row: 1; grid-column: -2; } .r .st { font-size: 1.35rem; padding: 4px 6px; } .r .kn { font-size: 1.1rem; padding: 4px 6px; }
-  .r .d { grid-column: 3 / -1; }
-  .rows.noprob .r { grid-template-columns: 5em max-content minmax(0,1fr) auto; } .rows.noprob .r .d { grid-column: 2 / -1; }
-  .rows.ranked .r { grid-template-columns: 2em 3.7em 4.4em max-content minmax(0,1fr) auto; gap: 6px; }
-  .rows.ranked .r .d { grid-column: 4 / -1; }
-  .rows.ranked.noprob .r { grid-template-columns: 2em 4.4em max-content minmax(0,1fr) auto; } .rows.ranked.noprob .r .d { grid-column: 3 / -1; }
+  /* the definition runs from under the front hooks to the edge, so it isn't squeezed into the word's column */
+  .r .d { grid-column: 2 / -1; }
+  .rows.noprob .r { grid-template-columns: 5em minmax(0,1fr) auto; } .rows.noprob .r .d { grid-column: 1 / -1; }
+  .rows.ranked .r { grid-template-columns: 2em 3.7em 4.4em minmax(0,1fr) auto; gap: 4px 6px; }
+  .rows.ranked .r .d { grid-column: 3 / -1; }
+  .rows.ranked.noprob .r { grid-template-columns: 2em 4.4em minmax(0,1fr) auto; } .rows.ranked.noprob .r .d { grid-column: 2 / -1; }
 }
 .more { margin-top: 12px; }
 .rangebar { margin-top: 10px; gap: 6px; }

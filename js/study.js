@@ -1781,7 +1781,7 @@ VIEWS.mine = (tab) => {
   const words = tabs[tab][1].filter(w => DICT.has(w));
   if (tab === "notes") {
     if (!words.length) $("#mres").innerHTML = `<p class="empty">Write notes on any word page and it shows up here.</p>`;
-    else pagedList($("#mres"), words, w => `<div class="r" data-go="${w}"><span class="meta"></span><span class="fh"></span><span class="wl">${w}</span><span class="bh"></span><span class="d">${esc(notes[w])}</span><span></span></div>`, `<div class="toolbar"><span class="count">${words.length.toLocaleString()} word${words.length === 1 ? "" : "s"} with notes</span></div>`, "rows");
+    else pagedList($("#mres"), words, w => `<div class="r nrow" data-go="${w}"><span class="wl">${w}</span><span class="d">${esc(notes[w])}</span></div>`, `<div class="toolbar"><span class="count">${words.length.toLocaleString()} word${words.length === 1 ? "" : "s"} with notes</span></div>`);
   } else if (words.length) results($("#mres"), words);
   else $("#mres").innerHTML = `<p class="empty">${tab === "stars" ? "Press ☆ Star on a word, or Star all on any list." : "Nothing here yet."}</p>`;
   $("#copyList")?.addEventListener("click", () => navigator.clipboard?.writeText(getStars().join("\n")).then(() => $("#msg").textContent = "Copied").catch(() => $("#msg").textContent = "Copy blocked by the browser"));
