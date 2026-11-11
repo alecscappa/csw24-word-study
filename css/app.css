@@ -129,7 +129,8 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .r:hover { background: var(--chip); }
 .r .fh { text-align: right; font: .85rem var(--mono); color: var(--link); overflow-wrap: anywhere; }
 .r .bh { font: .85rem var(--mono); color: var(--link); overflow-wrap: anywhere; }
-.r .wb { display: flex; align-items: baseline; gap: 10px; min-width: 0; } .r .wb .wl { flex: none; } .r .wb .bh { min-width: 0; }
+/* the back hooks always get their old room (4.5em) even when short or empty, so there's clear space before the definition */
+.r .wb { display: flex; align-items: baseline; gap: 10px; min-width: 0; } .r .wb .wl { flex: none; } .r .wb .bh { min-width: 4.5em; }
 .r .wl { font: 700 1rem var(--mono); letter-spacing: .04em; }
 .r .wl mark { background: none; color: var(--accent); }
 /* what the ? stands for, beside the word */
@@ -142,7 +143,7 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .rows.plshow .mpl { font-size: .9em; margin-top: 1px; }
 .r .ag { display: block; font: 400 .72rem var(--mono); color: var(--muted); letter-spacing: .06em; }
 .rows.nodefs .d, .rows.noprob .meta, .rows.noags .ag { display: none; }
-/* sound-alikes: a small line under the definition, shown when the Sound-alikes box is ticked */
+/* sound-alikes: a small line under the word, shown when the Sound-alikes box is ticked */
 .r .sa { display: none; font: 400 .72rem/1.35 var(--body, inherit); color: var(--muted); letter-spacing: 0; }
 .r .sa { cursor: pointer; } .r .sa b { color: var(--link); font: 600 .72rem var(--mono); letter-spacing: .04em; }
 .r .sa:hover b { text-decoration: underline; }
@@ -151,9 +152,10 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
 .rhead .badge { font: 600 .66rem var(--display); letter-spacing: .02em; }
 .rhead + .r { border-top: 0; }
 .r .sa a, .saw a { color: var(--link); font-family: var(--mono); font-weight: 600; text-decoration: none; letter-spacing: .04em; }
-/* sound-alikes go under the definition, so they never push the back hooks out; with definitions hidden they still show */
-.rows.sashow .r .d .sa { display: block; margin-top: 2px; }
-.rows.nodefs.sashow .r .d { display: block; font-size: 0; }
+/* sound-alikes: a line of their own under the word, running along the bottom of the row, so they never push the back
+   hooks or the definition along */
+.rows.sashow .r > .sa { display: block; grid-column: 3 / -1; margin-top: -2px; }
+.rows.noprob .r > .sa { grid-column: 2 / -1; } .rows.ranked .r > .sa { grid-column: 4 / -1; } .rows.ranked.noprob .r > .sa { grid-column: 3 / -1; }
 .saw { margin: 4px 0 0; font-size: .8rem; color: var(--muted); }
 .rows.noprob { grid-template-columns: 4.5em fit-content(16em) minmax(0,1fr) auto; }
 /* numbered rows (a Show range is set) get a rank column first; the phone's own columns follow below */
@@ -168,11 +170,12 @@ select, .field input { border: 1px solid var(--line); background: var(--chip); b
   .r .meta { font-size: .62rem; }
   .r .ra { grid-row: 1; grid-column: -2; } .r .st { font-size: 1.35rem; padding: 4px 6px; } .r .kn { font-size: 1.1rem; padding: 4px 6px; }
   /* the definition runs from under the front hooks to the edge, so it isn't squeezed into the word's column */
-  .r .d { grid-column: 2 / -1; }
-  .rows.noprob .r { grid-template-columns: 5em minmax(0,1fr) auto; } .rows.noprob .r .d { grid-column: 1 / -1; }
+  /* (on a phone the sound-alikes line goes under the definition, from the same place) */
+  .r .d, .rows.sashow .r > .sa { grid-column: 2 / -1; }
+  .rows.noprob .r { grid-template-columns: 5em minmax(0,1fr) auto; } .rows.noprob .r .d, .rows.noprob .r > .sa { grid-column: 1 / -1; }
   .rows.ranked .r { grid-template-columns: 2em 3.7em 4.4em minmax(0,1fr) auto; gap: 4px 6px; }
-  .rows.ranked .r .d { grid-column: 3 / -1; }
-  .rows.ranked.noprob .r { grid-template-columns: 2em 4.4em minmax(0,1fr) auto; } .rows.ranked.noprob .r .d { grid-column: 2 / -1; }
+  .rows.ranked .r .d, .rows.ranked .r > .sa { grid-column: 3 / -1; }
+  .rows.ranked.noprob .r { grid-template-columns: 2em 4.4em minmax(0,1fr) auto; } .rows.ranked.noprob .r .d, .rows.ranked.noprob .r > .sa { grid-column: 2 / -1; }
 }
 .more { margin-top: 12px; }
 .rangebar { margin-top: 10px; gap: 6px; }
