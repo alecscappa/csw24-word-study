@@ -1273,3 +1273,15 @@ details.swmore > summary { cursor: pointer; font: 600 .85rem var(--display); col
   .pg-n { min-width: 0; font-size: .8rem; }
   .pg-per { margin-left: 2px; } .pg-per button { padding: 5px 7px; font-size: .72rem; }
 }
+/* hooks: the Front and Back boxes (the one picked is lit) and the keyboard on the page, so a phone's own stays down */
+.hbox { display: flex; gap: 10px; justify-content: center; }
+.hside { flex: 1 1 140px; max-width: 260px; display: flex; flex-direction: column; gap: 4px; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+.hside span { font: 700 .66rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.hside b { display: block; min-height: 48px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--chip); font: 600 1.2rem var(--mono); text-align: center; letter-spacing: .08em; }
+.hside b em { font: 400 1rem var(--body); font-style: normal; color: var(--muted); letter-spacing: 0; }
+.hside.on b { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.hkeys { display: flex; flex-direction: column; gap: 6px; max-width: 460px; margin: 14px auto 0; }
+.hkeys div { display: flex; gap: 5px; justify-content: center; }
+.hkeys button { flex: 0 1 40px; min-width: 0; height: 44px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--chip); color: var(--ink); font: 700 1rem var(--mono); cursor: pointer; touch-action: manipulation; }
+.hkeys button.del { flex-basis: 58px; }
+.hkeys button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }

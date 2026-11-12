@@ -643,6 +643,33 @@ const letterSet = s => [...new Set(String(s || "").toUpperCase().replace(/[^A-Z]
 const gapTile = `<div class="tile gap">?</div>`, aTile = c => `<div class="tile">${c}<sub>${VALUES[c]}</sub></div>`;
 const gapHTML = pat => `<div class="tiles gapt">${[...pat].map(c => c === "?" ? gapTile : aTile(c)).join("")}</div>`;
 const hookHTML = w => `<div class="tiles gapt">${gapTile}${[...w].map(aTile).join("")}${gapTile}</div>`;
+// hooks (Quiz and Practice): a Front and a Back box and a keyboard on the page. Tapping a box picks it (it lights up,
+// and a phone's own keyboard stays down); a key adds its letter to that box, or takes it out if it's already there
+const HOOK_KEYS = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
+const hookPadHTML = () => `<div class="hbox">${[["f", "Front"], ["b", "Back"]].map(([s, l]) => `<button type="button" class="hside" data-side="${s}"><span>${l}</span><b></b></button>`).join("")}</div>
+  <div class="hkeys">${HOOK_KEYS.map((r, i) => `<div>${[...r].map(c => `<button type="button" data-k="${c}">${c}</button>`).join("")}${i === 2 ? `<button type="button" class="del" data-k="del" aria-label="Take back a letter">⌫</button>` : ""}</div>`).join("")}</div>`;
+// typed is { f, b }, changed as keys are pressed; key(ev) takes a real keyboard's letters, Backspace and ← →
+function hookPad(root, typed, changed) {
+  let side = "f";
+  const draw = () => {
+    root.querySelectorAll(".hside").forEach(b => { b.classList.toggle("on", b.dataset.side === side); b.querySelector("b").innerHTML = esc(typed[b.dataset.side]) || "<em>none</em>"; });
+    root.querySelectorAll(".hkeys [data-k]").forEach(k => k.classList.toggle("on", typed[side].includes(k.dataset.k)));
+  };
+  const press = k => { const t = typed[side]; typed[side] = k === "del" ? t.slice(0, -1) : t.includes(k) ? t.replace(k, "") : t + k; draw(); changed(); };
+  root.querySelectorAll(".hside").forEach(b => b.onclick = () => { side = b.dataset.side; draw(); });
+  root.querySelectorAll(".hkeys [data-k]").forEach(b => b.onclick = () => press(b.dataset.k));
+  draw();
+  return {
+    key: ev => {
+      if (/^[a-z]$/i.test(ev.key)) press(ev.key.toUpperCase());
+      else if (ev.key === "Backspace") press("del");
+      else if (/^Arrow(Left|Right)$/.test(ev.key)) { side = ev.key === "ArrowLeft" ? "f" : "b"; draw(); }
+      else return false;
+      return true;
+    },
+    done: () => root.querySelector(".hkeys")?.remove()
+  };
+}
 // a pattern card while you play: each letter that fits makes a word, shown as it's found; dots for the rest
 const patChips = (pat, found) => `<div class="found lfound">${fitsOf(pat).filter(c => !SET.hideCount || found.includes(c)).map(c => { const w = pat.replace("?", c); return found.includes(c) ? `<a class="w got" href="#w/${w}">${w}</a>` : `<span class="w blank">${"•".repeat(w.length)}</span>`; }).join("")}</div>`;
 // one letter typed into a pattern box: a fitting new letter is taken (true), anything else is refused (false)
@@ -887,7 +914,7 @@ function drawQuestion() {
   if (mode === "anagram") { prompt = `<div class="slots" id="qslots"></div>`; input = `<div class="rows" id="found" style="margin-top:8px"></div>`; }
   if (mode === "phony") prompt = `<div class="qprompt">${q.show}</div>`;
   if (mode === "pattern") { prompt = gapHTML(q.show); input = `<input class="qinput" id="qp" placeholder="type a letter" ${typing}><p class="q" id="qpleft" style="margin:10px 0 4px"></p><div id="qpchips"></div>`; }
-  if (mode === "hooks") { prompt = hookHTML(q.w); input = `<div class="pair"><input class="qinput" id="qf" placeholder="front hooks" ${typed("qf")} ${typing}><input class="qinput" id="qb" placeholder="back hooks" ${typed("qb")} ${typing}></div><p class="small" style="margin:6px 0 0">Leave blank if none, then press ✓.</p>`; }
+  if (mode === "hooks") { prompt = hookHTML(q.w); input = `${hookPadHTML()}<p class="small" style="margin:6px 0 0">Tap Front or Back, then the letters. ✓ if you knew them, ✗ if not.</p>`; }
   if (mode === "def") { prompt = `<div class="qdef">${esc(e.d)}</div><p class="small" style="margin:0">${q.w.length} letters · <a href="#" id="hint">show tiles</a></p><div id="hintBox"></div>`; input = `<input class="qinput" id="qa" placeholder="The word" ${typed("qa")} ${typing}><p class="small" style="margin:6px 0 0">The right word is taken as you type.</p>`; }
   const rack = mode === "anagram" ? `${rackHTML("qrack")}<div class="rackbtns"><button type="button" class="btn" id="qShuf" aria-label="Shuffle">${icon(ICON_SHUF)}</button><button type="button" class="btn" id="qBack" aria-label="Take back a letter">${icon(ICON_BACK)}</button></div>` : "";
   // full screen on a phone while a question is up, like Practice
@@ -905,7 +932,7 @@ function drawQuestion() {
   $("#qStatsDone").onclick = $("#qstats .scrim").onclick = () => sheet("qstats", false);
   // before answering: ✗ | ✓ (Phony | Valid in valid-or-phony). Once answered, the right button becomes Next
   // (green if right, orange if wrong) and the left one switches the mark.
-  // ✓ means "knew it" for anagrams; for hooks and definitions it checks what was typed.
+  // ✓ means "knew it" for anagrams and hooks; for definitions it checks what was typed.
   // with the count hidden, ✓ becomes Done: it checks what was found, and a question never ends by itself
   const key = k => `<kbd>${k}</kbd>`, tx = t => `<span class="tx">${t}</span>`, counted = hide && (mode === "anagram" || mode === "pattern");
   Q.marks = () => {
@@ -917,7 +944,7 @@ function drawQuestion() {
   };
   Q.marks();
   $("#qAlt").onclick = () => Q.answered ? Q.mark(!Q.ok) : mode === "phony" ? check("phony") : check(undefined, false);
-  $("#qMain").onclick = () => Q.answered ? next() : mode === "phony" ? check("valid") : check(undefined, (mode === "anagram" || mode === "pattern") && !hide ? true : undefined);
+  $("#qMain").onclick = () => Q.answered ? next() : mode === "phony" ? check("valid") : check(undefined, mode === "hooks" || ((mode === "anagram" || mode === "pattern") && !hide) ? true : undefined);
   // × leaves the quiz without ending it; the setup page then has a card to carry on
   $("#qquit").onclick = () => { Q.paused = true; saveQ(); VIEWS.quiz(); window.scrollTo(0, 0); };
   $("#hint")?.addEventListener("click", ev => { ev.preventDefault(); $("#hintBox").innerHTML = tilesHTML(alpha(q.w), true); });
@@ -951,8 +978,11 @@ function drawQuestion() {
     if (!hide && Q.found.length === want.length) check();
   });
   patDraw();
+  // hooks: the two boxes and the keyboard on the page
+  const ht = { f: Q.typed.qf || "", b: Q.typed.qb || "" };
+  const pad = mode === "hooks" ? hookPad($("#qform"), ht, () => { Q.typed.qf = ht.f; Q.typed.qb = ht.b; saveQ(); }) : null;
   // what's typed in a box stays there if you leave and come back
-  ["qf", "qb", "qa"].forEach(id => $("#" + id)?.addEventListener("input", ev => { Q.typed[id] = ev.target.value; saveQ(); }));
+  ["qa"].forEach(id => $("#" + id)?.addEventListener("input", ev => { Q.typed[id] = ev.target.value; saveQ(); }));
   // the options above the card: changing one redraws this question as it stands
   wireCardOpts(drawQuestion, () => { quizSetup.skipKnown = !quizSetup.skipKnown; store.set("quizSetup", quizSetup); drawQuestion(); });
   $("#qa")?.addEventListener("input", ev => {
@@ -974,6 +1004,8 @@ function drawQuestion() {
     else if (board && ev.key === "Backspace") board.back();
     else if (board && ev.key === " ") { ev.preventDefault(); board.shuffle(); }
     else if (board && ev.key === "Enter" && ev.target === document.body) { ev.preventDefault(); Q.answered ? next() : check(); }
+    else if (pad && !Q.answered && pad.key(ev)) ev.preventDefault();
+    else if (pad && ev.key === "Enter") { ev.preventDefault(); $("#qMain").click(); }
     else if (Q.answered && /^Arrow(Left|Right)$/.test(ev.key)) { if (stepStems(ev.key === "ArrowLeft" ? -1 : 1)) ev.preventDefault(); }
     else if (ev.key === "1") $("#qAlt")?.click();
     else if (ev.key === "2") $("#qMain")?.click();
@@ -1008,8 +1040,10 @@ function check(ans, force) {
     ok = (ans === "phony") === !!q.phony;
     reveal = q.phony ? `<span>${q.show} is phony. It came from</span> ${chip(q.w)}` : `${chip(q.w)} <span>is valid</span>`;
   } else if (mode === "hooks") {
-    ok = letters($("#qf").value) === letters(e.fh) && letters($("#qb").value) === letters(e.bh);
-    reveal = `<span class="small">front</span> ${letterMarks($("#qf").value, letterSet(e.fh))} <span class="small">back</span> ${letterMarks($("#qb").value, letterSet(e.bh))}`;
+    const f = Q.typed.qf || "", b = Q.typed.qb || "";
+    ok = letters(f) === letters(e.fh) && letters(b) === letters(e.bh);
+    reveal = `<span class="small">front</span> ${letterMarks(f, letterSet(e.fh))} <span class="small">back</span> ${letterMarks(b, letterSet(e.bh))}`;
+    $("#qform .hkeys")?.remove();
   } else if (mode === "pattern") {
     const want = fitsOf(q.show).join("");
     ok = letterSet(Q.found.join("")) === want;
@@ -1581,14 +1615,13 @@ function practiceLetters(pool, o, top, sh, wireTop, pr) {
   v.innerHTML = `<div class="foc"><div class="stage">${top}<div class="fc-card lcard">
       <p class="q">${mode === "hooks" ? "Which letters go on the front, and the back?" : "Which letters fit the gap?"}${review ? ` · <b style="color:var(--warn)">review</b>` : ""}</p>
       ${mode === "hooks" ? hookHTML(card) : gapHTML(card)}
-      <form id="lform" class="lform">${mode === "hooks" ? `<label><span>Front</span><input class="qinput" id="lf" value="${esc(typed.f)}" placeholder="none" ${typing}></label><label><span>Back</span><input class="qinput" id="lb" value="${esc(typed.b)}" placeholder="none" ${typing}></label>`
-        : `<label><span>Type a letter</span><input class="qinput" id="lf" placeholder="one at a time" ${typing}></label>`}<button type="submit" hidden></button></form>
+      ${mode === "hooks" ? `<div id="lpad">${hookPadHTML()}</div>` : `<form id="lform" class="lform"><label><span>Type a letter</span><input class="qinput" id="lf" placeholder="one at a time" ${typing}></label><button type="submit" hidden></button></form>`}
       ${mode === "pattern" ? `<p class="q" id="lleft" style="margin:10px 0 4px"></p><div id="lchips"></div>` : ""}
       <div id="lres"></div></div>
     <div class="thumb"><div class="acts"><button type="button" class="btn mk" id="pAlt"></button><button type="button" class="btn mk" id="pMain"></button></div></div></div>
     ${practiceRail(pr, "prail")}</div>` + sh;
-  // patterns are typed a letter at a time (each one that fits is kept); hooks are read from their two boxes
-  const read = () => { if (mode !== "pattern") typed = { f: $("#lf").value, b: $("#lb")?.value || "" }; };
+  // patterns are typed a letter at a time (each one that fits is kept); hooks go in their two boxes from the keyboard on the page
+  const pad = mode === "hooks" ? hookPad($("#lpad"), typed, () => { if (ok === null) save(); }) : null;
   const chipsDraw = () => { if (mode !== "pattern") return; const n = want.f.length, f = typed.f.length;
     $("#lleft").textContent = ok !== null ? "" : SET.hideCount ? (f ? `${f} found` : "Find every letter") : `${n} letter${n === 1 ? " fits" : "s fit"} · ${f} found · ${n - f} left`; $("#lchips").innerHTML = ok !== null ? "" : patChips(card, typed.f); };
   const marks = () => {
@@ -1604,9 +1637,9 @@ function practiceLetters(pool, o, top, sh, wireTop, pr) {
       <p class="lans">${mode === "hooks" ? `<span>Front</span>${letterMarks(typed.f, want.f)}<span>Back</span>${letterMarks(typed.b, want.b)}` : `<span>Fits</span>${letterMarks(typed.f, want.f)}`}</p>
       <div class="rows">${words.map(w => rowHTML(w)).join("")}</div>`;
   };
-  const finish = force => { read(); const right = letterSet(typed.f) === want.f && (mode !== "hooks" || letterSet(typed.b) === want.b); ok = force === undefined ? right : force; save(); show(); marks(); chipsDraw(); };
+  const finish = force => { const right = letterSet(typed.f) === want.f && (mode !== "hooks" || letterSet(typed.b) === want.b); ok = force === undefined ? right : force; save(); show(); marks(); chipsDraw(); pad?.done(); };
   const nextCard = () => { commitPractice(); VIEWS.practice(); };
-  $("#lform").addEventListener("submit", ev => { ev.preventDefault(); ok === null ? finish() : nextCard(); });
+  $("#lform")?.addEventListener("submit", ev => { ev.preventDefault(); ok === null ? finish() : nextCard(); });
   if (mode === "pattern") $("#lf").addEventListener("input", ev => {
     const typedNow = ev.target.value.toUpperCase().replace(/[^A-Z]/g, ""); ev.target.value = "";
     if (ok !== null || !typedNow) return;
@@ -1615,17 +1648,18 @@ function practiceLetters(pool, o, top, sh, wireTop, pr) {
     flashBox(ev.target, good && !bad); save(); chipsDraw();
     if (!SET.hideCount && typed.f.length === want.f.length) finish(true);
   });
-  else v.querySelectorAll("#lform input").forEach(i => i.addEventListener("input", () => { read(); if (ok === null) save(); }));
   $("#pAlt").onclick = () => { if (ok === null) finish(false); else { ok = !ok; save(); show(); marks(); } };
-  // ✓ before the end: "knew it" for a pattern (as with anagrams); for hooks it checks the boxes
-  $("#pMain").onclick = () => ok === null ? finish(mode === "pattern" && !SET.hideCount ? true : undefined) : nextCard();
+  // ✓ before the end: "knew it", as with anagrams (a pattern with the count hidden checks what was found)
+  $("#pMain").onclick = () => ok === null ? finish(mode === "hooks" || !SET.hideCount ? true : undefined) : nextCard();
   document.onkeydown = ev => {
     if (pSheetOpen || pkOpen || ev.metaKey || ev.ctrlKey || ev.altKey || ev.target.closest?.("input, select, textarea")) return;
-    if (ev.key === "1") $("#pAlt").click();
+    if (pad && ok === null && pad.key(ev)) ev.preventDefault();
+    else if (ev.key === "1") $("#pAlt").click();
     else if (ev.key === "2" || ev.key === "Enter") { ev.preventDefault(); $("#pMain").click(); }
   };
   marks(); show(); chipsDraw(); wireTop();
-  if (ok === null && !phone()) $("#lf").focus();
+  if (ok !== null) pad?.done();
+  if (ok === null && !phone()) $("#lf")?.focus();
 }
 const ICON_PLAY = '<svg viewBox="0 0 24 24" class="play" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
 const ICON_SHUF = '<path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>', ICON_BACK = '<path d="M21 5H9l-6 7 6 7h12z"/><path d="M17 9l-6 6M11 9l6 6"/>';
