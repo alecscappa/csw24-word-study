@@ -1276,7 +1276,7 @@ body.fit .setform { padding: 0 6px 16px 0; }
 /* in a card that scrolls on its own, the pager stays along its bottom edge */
 body.fit .fitscroll.card { padding-bottom: 0; }
 body.fit .fitscroll > :last-child:not(.pager) { margin-bottom: 16px; }
-body.fit .fitscroll .pager { position: sticky; bottom: 0; z-index: 3; background: var(--panel); margin: 12px -18px 0; padding: 8px 18px 10px; box-shadow: 0 -8px 14px -12px rgb(0 0 0 / .35); }
+body.fit .fitscroll .pager { position: sticky; bottom: 0; z-index: 3; background: var(--panel); margin: 12px -18px 0; padding: 8px 18px 10px; }
 @media (max-width: 620px) {
   .pager { gap: 6px; }
   .pg-ar { width: 32px; height: 32px; }
