@@ -810,12 +810,53 @@ function quizListName() {
 }
 function summaryHTML() {
   const n = Q.res.length;
+  // a quiz of 20 or more all right is a record to keep
+  if (n >= 20 && Q.right === n) { const r = getRecs(); if (n > (r.perfect || 0)) store.set("recs", { ...r, perfect: n }); }
   return `<div class="card"><h2 class="lbl">Last quiz${n < Q.qs.length ? ` · ended after ${n} of ${Q.qs.length}` : ""}</h2><p style="margin:0 0 10px"><b style="font:700 1.6rem var(--display)">${Q.right}/${n}</b> correct</p>
     ${Q.wrong.length ? `<p class="small">Missed:</p><div class="words">${Q.wrong.map(chip).join("")}</div><div class="actions"><button class="btn" id="retryMissed">Retry these ${Q.wrong.length}</button></div>` : n ? `<p class="fb ok">Clean sweep.</p>` : ""}</div>`;
 }
 const record = (w, ok) => recordMany([[w, ok]]);
+// a log of each day's study, kept for 400 days: cards answered (c), right (r) and time (ms). Streaks, charts and
+// "today" numbers come from it, so they start from the day it came in
+const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const getDays = () => store.get("days", {});
+function logDay(add) {
+  const all = getDays(), d = all[dayKey()] ||= { c: 0, r: 0, ms: 0 };
+  for (const [f, n] of Object.entries(add)) d[f] = Math.max(0, (d[f] || 0) + n);
+  const ks = Object.keys(all).sort(); while (ks.length > 400) delete all[ks.shift()];
+  store.set("days", all);
+}
+// time studied: the gap since the last answer, counting at most a minute (so a break isn't counted)
+let lastAnswerAt = 0;
+const studyGap = () => { const now = Date.now(), g = lastAnswerAt ? Math.min(now - lastAnswerAt, 60000) : 0; lastAnswerAt = now; return g; };
+// records: the longest run of right answers, and the biggest quiz got all right. They only ever go up
+const getRecs = () => ({ run: 0, perfect: 0, ...store.get("recs", {}) });
+function recordRun(run) { const r = getRecs(); if (run > r.run) store.set("recs", { ...r, run }); }
+// the day each word was crossed off, so a day's learnt count drops again if one of its words is uncrossed later,
+// however long ago. Words crossed off before this came in have no day ("") and only count in the totals
+function learntDates() {
+  const had = store.get("ldates", null), now = dayKey(), out = {};
+  for (const w of getKnown()) out[w] = had ? had[w] ?? now : "";
+  if (JSON.stringify(out) !== JSON.stringify(had)) store.set("ldates", out);
+  return out;
+}
+// the day log, with each day's learnt count (l) from the words crossed off that day and still crossed off
+function studyDays() {
+  const days = {};
+  for (const [d, v] of Object.entries(getDays())) days[d] = { ...v, l: 0 };
+  for (const d of Object.values(learntDates())) if (d) (days[d] ||= { c: 0, r: 0, ms: 0, l: 0 }).l++;
+  return days;
+}
+// days in a row with some study, up to today (or yesterday, until today has some)
+function dayStreak(days = studyDays()) {
+  const d = new Date(); let n = 0;
+  if (!days[dayKey(d)]?.c && !days[dayKey(d)]?.l) d.setDate(d.getDate() - 1);
+  while (days[dayKey(d)]?.c || days[dayKey(d)]?.l) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
 // [word, right] pairs, saved in one go: a recall list can be hundreds of words
 function recordMany(pairs) {
+  logDay({ c: pairs.length, r: pairs.filter(p => p[1]).length, ms: studyGap() });
   const st = store.get("stats", {}), names = new Set(pairs.map(p => p[0]));
   for (const [w, ok] of pairs) { const s = st[w] || [0, 0]; s[ok ? 0 : 1]++; st[w] = s; }
   store.set("stats", st);
@@ -1070,6 +1111,8 @@ function commitQuiz() {
   const w = Q.qs[Q.i].w;
   if (Q.ok) Q.right++; else Q.wrong.push(w);
   Q.res.push(Q.ok);
+  Q.run = Q.ok ? (Q.run || 0) + 1 : 0;
+  recordRun(Q.run);
   record(w, Q.ok);
 }
 // a result row for the quiz and practice, marked ✓ or ✗; it opens the word page (the question waits as it was)
@@ -1239,6 +1282,7 @@ function commitPractice() {
   const card = c.mode && c.mode !== "anagram" ? cardKey(c.mode, c.card) : c.letters;
   schedule(card, c.ok); setLearnt(card, c.ok);
   if (c.ok) { P.streak++; P.solved++; } else P.streak = 0;
+  recordRun(P.streak);
   // a rack with extra letters: each answer on its own, since a rack can be half found
   if (c.rack) { for (const x of c.want) record(x, c.ok || c.found.includes(x)); saveP(); return; }
   for (const x of c.mode === "pattern" ? fitWords(c.card) : c.mode && c.mode !== "anagram" ? [c.card] : anagrams(c.letters)) record(x, c.ok);
@@ -1804,13 +1848,15 @@ VIEWS.mine = (tab) => {
   tab ||= "stars";
   if (tab.startsWith("f-")) return folderView(tab.slice(2));
   const notes = getNotes();
-  const tabs = { stars: ["Starred", getStars()], folders: ["Folders", getFolders()], missed: ["Missed", store.get("missed", [])], notebook: ["Notes", getNotebook()], notes: ["Word notes", Object.keys(notes)], hist: ["Recently viewed", store.get("hist", [])] };
+  const tabs = { stats: ["Stats", null], ach: ["Achievements", null], stars: ["Starred", getStars()], folders: ["Folders", getFolders()], missed: ["Missed", store.get("missed", [])], notebook: ["Notes", getNotebook()], notes: ["Word notes", Object.keys(notes)], hist: ["Recently viewed", store.get("hist", [])] };
   $("#view").innerHTML = `<div><h3 class="title">My words</h3><p class="sub">${typeof SYNC !== "undefined" && SYNC.user ? "Synced to your account." : "Saved in this browser."}</p></div>
-    <div class="seg">${Object.entries(tabs).map(([k, [n, l]]) => `<a class="btn ${k === tab ? "on" : ""}" href="#mine/${k}">${n} (${l.length})</a>`).join("")}</div>
+    <nav class="mtabs">${Object.entries(tabs).map(([k, [n, l]]) => `<a class="${k === tab ? "on" : ""}" href="#mine/${k}" ${k === tab ? `aria-current="page"` : ""}>${n}${l ? `<em>${l.length.toLocaleString()}</em>` : ""}</a>`).join("")}</nav>
     ${tab === "stars" && tabs.stars[1].length ? `<div class="row"><button class="btn sm" id="copyList">Copy list</button><button class="btn sm" id="clearStars">Clear starred</button><span class="small" id="msg"></span></div>` : ""}
     ${tab === "missed" && tabs.missed[1].length ? `<div class="row"><button class="btn sm" id="clearMissed">Clear missed</button></div>` : ""}
-    <div class="card ${["notebook", "folders"].includes(tab) ? "" : "fitscroll"}" id="mres"></div>`;
+    <div class="card ${["stats", "ach", "notebook", "folders"].includes(tab) ? "" : "fitscroll"}" id="mres"></div>`;
+  $(".mtabs a.on")?.scrollIntoView({ block: "nearest", inline: "nearest" });
   if (tab === "notebook") return notebook();
+  if (tab === "stats" || tab === "ach") return statsView(tab);
   if (tab === "folders") return folderList();
   const words = tabs[tab][1].filter(w => DICT.has(w));
   if (tab === "notes") {
@@ -1822,6 +1868,84 @@ VIEWS.mine = (tab) => {
   confirmBtn($("#clearStars"), () => { store.set("stars", []); VIEWS.mine("stars"); });
   confirmBtn($("#clearMissed"), () => { store.set("missed", []); VIEWS.mine("missed"); });
 };
+// a list's words (a stems list counts the words its stems make), and whether a word is learnt: crossed off, or
+// learnt in Practice (its rack, or its Valid-or-phony or Definition card)
+const listWords = x => x.special === "stems" ? stems(x.n).flatMap(s => s.words) : groupWords(x);
+const learntTest = () => { const L = getLearnt(), K = new Set(getKnown()); return w => K.has(w) || L.has(alpha(w)) || L.has("v:" + w) || L.has("d:" + w); };
+// how much of each list is learnt, worked out once and kept until something is learnt or crossed off
+let listPctMemo = { key: "", pct: {} };
+function listPct(x) {
+  const key = getLearnt().size + ":" + getKnown().length;
+  if (listPctMemo.key !== key) listPctMemo = { key, pct: {} };
+  if (!(x.id in listPctMemo.pct)) { const ws = listWords(x), isL = learntTest(); let n = 0; for (const w of ws) if (isL(w)) n++; listPctMemo.pct[x.id] = [n, ws.length]; }
+  return listPctMemo.pct[x.id];
+}
+const pctOf = ([n, all]) => all ? Math.round(n / all * 100) : 0;
+const ringHTML = (p, id) => `<span class="lring ${p === 100 ? "full" : ""}" ${id ? `id="${id}"` : ""} style="--p:${p ?? 0}"><b>${p == null ? "" : p === 100 ? "✓" : p + "%"}</b></span>`;
+// ---------- Stats (My words): this week against last, every length's %, the next milestone and charts from the
+// day log. Achievements: records and badges ----------
+function statsView(tab = "stats") {
+  const days = studyDays(), today = new Date(), dk = n => { const d = new Date(today); d.setDate(d.getDate() - n); return dayKey(d); };
+  const sum = (from, to, f) => { let t = 0; for (let n = from; n < to; n++) t += days[dk(n)]?.[f] || 0; return t; };
+  const wk = { l: sum(0, 7, "l"), c: sum(0, 7, "c"), r: sum(0, 7, "r"), ms: sum(0, 7, "ms") }, lw = { l: sum(7, 14, "l"), c: sum(7, 14, "c"), r: sum(7, 14, "r"), ms: sum(7, 14, "ms") };
+  const pctR = x => x.c ? Math.round(x.r / x.c * 100) : null;
+  const hm = ms => { const m = Math.round(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; };
+  const vs = (a, b, unit = "%") => !b ? (a ? `<em class="up">${upIc} new this week</em>` : `<em class="flat">nothing yet</em>`) : a === b ? `<em class="flat">same as last week</em>` : unit === "pts" ? `<em class="${a > b ? "up" : "down"}">${a > b ? upIc : downIc} ${Math.abs(a - b)} points on last week</em>` : `<em class="${a > b ? "up" : "down"}">${a > b ? upIc : downIc} ${Math.round(Math.abs(a - b) / b * 100)}% on last week</em>`;
+  const big = [[wk.l.toLocaleString(), "learnt this week", vs(wk.l, lw.l)], [pctR(wk) == null ? "–" : pctR(wk) + "%", "right this week", pctR(wk) == null || pctR(lw) == null ? `<em class="flat">${wk.c ? "" : "no answers yet"}</em>` : vs(pctR(wk), pctR(lw), "pts")], [hm(wk.ms), "studied this week", vs(wk.ms, lw.ms)]];
+  // every length: how much is learnt (crossed off, or its rack learnt in Practice)
+  const LENS = [["twos", 2], ["threes", 3], ["fours", 4], ["fives", 5], ["sixes", 6], ["sevens", 7], ["eights", 8]];
+  const lens = LENS.map(([id, n]) => { const g = groupOf(id), [k, all] = listPct(g || { id, test: w => w.length === n }); return { id, n, k, all, p: pctOf([k, all]), link: !!g }; });
+  const total = lens.reduce((a, x) => a + x.k, 0);
+  // the next milestone: the quarter-mark (a quarter, half, three quarters, all) closest to done across the lengths
+  const marks = [[.25, "A quarter of"], [.5, "Half"], [.75, "Three quarters of"], [1, "All"]];
+  const next = lens.filter(x => x.k < x.all).flatMap(x => marks.filter(([f]) => x.k < Math.ceil(x.all * f)).slice(0, 1).map(([f, t]) => ({ x, need: Math.ceil(x.all * f), t }))).sort((a, b) => (a.need - a.x.k) - (b.need - b.x.k))[0];
+  const pace = wk.l / 7;
+  // best streak ever, from the log
+  let best = 0, run = 0; const ks = Object.keys(days).sort(); let prev = null;
+  for (const k of ks) { if (!(days[k].c || days[k].l)) { run = 0; prev = k; continue; } const d = new Date(k + "T12:00"); if (prev) { const p = new Date(prev + "T12:00"); run = (d - p) / 864e5 <= 1.01 && run ? run + 1 : 1; } else run = 1; best = Math.max(best, run); prev = k; }
+  const streak = dayStreak(days), recs = getRecs(), bestDay = Math.max(0, ...Object.values(days).map(d => d.l || 0));
+  const lp = id => pctOf(listPct(groupOf(id)));
+  let week7 = 0; for (let i = 0; i < ks.length; i++) { let t = 0; const end = new Date(ks[i] + "T12:00"); for (let n = 0; n < 7; n++) { const d = new Date(end); d.setDate(d.getDate() - n); t += days[dayKey(d)]?.l || 0; } week7 = Math.max(week7, t); }
+  // badges: a medal for each, gold, silver or bronze; the ones still to get are outlines
+  const B = [["2s", "All the 2s", "gold", lp("twos") === 100], ["100", "100 words learnt", "bronze", total >= 100], ["1K", "1,000 words learnt", "silver", total >= 1000], ["5K", "5,000 words learnt", "gold", total >= 5000],
+    ["7", "7 days in a row", "bronze", best >= 7], ["30", "30 days in a row", "gold", best >= 30], ["Q", "All Q without U", "silver", lp("qnou") === 100], ["3s", "All the 3s", "gold", lp("threes") === 100],
+    ["JQXZ", "Every JQXZ 2s to 5s", "gold", lp("jqxzshort") === 100], ["25", "25 right in a row", "bronze", recs.run >= 25], ["100", "100 right in a row", "silver", recs.run >= 100], ["20", "A perfect quiz of 20+", "silver", recs.perfect >= 20],
+    ["1K", "1,000 learnt in a week", "gold", week7 >= 1000], ["4s", "All the 4s", "gold", lp("fours") === 100]];
+  const got = B.filter(b => b[3]).length;
+  // the last two weeks, a bar a day (last week paler, today in the accent colour), and twelve weeks of study days
+  const two = Array.from({ length: 14 }, (_, i) => { const n = 13 - i, d = new Date(today); d.setDate(d.getDate() - n); return { n, l: days[dayKey(d)]?.l || 0, day: "SMTWTFS"[d.getDay()] }; });
+  const top = Math.max(10, ...two.map(x => x.l));
+  const start = new Date(today); start.setDate(start.getDate() - 83 - ((start.getDay() + 6) % 7));
+  const cells = []; for (const d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) { const c = days[dayKey(d)]?.c || 0; cells.push(c ? c < 20 ? 1 : c < 60 ? 2 : 3 : 0); }
+  // Achievements: records and badges
+  if (tab === "ach") { $("#mres").innerHTML = `<div class="stw">
+    <div class="stcols">
+      <section class="stcol"><h4 class="lbl">Your records</h4><div class="strec">
+        ${[[streakIc, "Days in a row now", streak, `best ${best}`], [boltIc, "Longest run of right answers", recs.run || 0, ""], [trophyIc, "Most learnt in a day", bestDay, ""], [targetIc, "Biggest perfect quiz", recs.perfect ? recs.perfect : "–", recs.perfect ? "questions" : ""]].map(([ic, t, b, s]) => `<div><span class="sic">${ic}</span><span>${t}</span><b>${b}${s ? ` <small>${s}</small>` : ""}</b></div>`).join("")}</div></section>
+      <section class="stcol"><h4 class="lbl">Badges<em>${got} of ${B.length}</em></h4><div class="stbadges">${B.map(([g, t, m, on]) => `<div class="stb ${on ? m : "lock"}" title="${esc(t)}${on ? "" : " (not yet)"}"><i><span>${g}</span></i><b>${t}</b></div>`).join("")}</div></section>
+    </div></div>`; return; }
+  // Stats: how the week went, how much of each length is learnt, the next milestone, and day by day
+  $("#mres").innerHTML = `<div class="stw">
+    <div class="st3">${big.map(([b, t, e]) => `<div><b>${b}</b><span>${t}</span>${e}</div>`).join("")}</div>
+    <section><h4 class="lbl">Every word, by length<em>${total.toLocaleString()} learnt in all</em></h4>
+      <div class="strings">${lens.map(x => x.link ? `<a href="#lists/${x.id}" class="stl">${ringHTML(x.p)}<span>${x.n}s</span></a>` : `<span class="stl">${ringHTML(x.p)}<span>${x.n}s</span></span>`).join("")}</div></section>
+    ${next ? `<div class="stnext"><span class="lbl">Next milestone</span><div class="stn-h"><b>${next.t} the ${next.x.n}s</b><span class="small">${next.x.k.toLocaleString()} / ${next.need.toLocaleString()}</span></div>
+      <div class="pbar"><div style="width:${Math.min(100, next.x.k / next.need * 100)}%"></div></div><span class="small">${(next.need - next.x.k).toLocaleString()} to go${pace >= 1 ? ` · about ${Math.max(1, Math.ceil((next.need - next.x.k) / pace)).toLocaleString()} day${Math.ceil((next.need - next.x.k) / pace) === 1 ? "" : "s"} at this week's pace` : ""}</span></div>` : ""}
+    <div class="stcols">
+      <section class="stcol"><h4 class="lbl">Words learnt each day<em>last 2 weeks</em></h4>
+        <div class="stchart">${two.map(x => `<div class="${x.n === 0 ? "t" : x.n >= 7 ? "lw" : ""}" style="height:${x.l ? Math.max(4, x.l / top * 100) : 1.5}%" title="${x.l} learnt">${x.l ? `<span>${x.l}</span>` : ""}</div>`).join("")}</div>
+        <div class="stdays">${two.map(x => `<span>${x.day}</span>`).join("")}</div>
+        <div class="stleg"><span><i class="lw"></i>last week</span><span><i></i>this week</span><span><i class="t"></i>today</span></div></section>
+      <section class="stcol"><h4 class="lbl">Every day you studied<em>12 weeks</em></h4>
+        <div class="stheat">${cells.map(c => `<i class="${c ? "h" + c : ""}"></i>`).join("")}</div>
+        <div class="stleg"><span>less</span><i class="hb"></i><i class="h1"></i><i class="h2"></i><i class="h3"></i><span>more</span></div></section>
+    </div></div>`;
+}
+const svgIc = d => `<svg viewBox="0 0 24 24" class="sti">${d}</svg>`;
+const upIc = svgIc('<path d="M6 15l6-6 6 6"/>'), downIc = svgIc('<path d="M6 9l6 6 6-6"/>');
+const trophyIc = svgIc('<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M10 17h4"/>'), boltIc = svgIc('<path d="M13 3 5 14h6l-1 7 8-11h-6z"/>');
+const targetIc = svgIc('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/>'), starIc = svgIc('<path d="M12 4l2.4 5 5.4.6-4 3.7 1.1 5.4L12 16l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z"/>');
+const streakIc = svgIc('<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>');
 // ---------- folders: your own lists of words, opened like a word list and usable in Quiz and Practice. Crossing a
 // word off (✓, beside the star) marks it as one you know, wherever it shows; it stays in its folders ----------
 const getFolders = () => store.get("folders", []);
@@ -1833,7 +1957,7 @@ function newFolder(name, words = []) {
   store.set("folders", [...getFolders(), f]);
   return f;
 }
-function toggleKnown(w) { const k = getKnown(), i = k.indexOf(w); i >= 0 ? k.splice(i, 1) : k.unshift(w); store.set("known", k); tickLearnt([w], i < 0); return i < 0; }
+function toggleKnown(w) { learntDates(); const k = getKnown(), i = k.indexOf(w); i >= 0 ? k.splice(i, 1) : k.unshift(w); store.set("known", k); tickLearnt([w], i < 0); learntDates(); return i < 0; }
 // a word crossed off counts as learnt in Practice: its Valid or phony and Definition cards, and its rack once every word
 // of the rack is crossed off (hooks and patterns still have to be learnt there). Uncrossing takes it back.
 // Reset study progress clears these too, and the words stay crossed off

@@ -466,7 +466,7 @@ function results(el, words, opts = {}) {
       el.querySelector("#selAll").onclick = () => { const all = picked().length === list.length; st.sel = new Set(all ? [] : list); el.querySelectorAll(".rows .r").forEach(r => r.classList.toggle("sel", !all)); selBar(); };
       el.querySelector("#selFolder").onclick = () => picked().length && folderSheet(picked());
       // star or cross off the picked words; if they all already are, undo it for them
-      const mark = (key, get) => { const p = picked(); if (!p.length) return; const had = new Set(get()), all = p.every(w => had.has(w)); store.set(key, all ? get().filter(w => !st.sel.has(w)) : [...p.filter(w => !had.has(w)), ...get()]); draw(); };
+      const mark = (key, get) => { const p = picked(); if (!p.length) return; if (key === "known") learntDates(); const had = new Set(get()), all = p.every(w => had.has(w)); store.set(key, all ? get().filter(w => !st.sel.has(w)) : [...p.filter(w => !had.has(w)), ...get()]); if (key === "known") learntDates(); draw(); };
       el.querySelector("#selStar").onclick = () => mark("stars", getStars);
       el.querySelector("#selKnown").onclick = () => mark("known", getKnown);
       el.querySelector("#selDone").onclick = () => { st.sel = null; draw(); };

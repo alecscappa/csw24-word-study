@@ -3,7 +3,7 @@
 // changed; the newer copy wins. The first time a device signs in, what it already has is added to the account's
 // (stars, notes, games and so on are merged, not replaced). The look (theme, text size, tiles, the board's look)
 // stays each device's own ----------
-const SYNC_KEYS = ["stars", "missed", "notes", "notebook", "folders", "known", "hist", "stats", "plearnt", "pq", "pLast", "precall", "games", "boardStats", "labStats", "settings"];
+const SYNC_KEYS = ["stars", "missed", "notes", "notebook", "folders", "known", "hist", "stats", "plearnt", "pq", "pLast", "precall", "games", "boardStats", "labStats", "days", "recs", "ldates", "settings"];
 const LOOK_KEYS = ["theme", "mode", "glare", "size", "tiles", "tileCustom", "headCustom", "accentCustom", "tileLook", "tileFont", "rackLook", "values", "tones",
   "bPal", "bLabels", "bCoords", "bTile", "bStyle", "bMark", "bTheme", "bTileCol", "bArrows"];
 const FB_SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
@@ -20,6 +20,12 @@ const syncSig = k => JSON.stringify(syncOut(k, raw(k)));
 // what a key becomes when the account's copy comes down
 function syncIn(k, local, remote, first) {
   if (k === "settings") return { ...(local || {}), ...remote, ...Object.fromEntries(LOOK_KEYS.filter(f => local && f in local).map(f => [f, local[f]])) };
+  // records and points only ever go up, so the bigger of each wins
+  if (k === "recs" && local && remote) return Object.fromEntries([...new Set([...Object.keys(local), ...Object.keys(remote)])].map(f => [f, Math.max(local[f] || 0, remote[f] || 0)]));
+  // the day log: each day takes the bigger count from either device, so neither loses a day's study
+  if (k === "days" && local && remote) { const out = { ...remote }; for (const [d, v] of Object.entries(local)) { const r = out[d] || {}; out[d] = Object.fromEntries(["c", "r", "l", "ms"].map(f => [f, Math.max(v[f] || 0, r[f] || 0)])); } return out; }
+  // the day each word was crossed off: the earlier of the two (no day, "", is earliest)
+  if (k === "ldates" && local && remote) { const out = { ...remote }; for (const [w, d] of Object.entries(local)) if (!(w in out) || d < out[w]) out[w] = d; return out; }
   if (!first || local == null) return remote;
   // first sign-in on this device: put the two together
   if (Array.isArray(local) && Array.isArray(remote) && k !== "games" && k !== "notebook" && k !== "folders") return [...new Set([...local, ...remote])];
