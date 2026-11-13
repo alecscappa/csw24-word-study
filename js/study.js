@@ -1878,10 +1878,10 @@ VIEWS.mine = (tab) => {
   confirmBtn($("#clearStars"), () => { store.set("stars", []); VIEWS.mine("stars"); });
   confirmBtn($("#clearMissed"), () => { store.set("missed", []); VIEWS.mine("missed"); });
 };
-// a list's words (a stems list counts the words its stems make), and whether a word is learnt: crossed off, or
-// learnt in Practice (its rack, or its Valid-or-phony or Definition card)
+// a list's words (a stems list counts the words its stems make), and whether a word is learnt: crossed off (getting
+// its rack right in Practice doesn't count, since that would mark every word with those letters)
 const listWords = x => x.special === "stems" ? stems(x.n).flatMap(s => s.words) : groupWords(x);
-const learntTest = () => { const L = getLearnt(), K = new Set(getKnown()); return w => K.has(w) || L.has(alpha(w)) || L.has("v:" + w) || L.has("d:" + w); };
+const learntTest = () => { const K = new Set(getKnown()); return w => K.has(w); };
 // how much of each list is learnt, worked out once and kept until something is learnt or crossed off
 let listPctMemo = { key: "", pct: {} };
 function listPct(x) {
@@ -1902,7 +1902,7 @@ function statsView(tab = "stats") {
   const hm = ms => { const m = Math.round(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; };
   const vs = (a, b, unit = "%") => !b ? (a ? `<em class="up">${upIc} new this week</em>` : `<em class="flat">nothing yet</em>`) : a === b ? `<em class="flat">same as last week</em>` : unit === "pts" ? `<em class="${a > b ? "up" : "down"}">${a > b ? upIc : downIc} ${Math.abs(a - b)} points on last week</em>` : `<em class="${a > b ? "up" : "down"}">${a > b ? upIc : downIc} ${Math.round(Math.abs(a - b) / b * 100)}% on last week</em>`;
   const big = [[wk.l.toLocaleString(), "learnt this week", vs(wk.l, lw.l)], [pctR(wk) == null ? "–" : pctR(wk) + "%", "right this week", pctR(wk) == null || pctR(lw) == null ? `<em class="flat">${wk.c ? "" : "no answers yet"}</em>` : vs(pctR(wk), pctR(lw), "pts")], [hm(wk.ms), "studied this week", vs(wk.ms, lw.ms)]];
-  // every length: how much is learnt (crossed off, or its rack learnt in Practice)
+  // every length: how much is learnt (crossed off)
   const LENS = [["twos", 2], ["threes", 3], ["fours", 4], ["fives", 5], ["sixes", 6], ["sevens", 7], ["eights", 8]];
   const lens = LENS.map(([id, n]) => { const g = groupOf(id), [k, all] = listPct(g || { id, test: w => w.length === n }); return { id, n, k, all, p: pctOf([k, all]), link: !!g }; });
   const total = lens.reduce((a, x) => a + x.k, 0);
