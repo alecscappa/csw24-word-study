@@ -45,6 +45,8 @@ function route() {
   document.body.classList.toggle("full", t === "practice" && arg === "go");
   document.body.classList.remove("sheet-open");
   if (t !== "practice") pSheetOpen = false;
+  // Search's scrolling page under the header (searchExpand) is undone for every other page
+  $("#view").classList.remove("sx"); $("#view").onscroll = null; $("#view").scrollTop = 0;
   VIEWS[t](arg);
   fitPage();
   window.scrollTo({ top: 0 });

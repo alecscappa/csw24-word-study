@@ -1293,6 +1293,11 @@ body.fit main.wrap { flex: 1; min-height: 0; width: 100%; padding-bottom: 14px; 
 body.fit main.wrap > * { flex: none; }
 body.fit .fitscroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 25%, transparent) transparent; }
 body.fit main.wrap > .fitscroll { flex: 1; }
+/* Search on a computer: the page scrolls first, so the filters go up out of sight and the results card fills the
+   window; the card is held still until then (.sxon), and scrolls on its own after */
+body.fit main.wrap.sx { overflow-y: auto; scrollbar-width: none; }
+body.fit main.wrap.sx > #sres { flex: none; height: 100%; overflow-y: hidden; overscroll-behavior: auto; }
+body.fit main.wrap.sx > #sres.sxon { overflow-y: auto; }
 /* hooks: the Front and Back boxes (the one picked is lit) and the keyboard on the page, so a phone's own stays down */
 .hbox { display: flex; gap: 10px; justify-content: center; }
 .hside { flex: 1 1 140px; max-width: 260px; display: flex; flex-direction: column; gap: 4px; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
