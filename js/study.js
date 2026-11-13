@@ -397,7 +397,7 @@ function openSearchTab(id, s) {
   // the open tab keeps what was typed since the page drew (Ends with ING, say), even if Search wasn't pressed
   saveSearchTabs();
   const cur = searchTabs.find(t => t.id === searchTabOn);
-  if (cur) cur.y = window.scrollY;
+  if (cur) cur.y = getY();
   if (s) { id = Math.max(...searchTabs.map(t => t.id)) + 1; searchTabs.push({ id, s, y: 0 }); }
   const t = searchTabs.find(x => x.id === id);
   searchTabOn = id; searchState = { ...SEARCH_DEFAULT, ...t.s }; store.set("search", searchState);
@@ -505,7 +505,7 @@ function searchPhone() {
       ${[["group", "Group"], ["narrow", "Filters"]].map(([k, n]) => `<button type="button" class="pill add" data-sheet="${k}">+ ${n}</button>`).join("")}
       ${chips.length > 1 ? `<button type="button" class="pill add" id="sClear">Clear all</button>` : ""}</div></div>
     ${typeBar()}
-    <div class="card" id="sres"><p class="empty">Type letters in the search bar, or tap + Group or + Filters. Hooks show either side of each word; red lowercase letters are blanks.</p></div>
+    <div class="card fitscroll" id="sres"><p class="empty">Type letters in the search bar, or tap + Group or + Filters. Hooks show either side of each word; red lowercase letters are blanks.</p></div>
     ${sheetHTML("ssheet", `<form id="sform" autocomplete="off">${Object.entries(SEARCH_SECS).map(([k, [t]]) => `<div data-sec="${k}"><h3>${t}<button type="button" data-reset="${k}">Reset</button></h3>${secs[k]}</div>`).join("")}
       <button class="btn primary block" type="submit" id="sGo">Show results</button></form>`)}`;
   const read = () => { for (const k of Object.keys(SEARCH_DEFAULT)) { const el = $("#s_" + k); if (el) searchState[k] = el.type === "checkbox" ? (el.checked ? "1" : "") : el.value; } store.set("search", searchState); };
@@ -546,7 +546,7 @@ VIEWS.lists = (id) => {
   if (!g) return listsHome();
   store.set("lastList", g.id);
   $("#view").innerHTML = `<div class="row"><a class="btn sm" href="#lists">← All lists</a><a class="btn sm" href="#" id="toSearch">Open in Search</a></div>
-    <div><h3 class="title">${esc(g.name)}</h3><p class="sub">${esc(g.blurb)}</p></div><div class="card" id="lres"><p class="small">Building list…</p></div>`;
+    <div><h3 class="title">${esc(g.name)}</h3><p class="sub">${esc(g.blurb)}</p></div><div class="card fitscroll" id="lres"><p class="small">Building list…</p></div>`;
   $("#toSearch").hidden = !!g.special;
   // forget what's been learnt in Practice for this list (asks once more before it clears)
   const racks = new Set(g.special ? [] : groupWords(g).map(alpha)), L = getLearnt(), nL = [...racks].filter(a => L.has(a)).length;
@@ -1809,7 +1809,7 @@ VIEWS.mine = (tab) => {
     <div class="seg">${Object.entries(tabs).map(([k, [n, l]]) => `<a class="btn ${k === tab ? "on" : ""}" href="#mine/${k}">${n} (${l.length})</a>`).join("")}</div>
     ${tab === "stars" && tabs.stars[1].length ? `<div class="row"><button class="btn sm" id="copyList">Copy list</button><button class="btn sm" id="clearStars">Clear starred</button><span class="small" id="msg"></span></div>` : ""}
     ${tab === "missed" && tabs.missed[1].length ? `<div class="row"><button class="btn sm" id="clearMissed">Clear missed</button></div>` : ""}
-    <div class="card" id="mres"></div>`;
+    <div class="card ${["notebook", "folders"].includes(tab) ? "" : "fitscroll"}" id="mres"></div>`;
   if (tab === "notebook") return notebook();
   if (tab === "folders") return folderList();
   const words = tabs[tab][1].filter(w => DICT.has(w));
@@ -1870,7 +1870,7 @@ function folderView(id) {
     <div class="card fedit" id="fBox" hidden><h2 class="lbl">The words in this folder</h2><p class="small" style="margin:0 0 8px">Paste or type words in any form: one a line, or with commas or spaces. Delete a word to take it out.</p>
       <textarea id="fWords" class="ftext" spellcheck="false" autocapitalize="characters">${f.words.join("\n")}</textarea>
       <div class="row" style="margin-top:8px"><button class="btn primary" id="fSave">Save</button><button class="btn" id="fCancel">Cancel</button><span class="small bad" id="fMsg"></span></div></div>
-    <div class="card" id="mres"></div>`;
+    <div class="card fitscroll" id="mres"></div>`;
   if (f.words.length) results($("#mres"), f.words.filter(w => DICT.has(w)));
   else $("#mres").innerHTML = `<p class="empty">No words yet. Press Add or remove words, or use Add to folder on a word page or any list.</p>`;
   $("#fTitle").onchange = () => saveFolder(id, { name: $("#fTitle").value.trim() || "Folder" });
@@ -2060,7 +2060,7 @@ VIEWS.settings = (arg) => {
   if (lay === "menu") html = !page ? menuN() : back(page) + (page === "look" || page === "tiles" ? `<div class="pinprev">${preview()}</div>` : "") + PAGE[page](false);
   else { const pg = page || "look";
     html = `<div class="seto"><nav class="setmenu"><h3 class="title">Settings</h3>${SET_PAGES.map(([id, n, s]) => `<a href="#settings/${id}" class="${id === pg ? "on" : ""}"><b>${n}</b><small>${s}</small></a>`).join("")}<span class="small">✓ Saved in this browser</span></nav>
-      <div class="setform">${PAGE[pg](false)}</div><aside class="setside">${preview()}<p class="small">Changes apply to the whole app as you click; the preview shows them without leaving this page.</p></aside></div>`; }
+      <div class="setform fitscroll">${PAGE[pg](false)}</div><aside class="setside">${preview()}<p class="small">Changes apply to the whole app as you click; the preview shows them without leaving this page.</p></aside></div>`; }
   $("#view").innerHTML = html;
   // the pinned preview and the side columns sit just under the header, which stays at the top
   document.documentElement.style.setProperty("--hdr", (document.querySelector("header")?.offsetHeight || 0) + "px");

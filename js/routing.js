@@ -3,7 +3,7 @@
 if ("scrollRestoration" in history) history.scrollRestoration = "manual";
 let routed = false;
 function saveScroll() {
-  delete scrollMem[curHash]; scrollMem[curHash] = window.scrollY;
+  delete scrollMem[curHash]; scrollMem[curHash] = getY();
   const ks = Object.keys(scrollMem); if (ks.length > 60) delete scrollMem[ks[0]];
   store.set("scrollMem", scrollMem);
 }
@@ -46,13 +46,19 @@ function route() {
   document.body.classList.remove("sheet-open");
   if (t !== "practice") pSheetOpen = false;
   VIEWS[t](arg);
+  fitPage();
   window.scrollTo({ top: 0 });
   // every page goes back to where it was scrolled; results that build a moment later restore it themselves
   const back = fresh ? 0 : scrollMem[curHash] || 0;
   pendingScroll = ["lists", "search", "mine"].includes(t) ? back : 0;
-  if (pendingScroll) restoreScroll(); else window.scrollTo({ top: back });
+  if (pendingScroll) restoreScroll(); else setY(back);
 }
 window.addEventListener("hashchange", route);
+// a page with a .fitscroll card fills the window under the header and only that card (and any side columns) scrolls;
+// --hdr is the header's height, for anything that sits just under it
+function fitPage() { document.body.classList.toggle("fit", !!document.querySelector("#view .fitscroll")); }
+new MutationObserver(fitPage).observe($("#view"), { childList: true });
+new ResizeObserver(() => document.documentElement.style.setProperty("--hdr", $("header").offsetHeight + "px")).observe($("header"));
 $("#form").addEventListener("submit", ev => {
   ev.preventDefault();
   const q = $("#q").value.toUpperCase().replace(/[^A-Z?.*\[\]^]/g, "");

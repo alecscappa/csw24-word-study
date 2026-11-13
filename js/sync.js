@@ -34,7 +34,7 @@ function syncRefresh() {
   SET = { ...SET_DEFAULT, ...store.get("settings", {}) };
   GAMES = store.get("games", []);
   if (document.activeElement?.matches?.("input, textarea")) return;
-  const y = scrollY; route(); scrollTo(0, y);
+  const y = getY(); route(); setY(y);
 }
 function syncChanged(k) {
   if (!SYNC_KEYS.includes(k)) return;

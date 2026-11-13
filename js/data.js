@@ -346,8 +346,13 @@ let lastResults = [];
 // list's length chips and page (kept per page and word count, for this visit to the site)
 const scrollMem = store.get("scrollMem", {}), resMem = {};
 let curHash = location.hash, pendingScroll = 0;
+// pages whose words scroll in their own card (an open list, Search, My words) keep the spot of that card, not the page's
+const fitBox = () => document.body.classList.contains("fit") ? document.querySelector("#view .fitscroll") : null;
+const getY = () => fitBox()?.scrollTop ?? window.scrollY;
+const setY = y => { const b = fitBox(); if (b) b.scrollTop = y; else window.scrollTo(0, y); };
 function restoreScroll() {
-  if (pendingScroll && document.documentElement.scrollHeight - innerHeight >= pendingScroll - 4) { window.scrollTo(0, pendingScroll); pendingScroll = 0; }
+  const b = fitBox(), room = b ? b.scrollHeight - b.clientHeight : document.documentElement.scrollHeight - innerHeight;
+  if (pendingScroll && room >= pendingScroll - 4) { setY(pendingScroll); pendingScroll = 0; }
 }
 // words come a page at a time: 10, 25, 50 or 100 to a page, picked under the words or in Settings
 const PER_PAGE = [10, 25, 50, 100];
@@ -357,8 +362,6 @@ const pagerHTML = (page, pages, n) => `<div class="pager" role="navigation" aria
     <span class="pg-n">Page <b>${page + 1}</b> of ${pages.toLocaleString()}</span>
     <button type="button" class="pg-ar" data-page="${page + 1}" ${page + 1 < pages ? "" : "disabled"} aria-label="Next page"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     <span class="pg-per" role="group" aria-label="Words per page">${PER_PAGE.map(k => `<button type="button" class="${k === n ? "on" : ""}" data-per="${k}">${k}</button>`).join("")}</span></div>`;
-// a new page starts at the top of el
-const pageTop = el => { const y = el.getBoundingClientRect().top + scrollY - (document.querySelector("header")?.offsetHeight || 0) - 8; if (scrollY > y) scrollTo(0, y); };
 // any other list a page at a time, with the same pager: head (toolbar and so on) stays at the top, each item is
 // drawn by draw(item, index) inside a div of class wrap (when given), and the page is kept for this visit like a results list's
 function pagedList(el, items, draw, head = "", wrap = "") {
@@ -368,7 +371,7 @@ function pagedList(el, items, draw, head = "", wrap = "") {
     const at = mem.page * per;
     const rows = items.slice(at, at + per).map((x, i) => draw(x, at + i)).join("");
     el.innerHTML = head + (wrap ? `<div class="${wrap}">${rows}</div>` : rows) + (items.length > PER_PAGE[0] ? pagerHTML(mem.page, pages, per) : "");
-    el.querySelectorAll("[data-page]").forEach(b => b.onclick = () => { mem.page = +b.dataset.page; show(); pageTop(el); });
+    el.querySelectorAll("[data-page]").forEach(b => b.onclick = () => { mem.page = +b.dataset.page; show(); const box = fitBox(); if (box?.contains(el)) box.scrollTop = 0; else el.scrollIntoView({ block: "start" }); });
     el.querySelectorAll("[data-per]").forEach(b => b.onclick = () => { const first = mem.page * per; saveSettings({ pageSize: +b.dataset.per }); mem.page = Math.floor(first / +b.dataset.per); show(); });
     el.dispatchEvent(new Event("paged"));
   };
@@ -451,7 +454,8 @@ function results(el, words, opts = {}) {
     el.querySelector("#plChk").onchange = e => { saveSettings({ plays: e.target.checked }); el.querySelector(".rows")?.classList.toggle("plshow", SET.plays); };
     el.querySelector("#saChk")?.addEventListener("change", e => { saveSettings({ sas: e.target.checked }); el.querySelector(".rows")?.classList.toggle("sashow", SET.sas); });
     // a new page starts at the top of the words; a new page size keeps the first word that was showing
-    el.querySelectorAll("[data-page]").forEach(b => b.onclick = () => { st.page = mem.page = +b.dataset.page; draw(); pageTop(el); });
+    const toTop = () => { const b = fitBox(); if (b?.contains(el)) { b.scrollTop = 0; return; } const y = el.getBoundingClientRect().top + scrollY - (document.querySelector("header")?.offsetHeight || 0) - 8; if (scrollY > y) scrollTo(0, y); };
+    el.querySelectorAll("[data-page]").forEach(b => b.onclick = () => { st.page = mem.page = +b.dataset.page; draw(); toTop(); });
     el.querySelectorAll("[data-per]").forEach(b => b.onclick = () => { const first = st.page * per; saveSettings({ pageSize: +b.dataset.per }); st.page = mem.page = Math.floor(first / +b.dataset.per); draw(); });
     el.querySelector("#quizThese").onclick = () => { quizSetup.source = "last"; quizSetup.lens = []; quizSetup.starOnly = false; location.hash = "quiz"; };
     el.querySelector("#practiceThese").onclick = () => { store.set("pLast", [...lastResults]); saveSettings({ practice: { ...PO_DEFAULT, mode: SET.practice?.mode || "anagram", order: SET.practice?.order || "rand", rev: !!SET.practice?.rev, src: "my:last", lens: [] } }); location.hash = "practice"; };
