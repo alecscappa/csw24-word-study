@@ -306,8 +306,8 @@ const FAMILIES = [
     ["S in front", [["3s", "sf3"], ["4s", "sf4"]]], ["S at both ends", [["3s", "ss3"], ["4s", "ss4"]]]],
     build: { rows: [["Length", [["2s"], ["3s"], ["4s"]]], ["S", [["Takes an S"], ["Can't take an S"], ["Only hook is S"], ["S in front"], ["S at both ends"]], { any: false }]],
       test: ([l, k]) => (w, e) => (l < 0 ? lenIn(w, 2, 4) : w.length === l + 2) && [() => e.bh.includes("s"), () => !e.bh.includes("s"), () => !e.fh && e.bh === "s", () => e.fh.includes("s"), () => e.fh.includes("s") && e.bh.includes("s")][k]() } },
-  { id: "fampow", sect: "Power tiles", name: "J, Q, X and Z", blurb: "Words with the big tiles, by letter.", rows: [
-    ["Letter", [["J", "j"], ["Q", "q"], ["X", "x"], ["Z", "z"], ["Any of them", "jqxz"]]], ["Narrower", [["2s to 5s", "jqxzshort"], ["Q without U", "qnou"], ["Two power tiles", "twopower"]]]] },
+  { id: "fampow", sect: "Power tiles", name: "J, Q, X and Z", blurb: "Words with the big tiles, by letter.", base: "jqxz", rows: [
+    ["Letter", [["J", "j"], ["Q", "q"], ["X", "x"], ["Z", "z"]]], ["Narrower", [["2s to 5s", "jqxzshort"], ["Q without U", "qnou"], ["Two power tiles", "twopower"]]]] },
   { id: "famshort", sect: "Power tiles", name: "Short K, W, Y, F, H and V", blurb: "3 and 4-letter words with the awkward middle tiles.", rows: [
     ["Letter", [["K", "shortk"], ["W", "shortw"], ["Y", "shorty"], ["F", "shortf"], ["H", "shorth"], ["V", "shortv"]]], ["3s only", [["Any of K W Y F H", "kwyfh"]]]] },
   { id: "famlikely", sect: "Bingos", name: "Most likely words", blurb: "The words you're most likely to hold, by length.", one: true, rows: [
@@ -340,7 +340,8 @@ function builtGroup(id) {
   if (builtMemo.has(id)) return builtMemo.get(id);
   const [, fid, p = ""] = id.split(":"), f = famOf(fid);
   if (!f) return;
-  const rows = famRows(f), picks = rows.map((_, i) => Number(p.split(",")[i] ?? -1));
+  // (a pick past the end of its row, from a chip since taken away, counts as Any)
+  const rows = famRows(f), picks = rows.map((r, i) => { const k = Number(p.split(",")[i] ?? -1); return k < r[1].length ? k : -1; });
   const labels = rows.map((r, i) => r[1][picks[i]]?.[0]).filter(Boolean);
   let test;
   if (f.build) test = f.build.test(picks);

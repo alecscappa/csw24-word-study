@@ -569,9 +569,10 @@ VIEWS.lists = (id) => {
   }
 };
 // where a list's (or a family's) ‹ goes back to: its family, or its section's folder, or the Lists page
+// (a section with only one in it has no folder: the Lists page goes straight to it)
 function listBack(g) {
   const f = !g.rows && (famOf(g.fam) || famOfList(g.id)); if (f) return ["#lists/" + f.id, f.name];
-  const i = listSections().findIndex(([, l]) => l.includes(g)); return i >= 0 ? ["#lists/s:" + i, listSections()[i][0]] : ["#lists", "Lists"];
+  const i = listSections().findIndex(([, l]) => l.includes(g)); return i >= 0 && listSections()[i][1].length > 1 ? ["#lists/s:" + i, listSections()[i][0]] : ["#lists", "Lists"];
 }
 // an open list: its numbers, Practise, Quiz and Recall, and its words. o.top goes above the numbers (a family's chips),
 // with o.title over it
@@ -703,13 +704,15 @@ function listsHome() {
   const LENS = [["twos", 2], ["threes", 3], ["fours", 4], ["fives", 5], ["sixes", 6], ["sevens", 7], ["eights", 8]];
   $("#view").innerHTML = `<div class="lhome">${hero}
     <div class="llens"><span class="lbl">By length</span><div class="llens-row">${LENS.map(([id, n]) => `<a href="#lists/${id}" class="llen">${ringHTML(null, "ll_" + id)}<span>${n}s</span></a>`).join("")}</div></div>
-    <div class="lfolds">${secs.map(([s, l], i) => `<a class="lfold" href="#lists/s:${i}"><span class="lc-top">${tilesHTML((l.map(listSample).find(Boolean) || "").slice(0, 6), true)}</span><b>${esc(s)}</b><span class="small">${l.length} ${l.length === 1 ? "list" : "lists"}${l.some(x => x.rows) ? ` · ${l.filter(x => x.rows).length} folder${l.filter(x => x.rows).length === 1 ? "" : "s"}` : ""}</span><span class="lc-peek">${esc(l.slice(0, 3).map(x => x.name).join(" · "))}${l.length > 3 ? " …" : ""}</span></a>`).join("")}</div></div>`;
+    <div class="lfolds">${secs.map(([s, l], i) => `<a class="lfold" href="#lists/${l.length === 1 ? l[0].id : "s:" + i}"><span class="lc-top">${tilesHTML((l.map(listSample).find(Boolean) || "").slice(0, 6), true)}</span><b>${esc(s)}</b><span class="small">${l.length === 1 && l[0].rows ? famIds(l[0]).length + " lists" : `${l.length} ${l.length === 1 ? "list" : "lists"}`}${l.length > 1 && l.some(x => x.rows) ? ` · ${l.filter(x => x.rows).length} folder${l.filter(x => x.rows).length === 1 ? "" : "s"}` : ""}</span><span class="lc-peek">${esc(l.slice(0, 3).map(x => x.name).join(" · "))}${l.length > 3 ? " …" : ""}</span></a>`).join("")}</div></div>`;
   if (last) {
     $("#lhPlay").onclick = () => playList(last);
     $("#lhQuiz").onclick = () => quizList(last);
     // a list opened from Keep going goes back to this page, where you came from
     $("#lhOpen").onclick = () => { backHome = last.id; };
   }
+  // so does a length opened from its ring
+  document.querySelectorAll("#view .llen").forEach(a => a.onclick = () => { backHome = a.getAttribute("href").slice(7); });
   // the numbers fill in after the first paint: Keep going first, then the length rings
   const lensTodo = LENS.map(([id]) => groupOf(id));
   const step = () => {

@@ -1403,7 +1403,6 @@ body.fit main.wrap.sx > #sres.sxon { overflow-y: auto; }
   .lcards { grid-template-columns: 1fr 1fr; gap: 8px; }
   .lcard2 { padding: 10px; }
   .lc-top .tiles.mini .tile { width: 20px; height: 20px; font-size: .74rem; }
-  .lc-top .lring { width: 36px; height: 36px; } .lc-top .lring b { font-size: .54rem; }
   .lcard2 b { font-size: .9rem; }
 }
 /* an open list */
