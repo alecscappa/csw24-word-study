@@ -551,62 +551,184 @@ function searchPhone() {
 }
 
 // ---------- word lists ----------
+// the Lists page is a folder for each section; a section's folder has its families and lists as cards. A family opens
+// as one list with a row of chips for each of its rows: where the rows mix you pick one from each (or Any) and they
+// combine, otherwise one chip is lit across the family and that list shows
+// set by Keep going's Open, and kept while that list (or its family's chips) is open
+let backHome = null;
 VIEWS.lists = (id) => {
-  const g = groupOf(id);
-  if (!g) return listsHome();
+  if (backHome !== id) backHome = null;
+  if (id?.startsWith("s:")) listFolder(+id.slice(2));
+  else if (famOf(id)) famView(famOf(id));
+  else {
+    const g = groupOf(id), of = g && (famOf(g.fam) || famOfList(g.id));
+    if (!g) listsHome();
+    else if (g.fam && of) famView(of);
+    else if (of && !of.build) famView(of, g.id);
+    else listView(g);
+  }
+};
+// where a list's (or a family's) ‹ goes back to: its family, or its section's folder, or the Lists page
+function listBack(g) {
+  const f = !g.rows && (famOf(g.fam) || famOfList(g.id)); if (f) return ["#lists/" + f.id, f.name];
+  const i = listSections().findIndex(([, l]) => l.includes(g)); return i >= 0 ? ["#lists/s:" + i, listSections()[i][0]] : ["#lists", "Lists"];
+}
+// an open list: its numbers, Practise, Quiz and Recall, and its words. o.top goes above the numbers (a family's chips),
+// with o.title over it
+function listView(g, o = {}) {
   store.set("lastList", g.id);
-  $("#view").innerHTML = `<div class="row"><a class="btn sm" href="#lists">← All lists</a><a class="btn sm" href="#" id="toSearch">Open in Search</a></div>
-    <div><h3 class="title">${esc(g.name)}</h3><p class="sub">${esc(g.blurb)}</p></div><div class="card fitscroll" id="lres"><p class="small">Building list…</p></div>`;
-  $("#toSearch").hidden = !!g.special;
+  const words = listWords(g), isL = learntTest(), n = words.filter(isL).length, pct = words.length ? Math.round(n / words.length * 100) : 0;
+  const missed = new Set(store.get("missed", [])), K = new Set(getKnown()), stats = store.get("stats", {});
+  let right = 0, tries = 0; for (const w of words) { const s = stats[w]; if (s) { right += s[0]; tries += s[0] + s[1]; } }
+  const kp = [[`${pct}%`, `${n.toLocaleString()} of ${words.length.toLocaleString()} learnt`], [words.filter(w => K.has(w)).length.toLocaleString(), "crossed off"], [words.filter(w => missed.has(w)).length.toLocaleString(), "in Missed words"], [tries ? `${Math.round(right / tries * 100)}%` : "–", tries ? `right in ${tries.toLocaleString()} answers` : "not quizzed yet"]];
+  const back = backHome ? ["#lists", "Lists"] : o.back || listBack(g);
+  const main = `<div class="lmain">
+    <div class="lhd"><a class="btn sm" href="${back[0]}">‹ ${esc(back[1])}</a><div><h3 class="title">${esc(o.title || g.name)}</h3><p class="sub">${esc(o.title ? o.sub || g.blurb : g.blurb)}</p></div></div>
+    ${o.top || ""}
+    ${g.special ? "" : `<div class="lkp">${kp.map(([b, s]) => `<div><b>${b}</b><span>${s}</span></div>`).join("")}</div>
+    <div class="row lacts"><button type="button" class="btn primary" id="lPlay">▶ Practise</button><button type="button" class="btn" id="lQuiz">Quiz</button>
+      <span class="grow"></span><a class="btn sm" href="#" id="toSearch">Open in Search</a></div>`}
+    <div class="card fitscroll" id="lres"><p class="small">Building list…</p></div></div>`;
+  $("#view").innerHTML = main;
   // forget what's been learnt in Practice for this list (asks once more before it clears)
   const racks = new Set(g.special ? [] : groupWords(g).map(alpha)), L = getLearnt(), nL = [...racks].filter(a => L.has(a)).length;
   if (nL) {
     $("#toSearch").insertAdjacentHTML("afterend", `<button type="button" class="btn sm" id="forgetList">Reset study progress (${nL.toLocaleString()})</button>`);
     confirmBtn($("#forgetList"), () => { store.set("plearnt", [...getLearnt()].filter(a => !racks.has(a))); VIEWS.lists(g.id); });
   }
-  $("#toSearch").onclick = ev => { ev.preventDefault(); searchInNewTab({ group: g.id }); location.hash = "search"; };
+  $("#toSearch")?.addEventListener("click", ev => { ev.preventDefault(); searchInNewTab({ group: g.id }); location.hash = "search"; });
+  // a list made of picks (design B) has no place in Search's list menu
+  if (g.fam) $("#toSearch")?.remove();
+  $("#lPlay")?.addEventListener("click", () => playList(g));
+  $("#lQuiz")?.addEventListener("click", () => quizList(g));
+  o.wire?.();
   setTimeout(() => {
     const box = $("#lres");
+    if (!box) return;
     if (g.special === "stems") return drawStems(box, g);
-    results(box, groupWords(g), { len: g.len });
+    results(box, groupWords(g), { len: g.len, grid: true, noPlay: true });
   }, 10);
-};
-// lists home: a Continue card for the last list opened, then a row per section (sideways on a phone).
-// Bars show how much of each list is learnt (racks marked known in Practice, or words crossed off).
-function listsHome() {
-  const L = getLearnt(), K = new Set(getKnown());
-  // a word counts once its rack is learnt in Practice, or it's crossed off
-  const words = x => x.special === "stems" ? stems(x.n).flatMap(s => s.words) : groupWords(x);
-  const learnt = x => { const ws = words(x); return [ws.filter(w => L.has(alpha(w)) || K.has(w)).length, ws.length]; };
-  // a sample word for the mini tiles: the first valid example in the blurb, else filled in once the list is built
-  const sample = x => x.special === "stems" ? "" : (x.blurb.match(/\b[A-Z]{2,8}\b/g) || []).find(t => DICT.has(t)) || "";
-  const last = groupOf(store.get("lastList"));
-  let html = `<div class="bigtitle">Word lists</div>`;
-  if (last) html += `<div class="cont" data-list="${last.id}"><div class="ct"><small>Continue</small><b>${esc(last.name)}</b><div class="pbar"><div id="pg_cont" style="width:0"></div></div><div class="small" id="cont_n"></div></div>
-    ${last.special ? "" : `<button type="button" class="go" data-play="${last.id}" aria-label="Practice ${esc(last.name)}">${ICON_PLAY}</button>`}</div>`;
-  let open = false;
-  for (const x of GROUPS) {
-    if (x.sect) { html += `${open ? "</div></div>" : ""}<div class="carow"><h4>${x.sect}<button type="button" data-all>See all</button></h4><div class="hscroll">`; open = true; continue; }
-    const sw = sample(x);
-    html += `<button type="button" class="cc" data-list="${x.id}"><span id="sm_${x.id}">${sw ? tilesHTML(sw, true) : ""}</span><b>${esc(x.name)}</b>
-      <span class="foot"><i id="cnt_${x.id}">${cache[x.id] ? cache[x.id].length.toLocaleString() + (x.special ? " stems" : " words") : "…"}</i><span class="prog"><i id="pg_${x.id}" style="width:0"></i></span></span></button>`;
+}
+// a family opened as one list: a row of chips for each of its rows above the words. Where the rows mix each row has its
+// own pick, with Any, and the words are the ones that fit them all; otherwise one chip is lit across the family
+function famView(f, pick) {
+  const mix = f.build || (!f.one && f.rows.length > 1), rows = famRows(f);
+  let g, chips;
+  if (!mix) {
+    const ids = famIds(f), on = ids.includes(pick) ? pick : ids.includes(store.get("fam:" + f.id)) ? store.get("fam:" + f.id) : ids[0];
+    store.set("fam:" + f.id, on);
+    g = groupOf(on);
+    chips = [...(f.base ? [["", [["Every one", f.base]]]] : []), ...f.rows].map(([n, items]) => `<div class="frow">${n ? `<span class="lbl">${esc(n)}</span>` : ""}<div class="frow-c">${items.map(([l, id]) => `<button type="button" class="chip-b ${id === on ? "on" : ""}" data-fpick="${id}">${esc(l)}</button>`).join("")}</div></div>`).join("");
+  } else {
+    // a list of this family's (from a link or the column of lists) starts with its own chip picked
+    let picks = store.get("famb:" + f.id, null) || rows.map(r => r[2]?.any === false ? 0 : -1);
+    if (pick && !f.build) picks = rows.map((r, i) => r[1].findIndex(x => x[1] === pick) >= 0 ? r[1].findIndex(x => x[1] === pick) : r[2]?.any === false ? 0 : -1);
+    picks = rows.map((r, i) => Math.min(picks[i] ?? -1, r[1].length - 1));
+    store.set("famb:" + f.id, picks);
+    g = groupOf(`b:${f.id}:${picks.join(",")}`);
+    chips = rows.map(([n, items, ro], i) => `<div class="frow"><span class="lbl">${esc(n)}</span><div class="frow-c">${ro?.any === false ? "" : `<button type="button" class="chip-b ${picks[i] < 0 ? "on" : ""}" data-frow="${i}" data-fi="-1">Any</button>`}${items.map(([l], k) => `<button type="button" class="chip-b ${picks[i] === k ? "on" : ""}" data-frow="${i}" data-fi="${k}">${esc(l)}</button>`).join("")}</div></div>`).join("");
   }
-  $("#view").innerHTML = html + "</div></div>";
-  const v = $("#view");
-  v.querySelectorAll("[data-list]").forEach(b => b.onclick = () => location.hash = "lists/" + b.dataset.list);
-  v.querySelectorAll("[data-all]").forEach(b => b.onclick = () => { const r = b.closest(".carow"); r.classList.toggle("all"); b.textContent = r.classList.contains("all") ? "Show less" : "See all"; });
-  v.querySelector("[data-play]")?.addEventListener("click", ev => { ev.stopPropagation(); saveSettings({ practice: { ...PO_DEFAULT, order: SET.practice?.order || "rand", rev: !!SET.practice?.rev, src: "g:" + last.id, lens: last.len ? [last.len] : [] } }); location.hash = "practice/go"; });
-  const fill = x => {
-    const ws = groupWords(x), [n, all] = learnt(x), pct = all ? n / all * 100 : 0;
-    const c = $("#cnt_" + x.id); if (c) c.textContent = ws.length.toLocaleString() + (x.special ? " stems" : " words") + (n ? ` · ${n.toLocaleString()} learnt` : "");
-    const p = $("#pg_" + x.id); if (p) p.style.width = pct + "%";
-    const sm = $("#sm_" + x.id); if (sm && !sm.innerHTML) { const s = x.special ? ws[0] : ws.find(w => w.length === (x.len || 4)) || ws[0]; if (s) sm.innerHTML = tilesHTML(s, true); }
-    if (x === last) { $("#pg_cont").style.width = pct + "%"; $("#cont_n").textContent = n ? `${n.toLocaleString()} of ${all.toLocaleString()} learnt` : "Nothing learnt yet"; }
-  };
-  // fill in counts and bars without blocking the first paint, the continue card first
-  const todo = [last, ...GROUPS.filter(x => x.id && x !== last)].filter(Boolean);
-  const step = () => { const x = todo.shift(); if (!x || location.hash !== "#lists") return; fill(x); setTimeout(step, 0); };
+  const sub = mix ? (g.name.split(" · ").slice(1).join(" · ") || "Every one") + " · pick from each row and they combine" : g.name;
+  listView(g, { title: f.name, sub, back: listBack(f), top: `<div class="fchips ${mix ? "mix" : ""}">${chips}</div>`, wire: () => {
+    $("#view").querySelectorAll("[data-fpick]").forEach(b => b.onclick = () => { store.set("fam:" + f.id, b.dataset.fpick); famView(f); });
+    $("#view").querySelectorAll("[data-frow]").forEach(b => b.onclick = () => { const p = store.get("famb:" + f.id), i = +b.dataset.frow, k = +b.dataset.fi; p[i] = k; store.set("famb:" + f.id, p); famView(f); });
+  } });
+}
+// a section's folder: its families, then its lists
+function listFolder(i) {
+  const sec = listSections()[i];
+  if (!sec) return listsHome();
+  $("#view").innerHTML = `<div class="lhome"><div class="lhd"><a class="btn sm" href="#lists">‹ Lists</a><div><h3 class="title">${esc(sec[0])}</h3><p class="sub">${sec[1].length} in this folder</p></div></div>
+    <div class="lcards">${sec[1].map(listCard).join("")}</div></div>`;
+  fillCards(sec[1]);
+}
+// Practise (or Recall) a list, and Quiz it
+function playList(g, mode) {
+  saveSettings({ practice: { ...PO_DEFAULT, mode: mode || (SET.practice?.mode === "recall" ? "anagram" : SET.practice?.mode || "anagram"), order: SET.practice?.order || "rand", rev: !!SET.practice?.rev, src: "g:" + g.id, lens: g.len && !mode ? [g.len] : [] } });
+  location.hash = "practice";
+}
+function quizList(g) { quizSetup = { ...quizSetup, source: "list:" + g.id, lens: [], starOnly: false }; store.set("quizSetup", quizSetup); location.hash = "quiz"; }
+// a list's words (a stems list counts the words its stems make), and whether a word is learnt: crossed off (getting
+// its rack right in Practice doesn't count, since that would mark every word with those letters)
+const listWords = x => x.special === "stems" ? stems(x.n).flatMap(s => s.words) : groupWords(x);
+const learntTest = () => { const K = new Set(getKnown()); return w => K.has(w); };
+// how much of each list is learnt, worked out once and kept until something is learnt or crossed off
+let listPctMemo = { key: "", pct: {} };
+function listPct(x) {
+  const key = getLearnt().size + ":" + getKnown().length;
+  if (listPctMemo.key !== key) listPctMemo = { key, pct: {} };
+  if (!(x.id in listPctMemo.pct)) { const ws = listWords(x), isL = learntTest(); let n = 0; for (const w of ws) if (isL(w)) n++; listPctMemo.pct[x.id] = [n, ws.length]; }
+  return listPctMemo.pct[x.id];
+}
+const pctOf = ([n, all]) => all ? Math.round(n / all * 100) : 0;
+const ringHTML = (p, id) => `<span class="lring ${p === 100 ? "full" : ""}" ${id ? `id="${id}"` : ""} style="--p:${p ?? 0}"><b>${p == null ? "" : p === 100 ? "✓" : p + "%"}</b></span>`;
+const setRing = (el, p) => { if (!el) return; el.style.setProperty("--p", p); el.classList.toggle("full", p === 100); el.firstElementChild.textContent = p === 100 ? "✓" : p + "%"; };
+// the sections, as [section name, its families and then its lists]; a list in a family only shows in its family
+let secMemo = null;
+const listSections = () => secMemo ||= (() => { const inFam = new Set(FAMILIES.flatMap(famIds)), out = [];
+  for (const x of GROUPS) { if (x.sect) out.push([x.sect, FAMILIES.filter(f => f.sect === x.sect)]); else if (!x.strip && out.length && !inFam.has(x.id)) out.at(-1)[1].push(x); }
+  return out.filter(([, l]) => l.length); })();
+// a list's sample on its card: the shortest real word in its blurb, so the tiles fit on one row
+// (a family's is its first list's that has one)
+const listSample = x => x.rows ? famIds(x).map(id => listSample(groupOf(id) || {})).find(Boolean) || "" : x.special === "stems" || !x.blurb ? "" : (x.blurb.match(/\b[A-Z]{2,8}\b/g) || []).filter(t => DICT.has(t)).sort((a, b) => a.length - b.length)[0] || "";
+// a list's card; a family's is a stack of cards, with how many lists and the first few of them
+function listCard(x) {
+  if (!x) return "";
+  const last = store.get("lastList", ""), fam = !!x.rows, s = listSample(x), n = fam ? famIds(x).length : 0;
+  const isLast = x.id === last || (fam && (famIds(x).includes(last) || last.startsWith("b:" + x.id + ":")));
+  return `<a class="lcard2 ${fam ? "fam" : ""} ${isLast ? "last" : ""}" href="#lists/${x.id}" data-name="${esc(x.name.toLowerCase())}"><span class="lc-top">${s ? tilesHTML(s.slice(0, 6), true) : x.special ? `<span class="small">stems</span>` : "<span></span>"}${x.special ? "" : ringHTML(null, "lr_" + x.id)}</span>
+    <b>${esc(x.name)}</b>${fam ? `<span class="lc-peek"><em>${n} lists</em> · ${esc(x.rows.flatMap(r => r[1].map(y => y[0])).slice(0, 5).join(" · "))}${n > 5 ? " …" : ""}</span>` : ""}<span class="small" id="lc_${x.id}">${cache[x.id] ? cache[x.id].length.toLocaleString() + " words" : "&nbsp;"}</span></a>`;
+}
+// the rings and counts on a page of cards fill in one at a time after it shows
+function fillCards(items) {
+  const todo = items.filter(x => x && !x.special);
+  const step = () => { const x = todo.shift(); if (!x || !$("#lr_" + x.id)) return; const [n, all] = listPct(x); setRing($("#lr_" + x.id), pctOf([n, all]));
+    const c = $("#lc_" + x.id); if (c) c.textContent = all.toLocaleString() + " words" + (n ? ` · ${n.toLocaleString()} learnt` : ""); setTimeout(step, 0); };
   setTimeout(step, 30);
+}
+// lists home: Keep going (the last list, with its numbers), rings for each whole length, then a folder for each section
+function listsHome() {
+  const last = groupOf(store.get("lastList")), days = studyDays(), today = days[dayKey()] || {};
+  const sample = listSample;
+  const secs = listSections();
+  const sw = last && sample(last);
+  const missedIn = x => { const m = new Set(store.get("missed", [])); return listWords(x).filter(w => m.has(w)).length; };
+  const hero = last ? `<div class="lhero">
+      <div class="lh-main"><small>Keep going</small><div class="lh-name"><b>${esc(last.name)}</b>${sw ? tilesHTML(sw, true) : ""}</div>
+        <div class="pbar"><div id="lhBar" style="width:0"></div></div><span class="lh-sub" id="lhSub">&nbsp;</span>
+        <div class="lh-acts"><button type="button" class="btn sm" id="lhPlay">▶ Practise</button><button type="button" class="btn sm ghost" id="lhQuiz">Quiz</button><a class="btn sm ghost" href="#lists/${last.id}" id="lhOpen">Open</a></div></div>
+      <div class="lh-nums">${[[`${today.l ? "+" : ""}${(today.l || 0).toLocaleString()}`, "learnt today"], [missedIn(last).toLocaleString(), "missed in this list"], [`${dayStreak(days)}`, "days in a row"]].map(([b, s]) => `<div><b>${b}</b><span>${s}</span></div>`).join("")}</div></div>`
+    : `<div class="lhero"><div class="lh-main"><small>Start here</small><div class="lh-name"><b>Two-letter words</b>${tilesHTML("QI", true)}</div><span class="lh-sub">All 127 twos: the words every game uses</span>
+        <div class="lh-acts"><a class="btn sm" href="#lists/twos">Open the twos</a></div></div></div>`;
+  const LENS = [["twos", 2], ["threes", 3], ["fours", 4], ["fives", 5], ["sixes", 6], ["sevens", 7], ["eights", 8]];
+  $("#view").innerHTML = `<div class="lhome">${hero}
+    <div class="llens"><span class="lbl">By length</span><div class="llens-row">${LENS.map(([id, n]) => `<a href="#lists/${id}" class="llen">${ringHTML(null, "ll_" + id)}<span>${n}s</span></a>`).join("")}</div></div>
+    <div class="lfolds">${secs.map(([s, l], i) => `<a class="lfold" href="#lists/s:${i}"><span class="lc-top">${tilesHTML((l.map(listSample).find(Boolean) || "").slice(0, 6), true)}</span><b>${esc(s)}</b><span class="small">${l.length} ${l.length === 1 ? "list" : "lists"}${l.some(x => x.rows) ? ` · ${l.filter(x => x.rows).length} folder${l.filter(x => x.rows).length === 1 ? "" : "s"}` : ""}</span><span class="lc-peek">${esc(l.slice(0, 3).map(x => x.name).join(" · "))}${l.length > 3 ? " …" : ""}</span></a>`).join("")}</div></div>`;
+  if (last) {
+    $("#lhPlay").onclick = () => playList(last);
+    $("#lhQuiz").onclick = () => quizList(last);
+    // a list opened from Keep going goes back to this page, where you came from
+    $("#lhOpen").onclick = () => { backHome = last.id; };
+  }
+  // the numbers fill in after the first paint: Keep going first, then the length rings
+  const lensTodo = LENS.map(([id]) => groupOf(id));
+  const step = () => {
+    if (location.hash !== "#lists" && location.hash !== "") return;
+    const len = lensTodo.shift(); if (!len) return;
+    setRing($("#ll_" + len.id), pctOf(listPct(len)));
+    setTimeout(step, 0);
+  };
+  setTimeout(() => {
+    if (last && !last.special) { const [n, all] = listPct(last), p = pctOf([n, all]); $("#lhBar").style.width = p + "%";
+      // the line under the bar takes turns: words learnt, then racks with all their words crossed off
+      const K = new Set(getKnown()), racks = new Map();
+      for (const w of listWords(last)) { const a = alpha(w); racks.set(a, (racks.get(a) ?? true) && K.has(w)); }
+      const rl = [...racks.values()].filter(Boolean).length;
+      const lines = [`${n.toLocaleString()} of ${all.toLocaleString()} words learnt · ${p}%`, `${rl.toLocaleString()} of ${racks.size.toLocaleString()} racks learnt · ${pctOf([rl, racks.size])}%`];
+      let k = 0; const sub = $("#lhSub"); sub.textContent = lines[0];
+      const turn = setInterval(() => { if (!document.contains(sub)) return clearInterval(turn); sub.classList.add("fade"); setTimeout(() => { k = (k + 1) % lines.length; sub.textContent = lines[k]; sub.classList.remove("fade"); }, 250); }, 4000); }
+    step();
+  }, 30);
 }
 function drawStems(box, g) {
   const data = stems(g.n);
@@ -1878,20 +2000,6 @@ VIEWS.mine = (tab) => {
   confirmBtn($("#clearStars"), () => { store.set("stars", []); VIEWS.mine("stars"); });
   confirmBtn($("#clearMissed"), () => { store.set("missed", []); VIEWS.mine("missed"); });
 };
-// a list's words (a stems list counts the words its stems make), and whether a word is learnt: crossed off (getting
-// its rack right in Practice doesn't count, since that would mark every word with those letters)
-const listWords = x => x.special === "stems" ? stems(x.n).flatMap(s => s.words) : groupWords(x);
-const learntTest = () => { const K = new Set(getKnown()); return w => K.has(w); };
-// how much of each list is learnt, worked out once and kept until something is learnt or crossed off
-let listPctMemo = { key: "", pct: {} };
-function listPct(x) {
-  const key = getLearnt().size + ":" + getKnown().length;
-  if (listPctMemo.key !== key) listPctMemo = { key, pct: {} };
-  if (!(x.id in listPctMemo.pct)) { const ws = listWords(x), isL = learntTest(); let n = 0; for (const w of ws) if (isL(w)) n++; listPctMemo.pct[x.id] = [n, ws.length]; }
-  return listPctMemo.pct[x.id];
-}
-const pctOf = ([n, all]) => all ? Math.round(n / all * 100) : 0;
-const ringHTML = (p, id) => `<span class="lring ${p === 100 ? "full" : ""}" ${id ? `id="${id}"` : ""} style="--p:${p ?? 0}"><b>${p == null ? "" : p === 100 ? "✓" : p + "%"}</b></span>`;
 // ---------- Stats (My words): this week against last, every length's %, the next milestone and charts from the
 // day log. Achievements: records and badges ----------
 function statsView(tab = "stats") {

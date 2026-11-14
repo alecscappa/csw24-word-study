@@ -122,6 +122,11 @@ const GROUPS = [
   { id: "twos", name: "Two-letter words", blurb: "All 127 twos. Learn these first.", test: w => w.length === 2 },
   { id: "threes", name: "Three-letter words", blurb: "Every three, with hooks.", test: w => w.length === 3 },
   { id: "fours", name: "Four-letter words", blurb: "Every four, with hooks.", test: w => w.length === 4 },
+  // whole lengths past the 4s: opened from the length rings on the Lists page, and offered in Practice and Quiz
+  { id: "fives", name: "Five-letter words", blurb: "Every five.", test: w => w.length === 5, strip: true },
+  { id: "sixes", name: "Six-letter words", blurb: "Every six.", test: w => w.length === 6, strip: true },
+  { id: "sevens", name: "Seven-letter words", blurb: "Every seven: the bingos.", test: w => w.length === 7, strip: true },
+  { id: "eights", name: "Eight-letter words", blurb: "Every eight.", test: w => w.length === 8, strip: true },
   { id: "nohook", name: "Unhookable words", len: 3, blurb: "2 to 5-letter words with no front or back hooks. Safe to play, hard to extend.", test: (w, e) => w.length <= 5 && !e.fh && !e.bh },
   { id: "manyhook", name: "Hook-heavy words", len: 2, blurb: "Words that take 8 or more hooks. Risky to open the board with.", test: (w, e) => e.fh.length + e.bh.length >= 8 },
   { id: "nos", name: "No S hook", len: 3, blurb: "2 to 5-letter words that can't take an S on the end.", test: (w, e) => w.length <= 5 && !e.bh.includes("s") },
@@ -275,7 +280,76 @@ const GROUPS = [
   { id: "shortf", name: "Short F words", len: 3, blurb: "3 and 4 letters, like FEE, EFT and OFT.", test: w => lenIn(w, 3, 4) && w.includes("F") },
   { id: "shorth", name: "Short H words", len: 3, blurb: "3 and 4 letters, like OHIA, AHI and AHA.", test: w => lenIn(w, 3, 4) && w.includes("H") },
 ];
-const groupOf = id => id ? GROUPS.find(g => g.id === id) : undefined;
+// ---------- list families: lists that are one idea with variations (AEIRST + one, AEINRT + one…), shown as one list
+// with a chip for each variation. rows are [row name, [[chip name, list id], …]]; base is the list for "every one".
+// On the Lists page's design B a family's rows combine, one pick from each (or Any), unless it's one (its rows don't
+// mix); build gives rows of its own for that, and a test made from the picks (-1 for Any) ----------
+const FAMILIES = [
+  { id: "fam4", sect: "Short words and hooks", name: "Four-letter words", blurb: "Every 4: pick a shape, a letter or more to study a few at a time.", base: "fours", rows: [
+    ["Shape", ["cvcv", "cvvc", "cvcc", "ccvc", "vcvc", "vccv", "vccc", "cccv", "ccvv", "vvcv", "cvvv"].map(s => [s.toUpperCase(), "s4" + s])],
+    ["Letter", [["K", "f4k"], ["W", "f4w"], ["F", "f4f"], ["H", "f4h"], ["V", "f4v"], ["Y the only vowel", "f4y"], ["Ending in Y", "f4endy"]]],
+    ["Letters", [["A double letter", "f4dbl"], ["A split pair", "f4pair"], ["Starts and ends alike", "f4ends"], ["One-point tiles", "f4onept"]]],
+    ["More", [["Worth 12 or more", "f4big"], ["3 or more anagrams", "f4ana"], ["No anagram", "f4lone"], ["No hooks", "nohook4"]]]] },
+  { id: "famhook", sect: "Short words and hooks", name: "Hook builder", blurb: "Words made by hooking a letter onto a shorter word, step by step up from the 2s.", one: true, rows: [
+    ["2s and 3s", [["3s, hook in front", "f2"], ["3s, hook on the end", "b2"], ["2s with hooks both ends", "both2"], ["3s with hooks both ends", "both3"], ["3s, back hooks only", "back3"]]],
+    ["4s from a 3", [["Hook in front", "f3"], ["S in front", "fs3"], ["Front hook not S", "fns3"], ["Hook on the end", "b3"], ["End hook not S", "b3nos"], ["Either end", "fb3"], ["Not built on a 3", "no3"]]],
+    ["5s and 6s", [["5s, hook in front", "f4"], ["5s, hook on the end", "b4"], ["5s, end hook not S", "b4nos"], ["6s, hook in front", "f5"]]],
+    ["New", [["A hook new in CSW24", "newhook"]]]],
+    build: { rows: [["Build", [["3s from a 2"], ["4s from a 3"], ["5s from a 4"], ["6s from a 5"]], { any: false }], ["Hook", [["In front"], ["On the end"], ["Both ends"], ["Not built on one"]]], ["Hook letter", [["S"], ["Not S"]]]],
+      test: ([n, h, s]) => w => {
+        if (w.length !== n + 3) return false;
+        const f = DICT.has(w.slice(1)), b = DICT.has(w.slice(0, -1)), ok = c => s < 0 || (s === 0) === (c === "S");
+        return h === 0 ? f && ok(w[0]) : h === 1 ? b && ok(w.at(-1)) : h === 2 ? f && b && ok(w[0]) && ok(w.at(-1)) : h === 3 ? !f && !b : (f && ok(w[0])) || (b && ok(w.at(-1)));
+      } } },
+  { id: "famS", sect: "Short words and hooks", name: "S hooks", blurb: "Which 2s, 3s and 4s take an S, which can't, and which take only an S.", one: true, rows: [
+    ["Take an S", [["2s", "s2"], ["3s", "s3"], ["4s", "s4"]]], ["Can't take an S", [["3s", "s3no"], ["4s", "s4no"]]], ["Only hook is S", [["3s", "s3only"], ["4s", "s4only"]]],
+    ["S in front", [["3s", "sf3"], ["4s", "sf4"]]], ["S at both ends", [["3s", "ss3"], ["4s", "ss4"]]]],
+    build: { rows: [["Length", [["2s"], ["3s"], ["4s"]]], ["S", [["Takes an S"], ["Can't take an S"], ["Only hook is S"], ["S in front"], ["S at both ends"]], { any: false }]],
+      test: ([l, k]) => (w, e) => (l < 0 ? lenIn(w, 2, 4) : w.length === l + 2) && [() => e.bh.includes("s"), () => !e.bh.includes("s"), () => !e.fh && e.bh === "s", () => e.fh.includes("s"), () => e.fh.includes("s") && e.bh.includes("s")][k]() } },
+  { id: "fampow", sect: "Power tiles", name: "J, Q, X and Z", blurb: "Words with the big tiles, by letter.", rows: [
+    ["Letter", [["J", "j"], ["Q", "q"], ["X", "x"], ["Z", "z"], ["Any of them", "jqxz"]]], ["Narrower", [["2s to 5s", "jqxzshort"], ["Q without U", "qnou"], ["Two power tiles", "twopower"]]]] },
+  { id: "famshort", sect: "Power tiles", name: "Short K, W, Y, F, H and V", blurb: "3 and 4-letter words with the awkward middle tiles.", rows: [
+    ["Letter", [["K", "shortk"], ["W", "shortw"], ["Y", "shorty"], ["F", "shortf"], ["H", "shorth"], ["V", "shortv"]]], ["3s only", [["Any of K W Y F H", "kwyfh"]]]] },
+  { id: "famlikely", sect: "Bingos", name: "Most likely words", blurb: "The words you're most likely to hold, by length.", one: true, rows: [
+    ["Top 1,000", [["5s", "p5"], ["6s", "p6"], ["7s", "p7"], ["8s", "p8"]]], ["The next 1,000", [["7s", "p7b"], ["8s", "p8b"]]]] },
+  { id: "famstem", sect: "Bingos", name: "Stem + one", blurb: "Six of the best letters: add one tile to make a bingo.", rows: [
+    ["Stem", ["aeirst", "aeinrt", "aeinst", "aeinrs", "einors", "aeilrt", "aeilnt", "einort", "aeirss", "aeinss"].map(s => [s.toUpperCase(), "bst" + s])]] },
+  { id: "famend", sect: "Bingos", name: "Bingo endings", blurb: "7s and 8s by how they end.", rows: [
+    ["Ending", [["-ING, -IER, -IEST", "suffix"], ["-ERS", "benders"], ["-IES", "bendies"], ["-ATE", "bendate"], ["-ION", "bendion"], ["-ISE, -IZE", "bendiseandize"], ["-NESS", "bendness"], ["-ABLE, -IBLE", "bendableandible"], ["-ED", "bended"],
+      ["-EST", "bendest"], ["-LY", "bendly"], ["-MENT", "bendment"], ["-IST", "bendist"], ["-ITY", "bendity"], ["-OUS", "bendous"], ["-ISH", "bendish"], ["-AGE", "bendage"]]]] },
+  { id: "famstart", sect: "Bingos", name: "Bingo beginnings", blurb: "7s and 8s by how they start.", rows: [
+    ["Beginning", [["RE-, UN-, OUT-, OVER-, DIS-", "prefix"], ["MIS-", "bpremis"], ["PRE-", "bprepre"], ["NON-", "bprenon"], ["DE-", "bprede"], ["IN-", "bprein"], ["EN-", "bpreen"], ["CO-", "bpreco"], ["UNDER-", "bpreunder"], ["INTER-", "bpreinter"], ["ANTI-", "bpreanti"]]]] },
+  { id: "famsa", sect: "Sound-alikes", name: "Sound-alikes", blurb: "Words that sound like another word: by length, by the letters swapped, or by spelling.", rows: [
+    ["Length", [3, 4, 5, 6, 7, 8].map(n => [n + "s", "sa" + n])],
+    ["Swap", [["D and T", "swdt"], ["B and P", "swbp"], ["C, G and K", "swcgk"], ["S and Z", "swsz"], ["F and V", "swfv"], ["M and N", "swmn"], ["G and J", "swgj"]]],
+    ["Spelling", [["-ISE and -IZE", "isize"], ["-OUR and -OR", "ouror"], ["-RE and -ER", "reer"]]]] },
+  { id: "famorigin", sect: "Word types and origins", name: "Word types and origins", blurb: "Interjections, slang, archaic words, and words from Scotland, Australia, Japan and South Africa.", rows: [
+    ["Type", [["Interjections", "interj"], ["Slang", "slang"], ["Archaic", "arch"], ["Scots", "scots"], ["Australian", "aus"], ["Japanese", "jap"], ["South African", "safr"]]]] },
+];
+const famOf = id => FAMILIES.find(f => f.id === id);
+// a family's lists, base first, and the family a list belongs to
+const famIds = f => [...(f.base ? [f.base] : []), ...f.rows.flatMap(r => r[1].map(x => x[1]))];
+const famOfList = id => FAMILIES.find(f => famIds(f).includes(id));
+// a family's own words (for its %): its base, or every word in any of its lists
+for (const f of FAMILIES) f.test = (w, e) => famIds(f).some(id => GROUPS.find(g => g.id === id).test(w, e));
+// design B's rows for a family: its own, or its lists' rows
+const famRows = f => f.build ? f.build.rows : f.rows.map(([n, items]) => [n, items]);
+// a list made of picks in a family (design B), with an id like "b:fam4:0,-1,2,-1" so Practice and Quiz can find it again
+const builtMemo = new Map();
+function builtGroup(id) {
+  if (builtMemo.has(id)) return builtMemo.get(id);
+  const [, fid, p = ""] = id.split(":"), f = famOf(fid);
+  if (!f) return;
+  const rows = famRows(f), picks = rows.map((_, i) => Number(p.split(",")[i] ?? -1));
+  const labels = rows.map((r, i) => r[1][picks[i]]?.[0]).filter(Boolean);
+  let test;
+  if (f.build) test = f.build.test(picks);
+  else { const ts = rows.map((r, i) => picks[i] >= 0 ? GROUPS.find(g => g.id === r[1][picks[i]][1]).test : null).filter(Boolean); test = ts.length ? (w, e) => ts.every(t => t(w, e)) : f.test; }
+  const g = { id, name: [f.name, ...labels].join(" · "), blurb: f.blurb, test, fam: f.id, picks };
+  builtMemo.set(id, g);
+  return g;
+}
+const groupOf = id => id ? GROUPS.find(g => g.id === id) || (id.startsWith("b:") ? builtGroup(id) : undefined) : undefined;
 const cache = {};
 const groupWords = g => cache[g.id] ||= (g.special === "stems" ? stems(g.n).map(s => s.stem) : ALL.filter(w => g.test(w, DICT.get(w))));
 function stems(n) {
