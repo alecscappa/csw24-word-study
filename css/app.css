@@ -1368,7 +1368,7 @@ body.fit main.wrap.sx > #sres.sxon { overflow-y: auto; }
 .lc-top .tiles { margin: 0; flex-wrap: nowrap; gap: 2px; min-width: 0; overflow: hidden; }
 .lc-top .tiles.mini .tile { width: 24px; height: 24px; font-size: .85rem; }
 .lc-top .tiles.mini .tile sub { display: none; }
-.lcard2 b { font: 700 .98rem/1.2 var(--display); }
+.lcard2 > b { font: 700 .98rem/1.2 var(--display); }
 .lcard2 .small { font-size: .76rem; }
 /* a family of lists: a card with two more peeking out under it, how many lists, and the first few */
 .lcard2.fam { position: relative; isolation: isolate; margin-bottom: 9px; }
@@ -1403,7 +1403,7 @@ body.fit main.wrap.sx > #sres.sxon { overflow-y: auto; }
   .lcards { grid-template-columns: 1fr 1fr; gap: 8px; }
   .lcard2 { padding: 10px; }
   .lc-top .tiles.mini .tile { width: 20px; height: 20px; font-size: .74rem; }
-  .lcard2 b { font-size: .9rem; }
+  .lcard2 > b { font-size: .9rem; }
 }
 /* an open list */
 .lmain { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
