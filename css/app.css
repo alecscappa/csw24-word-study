@@ -1291,7 +1291,8 @@ body.fit { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-
 body.fit > header { flex: none; }
 body.fit main.wrap { flex: 1; min-height: 0; width: 100%; padding-bottom: 14px; }
 body.fit main.wrap > * { flex: none; }
-body.fit .fitscroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 25%, transparent) transparent; }
+html:has(body.fit) { overscroll-behavior: none; }
+body.fit .fitscroll { overflow-y: auto; overscroll-behavior: none; min-height: 0; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 25%, transparent) transparent; }
 body.fit main.wrap > .fitscroll { flex: 1; }
 /* Search on a computer: the page scrolls first, so the filters go up out of sight and the results card fills the
    window; the card is held still until then (.sxon), and scrolls on its own after */
