@@ -578,7 +578,7 @@ function listBack(g) {
 // with o.title over it
 function listView(g, o = {}) {
   store.set("lastList", g.id);
-  const words = listWords(g), isL = learntTest(), n = words.filter(isL).length, pct = words.length ? Math.round(n / words.length * 100) : 0;
+  const words = listWords(g), isL = learntTest(), n = words.filter(isL).length, pct = pctOf([n, words.length]);
   const missed = new Set(store.get("missed", [])), K = new Set(getKnown()), stats = store.get("stats", {});
   let right = 0, tries = 0; for (const w of words) { const s = stats[w]; if (s) { right += s[0]; tries += s[0] + s[1]; } }
   const kp = [[`${pct}%`, `${n.toLocaleString()} of ${words.length.toLocaleString()} learnt`], [words.filter(w => K.has(w)).length.toLocaleString(), "crossed off"], [words.filter(w => missed.has(w)).length.toLocaleString(), "in Missed words"], [tries ? `${Math.round(right / tries * 100)}%` : "–", tries ? `right in ${tries.toLocaleString()} answers` : "not quizzed yet"]];
@@ -661,7 +661,8 @@ function listPct(x) {
   if (!(x.id in listPctMemo.pct)) { const ws = listWords(x), isL = learntTest(); let n = 0; for (const w of ws) if (isL(w)) n++; listPctMemo.pct[x.id] = [n, ws.length]; }
   return listPctMemo.pct[x.id];
 }
-const pctOf = ([n, all]) => all ? Math.round(n / all * 100) : 0;
+// rounded, but never 100% (a ✓ on a ring) until every word is learnt
+const pctOf = ([n, all]) => !all ? 0 : n >= all ? 100 : Math.min(99, Math.round(n / all * 100));
 const ringHTML = (p, id) => `<span class="lring ${p === 100 ? "full" : ""}" ${id ? `id="${id}"` : ""} style="--p:${p ?? 0}"><b>${p == null ? "" : p === 100 ? "✓" : p + "%"}</b></span>`;
 const setRing = (el, p) => { if (!el) return; el.style.setProperty("--p", p); el.classList.toggle("full", p === 100); el.firstElementChild.textContent = p === 100 ? "✓" : p + "%"; };
 // the sections, as [section name, its families and then its lists]; a list in a family only shows in its family
