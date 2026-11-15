@@ -421,7 +421,8 @@ const orderPick = (id, v, rev) => `<div class="seg" id="${id}">${Object.entries(
 let lastResults = [];
 // going back to a list, search or My words puts you where you were: the scroll position, plus each results
 // list's length chips and page (kept per page and word count, for this visit to the site)
-const scrollMem = store.get("scrollMem", {}), resMem = {};
+// resMem: each list's page, length chips and range, kept across reloads like the scroll spots (saved with them)
+const scrollMem = store.get("scrollMem", {}), resMem = store.get("resMem", {});
 let curHash = location.hash, pendingScroll = 0;
 // pages whose words scroll in their own card (an open list, Search, My words) keep the spot of that card, not the page's
 const fitBox = () => document.body.classList.contains("fit") ? document.querySelector("#view .fitscroll") : null;
@@ -459,7 +460,7 @@ function results(el, words, opts = {}) {
   // range = which ranks to show, counted in the current sort order (e.g. 1–100 or 30–50); the rows shown are numbered from 1
   const mem = resMem[location.hash + ":" + words.length] ||= {};
   const lens = [...new Set(words.map(w => w.length))].sort((a, b) => a - b);
-  const st = { sel: null, lens: new Set((mem.lens || (opts.len ? [opts.len] : [])).filter(n => lens.includes(n) && lens.length > 1)), page: mem.page || 0, from: +opts.range?.from || 0, to: +opts.range?.to || 0 };
+  const st = { sel: null, lens: new Set((mem.lens || (opts.len ? [opts.len] : [])).filter(n => lens.includes(n) && lens.length > 1)), page: mem.page || 0, from: +(opts.range?.from ?? mem.from) || 0, to: +(opts.range?.to ?? mem.to) || 0 };
   let first = true, shownList = [];
   function draw() {
     // "? letter" sorts by what the ? stands for (A to Z, then by probability); it's offered only when results have one
@@ -517,7 +518,7 @@ function results(el, words, opts = {}) {
     const setRange = (from, to) => {
       from = Math.max(0, parseInt(from) || 0); to = Math.max(0, parseInt(to) || 0);
       if (from && to && to < from) [from, to] = [to, from];
-      st.from = from; st.to = to; st.page = mem.page = 0; opts.range?.save?.(from || "", to || ""); draw();
+      st.from = mem.from = from; st.to = mem.to = to; st.page = mem.page = 0; opts.range?.save?.(from || "", to || ""); draw();
     };
     el.querySelectorAll("[data-top]").forEach(b => b.onclick = () => setRange(0, +b.dataset.top));
     for (const id of ["#rFrom", "#rTo"]) {

@@ -6,6 +6,8 @@ function saveScroll() {
   delete scrollMem[curHash]; scrollMem[curHash] = getY();
   const ks = Object.keys(scrollMem); if (ks.length > 60) delete scrollMem[ks[0]];
   store.set("scrollMem", scrollMem);
+  const rs = Object.keys(resMem); for (const k of rs.slice(0, rs.length - 60)) delete resMem[k];
+  store.set("resMem", resMem);
 }
 addEventListener("pagehide", saveScroll);
 document.addEventListener("visibilitychange", () => { if (document.hidden) saveScroll(); });
