@@ -869,6 +869,7 @@ main.wrap:has(> .foc) { max-width: 1400px; }
 .bmoves b { font-family: var(--display); }
 .blevels { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
 .blevels .btn { flex: none; }
+.blrow { display: flex; align-items: center; gap: 8px; } .blrow .blevels { flex: 1; min-width: 0; } .blrow #bLookOpen { flex: none; }
 @media (max-width: 620px) { .bside .card { padding: 12px 14px; } .bq { font-size: 1.15rem; } }
 /* Analyse, Play and the Lab */
 .small.bad, span.bad { color: var(--bad); }

@@ -296,10 +296,10 @@ function viewCount() {
   const st = cntStats(), C = CNT;
   if (!C) { $("#view").innerHTML = `<div class="card"><p class="empty">Couldn't make a position just now. Try again.</p></div>`; return; }
   const m = C.r.words[0], right = C.done && +C.typed === C.r.total;
-  $("#view").innerHTML = `${bLookBar()}
-  <div class="bgrid"><div>${boardHTML(C.cells, C.news, -1, 0, C.r.words[0].dir)}</div>
+  // Board look sits beside the levels, not in a bar of its own above the board, so the page fits the window
+  $("#view").innerHTML = `<div class="bgrid"><div>${boardHTML(C.cells, C.news, -1, 0, C.r.words[0].dir)}</div>
   <div class="bside">
-    <div class="seg blevels">${Object.entries(BLEVELS).map(([k, [n]]) => `<button type="button" class="btn sm ${k === level ? "on" : ""}" data-lv="${k}">${n}</button>`).join("")}</div>
+    <div class="blrow"><div class="seg blevels">${Object.entries(BLEVELS).map(([k, [n]]) => `<button type="button" class="btn sm ${k === level ? "on" : ""}" data-lv="${k}">${n}</button>`).join("")}</div><button type="button" class="btn sm" id="bLookOpen">Board look</button></div>
     <div class="card">
       <p class="bq">What does <em>${m.word}</em> score?</p>
       <p class="small" style="margin:2px 0 0">${bAt(m.start, m.dir)}, the glowing tiles${[...C.news.values()].some(t => t.b) ? " (the coloured letter is a blank)" : ""}</p>
