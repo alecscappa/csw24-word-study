@@ -427,7 +427,8 @@ let curHash = location.hash, pendingScroll = 0;
 // pages whose words scroll in their own card (an open list, Search, My words) keep the spot of that card, not the page's
 const fitBox = () => document.body.classList.contains("fit") ? document.querySelector("#view .fitscroll") : null;
 const getY = () => fitBox()?.scrollTop ?? window.scrollY;
-const setY = y => { const b = fitBox(); if (b) b.scrollTop = y; else window.scrollTo(0, y); };
+// a page of words that's scrolled down comes back with its top out of sight (scrollAway), so its card can scroll
+const setY = y => { const b = fitBox(), m = $("#view"); if (b) { if (y && m.classList.contains("sx")) { m.scrollTop = m.scrollHeight; m.onscroll?.(); } b.scrollTop = y; } else window.scrollTo(0, y); };
 function restoreScroll() {
   const b = fitBox(), room = b ? b.scrollHeight - b.clientHeight : document.documentElement.scrollHeight - innerHeight;
   if (pendingScroll && room >= pendingScroll - 4) { setY(pendingScroll); pendingScroll = 0; }

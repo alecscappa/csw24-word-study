@@ -318,13 +318,14 @@ function searchSecs(s) {
   };
 }
 const SEARCH_SECS = { group: ["Group and length", ["group", "lens"]], narrow: ["Filters", ["def", "starts", "ends", "contains", "incl", "excl", "anas", "vows", "dbls", "pfrom", "pto", "pby", "plax"]] };
-// Search on a computer: scrolling down first takes the page up under the header, so the filters go out of sight and
-// the results card fills the window; only then does the card scroll. Going back up, the card scrolls to its top and
-// then the filters come back down
-function searchExpand() {
-  const main = $("#view"), card = $("#sres");
+// pages of words (Search, lists, folders, My words): scrolling down first takes the page up under the header, so the
+// filters and buttons go out of sight and the words' card fills the window; only then does the card scroll. Going
+// back up, the card scrolls to its top and then the rest comes back down. The card is looked up each time, since
+// chips and tabs redraw it
+function scrollAway() {
+  const main = $("#view");
   main.classList.add("sx");
-  main.onscroll = () => card.classList.toggle("sxon", main.scrollTop >= main.scrollHeight - main.clientHeight - 1);
+  main.onscroll = () => fitBox()?.classList.toggle("sxon", main.scrollTop >= main.scrollHeight - main.clientHeight - 1);
   main.onscroll();
 }
 VIEWS.search = () => {
@@ -348,7 +349,7 @@ VIEWS.search = () => {
   ${typeBar()}
   <div class="card fitscroll" id="sres"><p class="empty">Pick a group or fill in any options, then press Search. Hooks show either side of each word; red lowercase letters are blanks.</p></div>`;
   const read = () => { for (const k of Object.keys(SEARCH_DEFAULT)) { const el = $("#s_" + k); if (el) searchState[k] = el.type === "checkbox" ? (el.checked ? "1" : "") : el.value; } store.set("search", searchState); };
-  searchExpand();
+  scrollAway();
   $("#sform").querySelectorAll("details.acc").forEach(d => d.addEventListener("toggle", () => { const o = store.get("searchOpen", { group: true }); o[d.dataset.acc] = d.open; store.set("searchOpen", o); }));
   $("#sform").addEventListener("input", () => { read(); nameSearchTab(); for (const k of ["group", "narrow"]) $("#accn_" + k).textContent = accSummary(k); });
   $("#s_group").onchange = e => { $("#groupHint").textContent = groupOf(e.target.value)?.blurb || ""; read(); nameSearchTab(); doSearch(); };

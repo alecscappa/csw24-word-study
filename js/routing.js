@@ -46,10 +46,11 @@ function route() {
   document.body.classList.toggle("full", t === "practice" && arg === "go");
   document.body.classList.remove("sheet-open");
   if (t !== "practice") pSheetOpen = false;
-  // Search's scrolling page under the header (searchExpand) is undone for every other page
+  // the scrolling page under the header (scrollAway) is undone, then put back for pages of words
   $("#view").classList.remove("sx"); $("#view").onscroll = null; $("#view").scrollTop = 0;
   VIEWS[t](arg);
   fitPage();
+  if (t !== "settings" && fitBox()) scrollAway();
   window.scrollTo({ top: 0 });
   // every page goes back to where it was scrolled; results that build a moment later restore it themselves
   const back = fresh ? 0 : scrollMem[curHash] || 0;
@@ -59,7 +60,7 @@ function route() {
 window.addEventListener("hashchange", route);
 // a page with a .fitscroll card fills the window under the header and only that card (and any side columns) scrolls;
 // --hdr is the header's height, for anything that sits just under it
-function fitPage() { document.body.classList.toggle("fit", !!document.querySelector("#view .fitscroll")); }
+function fitPage() { document.body.classList.toggle("fit", !!document.querySelector("#view .fitscroll")); $("#view").onscroll?.(); }
 new MutationObserver(fitPage).observe($("#view"), { childList: true });
 new ResizeObserver(() => document.documentElement.style.setProperty("--hdr", $("header").offsetHeight + "px")).observe($("header"));
 $("#form").addEventListener("submit", ev => {
