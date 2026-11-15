@@ -27,9 +27,8 @@ function route() {
   // and Board: the game, review or tool that was open
   if (t === "board") store.set("boardLast", location.hash.slice(1));
   if (t === "settings") themesOpen = false;
-  // Search's and Practice's folding sections start as new when you come from another tab; opening a word and coming back
-  // leaves them as they were, so the page stays put
-  if (t === "search" && from !== "search" && from !== "w") store.set("searchOpen", { group: true });
+  // Practice's folding options start closed when you come from another tab; opening a word and coming back leaves
+  // them as they were, so the page stays put. Search's sections stay as they were left
   if (t === "practice" && from !== "practice" && from !== "w") store.set("pOpen", false);
   // the search bar only keeps its text on the Word and Search pages
   if (t !== "w" && t !== "search") $("#q").value = "";
