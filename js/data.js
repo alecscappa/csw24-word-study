@@ -367,7 +367,9 @@ function stems(n) {
   return cache["stemdata" + n] = [...m].map(([stem, set]) => ({ stem, n: set.size, words: [...set] })).sort((a, b) => b.n - a.n).slice(0, 150);
 }
 function groupOptions(selected, withSpecial) {
-  let html = "", open = false;
+  // a list made of a family's picks isn't in the menu, so it goes at the top while it's the one chosen
+  const built = selected?.startsWith("b:") && groupOf(selected);
+  let html = built ? `<option value="${built.id}" selected>${esc(built.name)}</option>` : "", open = false;
   for (const g of GROUPS) {
     if (g.sect) { html += `${open ? "</optgroup>" : ""}<optgroup label="${g.sect}">`; open = true; }
     else if (withSpecial || !g.special) html += `<option value="${g.id}" ${g.id === selected ? "selected" : ""}>${esc(g.name)}</option>`;

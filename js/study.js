@@ -598,8 +598,6 @@ function listView(g, o = {}) {
     confirmBtn($("#forgetList"), () => { store.set("plearnt", [...getLearnt()].filter(a => !racks.has(a))); VIEWS.lists(g.id); });
   }
   $("#toSearch")?.addEventListener("click", ev => { ev.preventDefault(); searchInNewTab({ group: g.id }); location.hash = "search"; });
-  // a list made of picks (design B) has no place in Search's list menu
-  if (g.fam) $("#toSearch")?.remove();
   $("#lPlay")?.addEventListener("click", () => playList(g));
   $("#lQuiz")?.addEventListener("click", () => quizList(g));
   o.wire?.();
@@ -612,14 +610,14 @@ function listView(g, o = {}) {
 }
 // a family opened as one list: a row of chips for each of its rows above the words. Where the rows mix each row has its
 // own pick, with Any, and the words are the ones that fit them all; otherwise one chip is lit across the family
+function famView(f, pick) {
+  const mix = f.build || (!f.one && f.rows.length > 1), rows = famRows(f);
   // opened from one of its lists (#lists/fours-x), the address becomes the family's, so coming back from another tab
   // keeps the chips as they were left rather than going back to that list's chip
   if (location.hash !== "#lists/" + f.id) {
     history.replaceState(null, "", "#lists/" + f.id); curHash = location.hash; store.set("studyLast", "lists/" + f.id); $('#tabs [data-tab="study"]').href = location.hash;
     if (backHome) backHome = f.id;
   }
-function famView(f, pick) {
-  const mix = f.build || (!f.one && f.rows.length > 1), rows = famRows(f);
   let g, chips;
   if (!mix) {
     const ids = famIds(f), on = ids.includes(pick) ? pick : ids.includes(store.get("fam:" + f.id)) ? store.get("fam:" + f.id) : ids[0];
