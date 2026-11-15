@@ -594,7 +594,7 @@ function listView(g, o = {}) {
   // forget what's been learnt in Practice for this list (asks once more before it clears)
   const racks = new Set(g.special ? [] : groupWords(g).map(alpha)), L = getLearnt(), nL = [...racks].filter(a => L.has(a)).length;
   if (nL) {
-    $("#toSearch").insertAdjacentHTML("afterend", `<button type="button" class="btn sm" id="forgetList">Reset study progress (${nL.toLocaleString()})</button>`);
+    $("#toSearch").insertAdjacentHTML("afterend", `<button type="button" class="btn sm" id="forgetList">Reset Practice progress (${nL.toLocaleString()})</button>`);
     confirmBtn($("#forgetList"), () => { store.set("plearnt", [...getLearnt()].filter(a => !racks.has(a))); VIEWS.lists(g.id); });
   }
   $("#toSearch")?.addEventListener("click", ev => { ev.preventDefault(); searchInNewTab({ group: g.id }); location.hash = "search"; });
@@ -1458,7 +1458,7 @@ VIEWS.practice = () => {
       </div>
       <div style="margin-top:14px">${likelyField("po_", o.from, o.to, o.by, o.lax)}</div>
       <div class="row" style="margin-top:16px">
-        <span style="margin-left:auto"></span><button class="btn sm" id="poReset">Reset options</button><button class="btn sm" id="poForget">${o.mode === "recall" ? "Start this list over" : "Reset study progress"}</button>
+        <span style="margin-left:auto"></span><button class="btn sm" id="poReset">Reset options</button><button class="btn sm" id="poForget">${o.mode === "recall" ? "Start this list over" : "Reset Practice progress"}</button>
       </div>
 
     </details>`;
@@ -2090,7 +2090,7 @@ function newFolder(name, words = []) {
 function toggleKnown(w) { learntDates(); const k = getKnown(), i = k.indexOf(w); i >= 0 ? k.splice(i, 1) : k.unshift(w); store.set("known", k); tickLearnt([w], i < 0); learntDates(); return i < 0; }
 // a word crossed off counts as learnt in Practice: its Valid or phony and Definition cards, and its rack once every word
 // of the rack is crossed off (hooks and patterns still have to be learnt there). Uncrossing takes it back.
-// Reset study progress clears these too, and the words stay crossed off
+// Reset Practice progress clears these too, and the words stay crossed off
 function tickLearnt(words, on) {
   const L = getLearnt(), k = new Set(getKnown());
   for (const w of words) {
