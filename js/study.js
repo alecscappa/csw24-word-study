@@ -636,8 +636,8 @@ function famView(f, pick) {
   }
   const sub = mix ? (g.name.split(" · ").slice(1).join(" · ") || "Every one") + " · pick from each row and they combine" : g.name;
   listView(g, { title: f.name, sub, back: listBack(f), top: `<div class="fchips ${mix ? "mix" : ""}">${chips}</div>`, wire: () => {
-    $("#view").querySelectorAll("[data-fpick]").forEach(b => b.onclick = () => { store.set("fam:" + f.id, b.dataset.fpick); famView(f); });
-    $("#view").querySelectorAll("[data-frow]").forEach(b => b.onclick = () => { const p = store.get("famb:" + f.id), i = +b.dataset.frow, k = +b.dataset.fi; p[i] = k; store.set("famb:" + f.id, p); famView(f); });
+    $("#view").querySelectorAll("[data-fpick]").forEach(b => b.onclick = () => { store.set("fam:" + f.id, b.dataset.fpick); VIEWS.lists(f.id); });
+    $("#view").querySelectorAll("[data-frow]").forEach(b => b.onclick = () => { const p = store.get("famb:" + f.id), i = +b.dataset.frow, k = +b.dataset.fi; p[i] = k; store.set("famb:" + f.id, p); VIEWS.lists(f.id); });
   } });
 }
 // a section's folder: its families, then its lists
@@ -2508,7 +2508,7 @@ for (const k of STUDY) {
   const f = VIEWS[k];
   VIEWS[k] = arg => {
     f(arg);
-    const top = !(k === "lists" && arg) && location.hash !== "#practice/go" && !(k === "quiz" && Q && !Q.done && !Q.paused);
+    const top = location.hash !== "#practice/go" && !(k === "quiz" && Q && !Q.done && !Q.paused);
     if (top && !$("#view .studyseg")) $("#view").insertAdjacentHTML("afterbegin", `<nav class="studyseg">${[["lists", "Lists"], ["practice", "Practice"], ["quiz", "Quiz"], ["scoring", "Scoring"], ["games", "Games"]].map(([h, n]) => `<a href="#${h}" class="${h === k ? "on" : ""}">${n}</a>`).join("")}</nav>`);
   };
 }
