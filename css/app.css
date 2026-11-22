@@ -66,7 +66,7 @@ nav.tabs a.end { margin-left: auto; }
 header .btn { background: transparent; color: var(--head-ink); border-color: color-mix(in srgb, var(--head-ink) 35%, transparent); }
 header .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
-main.wrap { padding: 22px 16px 32px; display: flex; flex-direction: column; gap: 16px; }
+main.wrap { --padt: 22px; padding: var(--padt) 16px 32px; display: flex; flex-direction: column; gap: 16px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; min-width: 0; }
 .lbl { font: 700 .74rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
 .title { font: 700 1.5rem/1.15 var(--display); margin: 0; text-wrap: balance; }
@@ -320,7 +320,7 @@ nav.tabs .sh { display: none; }
   nav.tabs a { flex: 1 1 auto; min-width: 0; text-align: center; padding: 12px 6px; font-size: .82rem; letter-spacing: -.01em; opacity: .8; }
   nav.tabs a.end { margin-left: 0; }
   nav.tabs .sh { display: inline; } nav.tabs .lg { display: none; }
-  main.wrap { padding: 14px 12px 32px; gap: 12px; }
+  main.wrap { --padt: 14px; padding: var(--padt) 12px 32px; gap: 12px; }
   .card { padding: 14px; border-radius: 10px; }
   .title { font-size: 1.3rem; }
 
@@ -1305,9 +1305,10 @@ body.fit main.wrap > .fitscroll, body.fit main.wrap > .lmain { flex: 1; }
 body.fit .lmain { min-height: 0; } body.fit .lmain > * { flex: none; } body.fit .lmain > .fitscroll { flex: 1; }
 /* pages of words (Search, lists, folders, My words): the page scrolls first, so the filters and buttons go up out of
    sight and the words' card fills the window; the card is held still until then (.sxon), and scrolls on its own after.
-   An open list's column is undone so its card sizes to the window like the rest */
+   An open list's column is undone so its card sizes to the window like the rest. The card is the window's height less
+   the bottom padding and a 6px strip at the top, so scrolled all the way, nothing above it peeks out */
 body.fit main.wrap.sx { overflow-y: auto; scrollbar-width: none; }
-body.fit main.wrap.sx > .fitscroll, body.fit main.wrap.sx > .lmain > .fitscroll { flex: none; height: 100%; overflow-y: hidden; overscroll-behavior: auto; }
+body.fit main.wrap.sx > .fitscroll, body.fit main.wrap.sx > .lmain > .fitscroll { flex: none; height: calc(100% + var(--padt) - 6px); overflow-y: hidden; overscroll-behavior: auto; }
 body.fit main.wrap.sx > .fitscroll.sxon, body.fit main.wrap.sx > .lmain > .fitscroll.sxon { overflow-y: auto; }
 body.fit main.wrap.sx > .lmain { display: contents; }
 body.fit main.wrap.sx:has(> .lmain) { gap: 12px; }
