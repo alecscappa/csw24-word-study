@@ -3,8 +3,9 @@
 const LEX = {
   source: window.CSW_TSV ? "file" : null,
   db: () => new Promise((ok, no) => { const r = indexedDB.open("csw24", 1); r.onupgradeneeded = () => r.result.createObjectStore("lex"); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); }),
-  async get() { const db = await LEX.db(); return new Promise((ok, no) => { const r = db.transaction("lex").objectStore("lex").get("tsv"); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); }); },
-  async put(v) { const db = await LEX.db(); return new Promise((ok, no) => { const t = db.transaction("lex", "readwrite"), st = t.objectStore("lex"); v == null ? st.delete("tsv") : st.put(v, "tsv"); t.oncomplete = ok; t.onerror = () => no(t.error); }); },
+  // kept under "tsv": the word file; "lists": every list's words worked out from it (see data.js)
+  async get(k = "tsv") { const db = await LEX.db(); return new Promise((ok, no) => { const r = db.transaction("lex").objectStore("lex").get(k); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); }); },
+  async put(v, k = "tsv") { const db = await LEX.db(); return new Promise((ok, no) => { const t = db.transaction("lex", "readwrite"), st = t.objectStore("lex"); v == null ? st.delete(k) : st.put(v, k); t.oncomplete = ok; t.onerror = () => no(t.error); }); },
   // accepts words.js from build.py, or the plain tab-separated text inside it
   parse(text) {
     const m = text.match(/^\s*window\.CSW_TSV\s*=\s*/);
@@ -24,7 +25,9 @@ const LEX = {
 const APP_FILES = ["js/base.js", "js/data.js", "js/study.js", "js/board.js", "js/review.js", "js/firebase-config.js", "js/sync.js", "js/games.js", "js/routing.js"];
 if (location.protocol === "https:" && "serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 (async () => {
+  const lists = LEX.get("lists").catch(() => null);
   if (!window.CSW_TSV) { try { window.CSW_TSV = await LEX.get(); if (window.CSW_TSV) LEX.source = "saved"; } catch {} }
+  if (window.CSW_TSV) window.CSW_LISTS = await lists;
   if (document.readyState === "loading") await new Promise(r => document.addEventListener("DOMContentLoaded", r));
   // the app's files run one after another (async = false keeps their order). With no lexicon only the first runs,
   // for the saved theme, and the page asks for a word list instead

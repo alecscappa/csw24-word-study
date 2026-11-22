@@ -2496,7 +2496,7 @@ VIEWS.settings = (arg) => {
   on("#setRfrom", "onchange", rankRange); on("#setRto", "onchange", rankRange);
   if ($("#lexFile")) LEX.wire();
   syncWire();
-  confirmBtn($("#lexDel"), () => LEX.put(null).then(() => location.reload()));
+  confirmBtn($("#lexDel"), () => LEX.put(null).then(() => LEX.put(null, "lists")).then(() => location.reload()));
   confirmBtn($("#clrHist"), () => { store.set("hist", []); VIEWS.settings(arg); });
   confirmBtn($("#clrReview"), () => { store.set("pq", { n: getPQ().n, items: [] }); VIEWS.settings(arg); });
   confirmBtn($("#clrStats"), () => { store.set("stats", {}); store.set("missed", []); VIEWS.settings(arg); });

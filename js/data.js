@@ -1,5 +1,8 @@
 // ---------- lexicon ----------
 const DICT = new Map(), ANA = new Map(), BYLEN = {};
+// a fingerprint of the word file, so lists saved on this device are only used with the file they came from
+const hashStr = (s, h = 0x811c9dc5) => { for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return (h >>> 0).toString(36); };
+const LEX_HASH = hashStr(window.CSW_TSV) + "." + window.CSW_TSV.length;
 for (const line of window.CSW_TSV.split("\n")) {
   const [w, d, fh, bh, sym, p, pl] = line.split("\t");
   // Zyzzyva marks a hook that is new in CSW24 with a "+" after the letter, e.g. "d+s"
@@ -346,13 +349,43 @@ function builtGroup(id) {
   let test;
   if (f.build) test = f.build.test(picks);
   else { const ts = rows.map((r, i) => picks[i] >= 0 ? GROUPS.find(g => g.id === r[1][picks[i]][1]).test : null).filter(Boolean); test = ts.length ? (w, e) => ts.every(t => t(w, e)) : f.test; }
-  const g = { id, name: [f.name, ...labels].join(" · "), blurb: f.blurb, test, fam: f.id, picks };
+  // (from = the lists picked, so its words can come from theirs rather than going through every word)
+  const g = { id, name: [f.name, ...labels].join(" · "), blurb: f.blurb, test, fam: f.id, picks, from: f.build ? null : rows.map((r, i) => picks[i] >= 0 ? r[1][picks[i]][1] : null).filter(Boolean) };
   builtMemo.set(id, g);
   return g;
 }
 const groupOf = id => id ? GROUPS.find(g => g.id === id) || (id.startsWith("b:") ? builtGroup(id) : undefined) : undefined;
+// every list's words are worked out once for each word file, in the background soon after the app starts, and kept on
+// this device (IndexedDB, read by start.js before this file runs), so lists and folders open straight away after that,
+// even after the app is closed. A different word file, or a change to a list's rule, works them out again
+// (LISTS_V: bump it when a helper the rules use changes, like shape or swapIn)
+const LISTS_V = 1;
+const LISTS_KEY = LEX_HASH + ":" + hashStr(LISTS_V + GROUPS.map(g => g.id + (g.test || "")).join("|") + FAMILIES.map(f => f.id + famIds(f).join()).join("|"));
+const savedLists = window.CSW_LISTS?.key === LISTS_KEY ? window.CSW_LISTS.lists : {};
+let savedNew = window.CSW_LISTS?.key !== LISTS_KEY;
+window.CSW_LISTS = null;
 const cache = {};
-const groupWords = g => cache[g.id] ||= (g.special === "stems" ? stems(g.n).map(s => s.stem) : ALL.filter(w => g.test(w, DICT.get(w))));
+const groupWords = g => cache[g.id] ||= g.id in savedLists ? (savedLists[g.id] ? savedLists[g.id].split(" ") : [])
+  : g.special === "stems" ? stems(g.n).map(s => s.stem)
+  // a family's picks: the words of the first picked list that are in the others too (no picks is the family itself)
+  : g.from ? (g.from.length ? g.from.slice(1).map(id => new Set(groupWords(groupOf(id)))).reduce((ws, S) => ws.filter(w => S.has(w)), groupWords(groupOf(g.from[0]))) : groupWords(famOf(g.fam)))
+  // a family: the words in any of its lists, in A–Z order (much quicker than trying every list's rule on every word)
+  : g.rows ? (S => ALL.filter(w => S.has(w)))(new Set(famIds(g).flatMap(id => groupWords(groupOf(id)))))
+  : ALL.filter(w => g.test(w, DICT.get(w)));
+{
+  // one list at a time when the browser is idle, then saved together if any were new
+  const todo = [...GROUPS.filter(g => g.id && !g.special), ...FAMILIES].filter(g => !(g.id in savedLists));
+  const later = f => window.requestIdleCallback ? requestIdleCallback(f, { timeout: 500 }) : setTimeout(f, 20);
+  const step = () => {
+    const g = todo.shift();
+    if (g) { if (!cache[g.id]) savedNew = true; groupWords(g); return later(step); }
+    if (!savedNew) return;
+    const lists = {};
+    for (const x of [...GROUPS, ...FAMILIES]) if (x.id && cache[x.id] && !x.special) lists[x.id] = cache[x.id].join(" ");
+    LEX.put({ key: LISTS_KEY, lists }, "lists").catch(() => {});
+  };
+  setTimeout(() => later(step), 1500);
+}
 function stems(n) {
   if (cache["stemdata" + n]) return cache["stemdata" + n];
   const m = new Map();
