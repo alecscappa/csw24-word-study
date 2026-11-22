@@ -1495,3 +1495,17 @@ body.fit main.wrap.sx:has(> .lmain) { gap: 12px; }
 .stheat i.h1, .stleg i.h1 { background: color-mix(in srgb, var(--good) 35%, var(--chip)); } .stheat i.h2, .stleg i.h2 { background: color-mix(in srgb, var(--good) 65%, var(--chip)); } .stheat i.h3, .stleg i.h3 { background: var(--good); }
 @media (max-width: 760px) { .stcols { grid-template-columns: 1fr; } }
 @media (max-width: 620px) { .st3 { gap: 6px; } .st3 div { padding: 9px 10px; } .st3 b { font-size: 1.2rem; } .strings { gap: 6px; flex-wrap: nowrap; justify-content: space-between; } .stl .lring { width: 40px; height: 40px; } .stl .lring b { font-size: .6rem; } }
+/* Practice: a card's timer, picking a definition's word from four, the first-letter hint, and the end of a session */
+.ptimer { height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--ink) 10%, transparent); overflow: hidden; margin: 0 0 12px; }
+.ptimer i { display: block; height: 100%; width: 100%; background: var(--accent); border-radius: 3px; }
+.ptimer i.low { background: var(--bad); }
+.dhint { margin: 10px 0 0; font: 700 1.3rem var(--mono); letter-spacing: .18em; }
+.dpick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.dpick .btn { justify-content: center; padding: 12px 6px; font: 700 1rem var(--mono); letter-spacing: .05em; gap: 6px; }
+.dpick .btn kbd { font-size: .62rem; opacity: .6; }
+.dpick .btn.right { background: color-mix(in srgb, var(--good) 22%, var(--panel)); border-color: var(--good); }
+.dpick .btn.wrong { background: color-mix(in srgb, var(--bad) 18%, var(--panel)); border-color: var(--bad); }
+.dpick .btn:disabled { opacity: 1; cursor: default; }
+.pscore { font: 800 2.2rem var(--display); margin: 4px 0; }
+.pdone .rows { text-align: left; }
+.acts .btn[hidden] { display: none; }

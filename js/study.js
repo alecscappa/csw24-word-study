@@ -778,6 +778,21 @@ function patternOf(w) {
   patMemo.set(w, p);
   return p;
 }
+// a pattern with its gap only where the Patterns options allow (start, middle, end), again where it leaves the most
+// choices; null if the word has no such place (a two-letter word has no middle)
+const patInMemo = new Map();
+function patternIn(w, gaps) {
+  if (!gaps?.length) return patternOf(w);
+  const k = gaps.join() + ":" + w; if (patInMemo.has(k)) return patInMemo.get(k);
+  const at = i => w.slice(0, i) + "?" + w.slice(i + 1), ok = [];
+  if (gaps.includes("start")) ok.push(0);
+  if (gaps.includes("middle")) for (let i = 1; i < w.length - 1; i++) ok.push(i);
+  if (gaps.includes("end")) ok.push(w.length - 1);
+  let p = null, n = -1;
+  for (const i of ok) { const f = fitsOf(at(i)).length; if (f > n) { n = f; p = at(i); } }
+  patInMemo.set(k, p);
+  return p;
+}
 const hookWords = w => { const e = DICT.get(w); return [...[...e.fh].map(c => c.toUpperCase() + w), ...[...e.bh].map(c => w + c.toUpperCase())]; };
 const letterSet = s => [...new Set(String(s || "").toUpperCase().replace(/[^A-Z]/g, ""))].sort().join("");
 // the word's tiles with an empty, dashed tile for each gap
@@ -1289,18 +1304,21 @@ function next() {
 // this practice session (streak, marks) and the card on screen are kept in storage, so leaving the tab or
 // reloading comes back to the same card with the words already found
 let P = store.get("psess", null);
-const saveP = () => store.set("psess", { key: P.key, streak: P.streak, solved: P.solved, seen: P.seen, start: P.start, hist: P.hist.slice(-20) });
+const saveP = () => store.set("psess", { key: P.key, streak: P.streak, solved: P.solved, seen: P.seen, start: P.start, hist: P.hist.slice(-20),
+  cards: (P.cards || []).slice(-60), best: P.best || 0, target: P.target || 0, queue: P.queue || [] });
 // ok: the card's mark once it's marked (null before)
 const saveCard = () => store.set("pcur", { key: P.key, letters: P.letters, found: P.found, ok: P.verdict ? P.verdict.ok : null, rack: P.rack, size: P.size, all: P.all, want: P.want });
 // practice options: where words come from + the same filters as Search
 const PO_DEFAULT = { mode: "anagram", by: "rank", lax: false, src: "", lens: [7], top: "", starts: "", ends: "", contains: "", incl: "", excl: "", pattern: "", from: "", to: "", anas: "", order: "rand", rev: false,
-  hSide: "fb", hCount: [], hNone: false, hTakes: "", hNoS: false };
+  hSide: "fb", hCount: [], hNone: false, hTakes: "", hNoS: false, pFits: [], pGap: [], pPhony: "", dHint: "len", dPick: false,
+  sLen: "", sMix: false, sMiss: false, sTime: "" };
 // the saved options, with a single length from before the length chips turned into a list
 function practiceOpts() {
   const sp = SET.practice || {}, o = { ...PO_DEFAULT, ...sp };
   if (!Array.isArray(sp.lens)) o.lens = "len" in sp ? (+sp.len ? [+sp.len] : []) : PO_DEFAULT.lens;
   // the old "top N" box is now the Top buttons of the Probability field
   if (o.top) { if (!o.from && !o.to) o.to = o.top; o.top = ""; }
+  o.dPick = !!o.dPick && o.dPick !== "0";
   delete o.len;
   return o;
 }
@@ -1313,7 +1331,7 @@ const practiceLast = () => store.get("pLast", null) ?? lastResults;
 const keepLast = () => store.set("pLast", [...lastResults]);
 function practicePool(o) {
   const folder = o.src.startsWith("f:") ? folderById(o.src.slice(2)) : null;
-  const key = JSON.stringify(o) + (o.src.startsWith("my:") || folder || o.starOnly || o.skipKnown ? getStars().length + ":" + store.get("missed", []).length + ":" + practiceLast().length + ":" + (folder?.words.join() || "") + ":" + getKnown().length : "");
+  const key = JSON.stringify(o) + (o.sMiss ? "q" + getPQ().items.length : "") + (o.src.startsWith("my:") || folder || o.starOnly || o.skipKnown ? getStars().length + ":" + store.get("missed", []).length + ":" + practiceLast().length + ":" + (folder?.words.join() || "") + ":" + getKnown().length : "");
   if (poolCache.key === key) return poolCache.pool;
   const g = o.src.startsWith("g:") ? o.src.slice(2) : "";
   const r = runSearch({ ...SEARCH_DEFAULT, group: g, lens: o.lens.join(","), starts: o.starts, ends: o.ends, contains: o.contains, incl: o.incl, excl: o.excl, pattern: o.pattern, anas: o.anas });
@@ -1325,8 +1343,13 @@ function practicePool(o) {
   // optional rank range, counted in probability order within each length (e.g. ranks 1–50 or 30–80)
   pool = likelyRange(pool, o.from, o.to, o.by, o.lax);
   if (o.mode === "hooks") pool = pool.filter(w => hookFits(w, o));
+  if (o.mode === "pattern" && (o.pGap.length || o.pFits.length)) pool = pool.filter(w => { const pt = patternIn(w, o.pGap); return pt && (!o.pFits.length || inRanges(fitsOf(pt).length, o.pFits)); });
+  // only my mistakes: words whose card is waiting in the review queue
+  if (o.sMiss && o.mode !== "recall") { const q = new Set(getPQ().items.map(x => x.a)); pool = pool.filter(w => q.has(o.mode === "anagram" ? alpha(w) : o.mode === "pattern" ? "p:" + patternIn(w, o.pGap) : cardKey(o.mode, w))); }
   return (poolCache = { key, pool, error: r.error }).pool;
 }
+// a count against chips like "1", "2-4" and "5+"
+const inRanges = (n, rs) => rs.some(r => { const [a, b] = r.split("-"); return r.endsWith("+") ? n >= parseInt(r) : b ? n >= +a && n <= +b : n === +a; });
 // the Hooks options: which side is asked, how many hooks it has there, a letter it must take, and leaving out words
 // with no hooks, or whose only hook asked is a back S
 const HCOUNTS = [["1", "1"], ["2-4", "2–4"], ["5+", "5+"]];
@@ -1334,14 +1357,19 @@ const askedHooks = (w, side) => { const e = DICT.get(w); return (side.includes("
 function hookFits(w, o) {
   const side = o.hSide || "fb", e = DICT.get(w), h = askedHooks(w, side), n = h.length;
   if (o.hNone && !n) return false;
-  if (o.hCount?.length && !o.hCount.some(c => c === "1" ? n === 1 : c === "2-4" ? n >= 2 && n <= 4 : n >= 5)) return false;
+  if (o.hCount?.length && !inRanges(n, o.hCount)) return false;
   if (o.hTakes && ![...letterSet(o.hTakes)].every(c => h.toUpperCase().includes(c))) return false;
   if (o.hNoS && side.includes("b") && (side.includes("f") ? e.fh : "") === "" && e.bh === "s") return false;
   return true;
 }
-const hookOptsText = o => o.mode !== "hooks" ? [] : [o.hSide === "f" ? "Front only" : o.hSide === "b" ? "Back only" : "",
-  o.hCount?.length ? `${o.hCount.map(c => HCOUNTS.find(x => x[0] === c)?.[1]).join(", ")} hooks` : "", o.hNone && !o.hCount?.length ? "Has hooks" : "",
-  o.hTakes && `Takes ${letterSet(o.hTakes)}`, o.hNoS && "No lone S"].filter(Boolean);
+const dash = rs => rs.map(r => r.replace("-", "–")).join(", ");
+// the pills on the card for the options of each type, and the session's
+const typeOptsText = o => [...(o.mode !== "hooks" ? [] : [o.hSide === "f" ? "Front only" : o.hSide === "b" ? "Back only" : "",
+  o.hCount?.length ? `${dash(o.hCount)} hooks` : "", o.hNone && !o.hCount?.length ? "Has hooks" : "", o.hTakes && `Takes ${letterSet(o.hTakes)}`, o.hNoS && "No lone S"]),
+  ...(o.mode !== "pattern" ? [] : [o.pFits.length && `${dash(o.pFits)} fit`, o.pGap.length && `Gap: ${o.pGap.join(", ")}`]),
+  o.mode === "phony" && o.pPhony && `${o.pPhony}% phonies`,
+  ...(o.mode !== "def" ? [] : [o.dHint === "none" ? "No hint" : o.dHint === "first" ? "First letter" : "", o.dPick && "Pick from 4"]),
+  ...(o.mode === "recall" ? [] : [o.sMix && "Even mix", o.sMiss && "Mistakes only", +o.sTime && `${o.sTime}s a card`])].filter(Boolean);
 // a rack's answers keep the crossed-off words in the list: not asked for, but taken if typed. Kept beside poolCache
 // (which it leaves alone) so dealing a card doesn't search the list again
 let rackMemo = {};
@@ -1366,14 +1394,16 @@ const CARD_PRE = { hooks: "h:", pattern: "p:", phony: "v:", def: "d:" };
 const cardKey = (mode, id) => (CARD_PRE[mode] || "") + id;
 // the review list mustn't give away a phony or definition card's word
 const cardName = k => k.startsWith("h:") ? k.slice(2) + " hooks" : k.startsWith("p:") ? k.slice(2) : /^[vd]:/.test(k) ? k[2] + "•".repeat(k.length - 3) : k;
-let cardsMemo = { pool: null, mode: "", cards: [] };
+let cardsMemo = { pool: null, mode: "", gaps: "", cards: [] };
 function cardsOf(pool, mode) {
-  if (cardsMemo.pool !== pool || cardsMemo.mode !== mode) cardsMemo = { pool, mode, cards: [...new Set(mode === "pattern" ? pool.map(patternOf) : mode === "def" ? pool.filter(w => !DICT.get(w).d.startsWith("<")) : mode === "anagram" ? pool.map(alpha) : pool)] };
+  const gaps = mode === "pattern" ? practiceOpts().pGap : [];
+  if (cardsMemo.pool !== pool || cardsMemo.mode !== mode || cardsMemo.gaps !== gaps.join()) cardsMemo = { pool, mode, gaps: gaps.join(), cards: [...new Set(mode === "pattern" ? pool.map(w => patternIn(w, gaps)).filter(Boolean) : mode === "def" ? pool.filter(w => !DICT.get(w).d.startsWith("<")) : mode === "anagram" ? pool.map(alpha) : pool)] };
   return cardsMemo.cards;
 }
 // recall in Practice: how far each list has got, kept per list (the last 20), so it carries on across visits.
 // Once finished, found and shown hold the whole list
-const recallKey = o => JSON.stringify({ ...o, order: "", rev: false });
+// (the other types' options and the session's are left out, so they don't lose a list's place)
+const recallKey = o => { const k = { ...o, order: "", rev: false }; for (const x of ["hSide", "hCount", "hNone", "hTakes", "hNoS", "pFits", "pGap", "pPhony", "dHint", "dPick", "sLen", "sMix", "sMiss", "sTime"]) delete k[x]; return JSON.stringify(k); };
 const recallGet = k => ({ found: [], shown: [], at: Date.now(), ...store.get("precall", {})[k] });
 function recallSet(k, e) {
   const a = store.get("precall", {}); delete a[k];
@@ -1398,36 +1428,52 @@ const recent = [];
 let rackCache = { pool: null, order: "", rev: false, racks: [] };
 // a due review first; otherwise a new rack (each rack as likely as any other, however many words it has),
 // either at random (now and then a learnt one) or the next one in the chosen order
-function pickPractice(pool, order = "rand", rev = false) {
+// a random card from a list; with an even mix, a length first (each as likely), then a card of that length
+function picker(arr, mix) {
+  if (!mix) return () => arr[Math.floor(Math.random() * arr.length)];
+  const by = new Map(); for (const c of arr) { if (!by.has(c.length)) by.set(c.length, []); by.get(c.length).push(c); }
+  const ls = [...by.values()];
+  return () => { const l = ls[Math.floor(Math.random() * ls.length)]; return l[Math.floor(Math.random() * l.length)]; };
+}
+// "Practise the missed" after a session: its cards come first, in turn (any no longer in the pool are skipped)
+function takeQueued(ok) {
+  while (P?.queue?.length) { const k = P.queue.shift(); saveP(); if (ok(k)) return k; }
+  return null;
+}
+function pickPractice(pool, order = "rand", rev = false, mix = false) {
   if (rackCache.pool !== pool || rackCache.order !== order || rackCache.rev !== rev) { const r = [...new Set(pool.map(alpha))]; rackCache = { pool, order, rev, racks: order === "rand" ? r : ordered(r, order, true, rev) }; }
   const q = getPQ(), racks = rackCache.racks, inPool = new Set(racks);
+  const qd = takeQueued(k => inPool.has(k)); if (qd) return ANA.get(qd)[0];
   const due = q.items.filter(x => x.due <= q.n && inPool.has(x.a) && !recent.includes(x.a)).sort((a, b) => a.due - b.due)[0];
   let a = due ? due.a : null;
   // new racks first; racks waiting in the review queue come back through the queue instead
   const L = getLearnt(), queued = new Set(q.items.map(x => x.a));
   const fresh = racks.filter(c => !L.has(c) && !queued.has(c) && !recent.includes(c));
   if (!a && order !== "rand") a = fresh[0];
-  const from = fresh.length && Math.random() < 0.85 ? fresh : racks;
-  for (let t = 0; !a && t < 30; t++) { const c = from[Math.floor(Math.random() * from.length)]; if (!recent.includes(c) || t === 29) a = c; }
+  const from = picker(fresh.length && Math.random() < 0.85 ? fresh : racks, mix);
+  for (let t = 0; !a && t < 30; t++) { const c = from(); if (!recent.includes(c) || t === 29) a = c; }
   recent.unshift(a); recent.length = Math.min(recent.length, Math.min(20, Math.floor(racks.length / 2)));
   return ANA.get(a)[0];
 }
 // the same for hook and pattern cards: a due review first, then new cards, at random or in the chosen order
-let cardCache = { pool: null, mode: "", order: "", rev: false, ids: [] };
-function pickCard(pool, mode, order = "rand", rev = false) {
-  if (cardCache.pool !== pool || cardCache.mode !== mode || cardCache.order !== order || cardCache.rev !== rev) {
+let cardCache = { pool: null, mode: "", order: "", rev: false, gaps: "", ids: [] };
+function pickCard(pool, mode, order = "rand", rev = false, mix = false) {
+  const gk = mode === "pattern" ? practiceOpts().pGap.join() : "";
+  if (cardCache.pool !== pool || cardCache.mode !== mode || cardCache.order !== order || cardCache.rev !== rev || cardCache.gaps !== gk) {
     const ws = order === "rand" ? null : ordered(mode === "pattern" ? [...new Set(pool)] : cardsOf(pool, mode), order, false, rev);
-    cardCache = { pool, mode, order, rev, ids: !ws ? cardsOf(pool, mode) : mode === "pattern" ? [...new Set(ws.map(patternOf))] : ws };
+    const gaps = practiceOpts().pGap;
+    cardCache = { pool, mode, order, rev, gaps: gk, ids: !ws ? cardsOf(pool, mode) : mode === "pattern" ? [...new Set(ws.map(w => patternIn(w, gaps)).filter(Boolean))] : ws };
   }
   const q = getPQ(), ids = cardCache.ids, key = id => cardKey(mode, id), inPool = new Set(ids.map(key));
   const remember = k => { recent.unshift(k); recent.length = Math.min(recent.length, Math.min(20, Math.floor(ids.length / 2))); };
+  const qd = takeQueued(k => inPool.has(k)); if (qd) { remember(qd); return qd.slice(2); }
   const due = q.items.filter(x => x.due <= q.n && inPool.has(x.a) && !recent.includes(x.a)).sort((a, b) => a.due - b.due)[0];
   if (due) { remember(due.a); return due.a.slice(2); }
   const L = getLearnt(), queued = new Set(q.items.map(x => x.a));
   const fresh = ids.filter(c => !L.has(key(c)) && !queued.has(key(c)) && !recent.includes(key(c)));
   let a = order !== "rand" ? fresh[0] : null;
-  const from = fresh.length && Math.random() < 0.85 ? fresh : ids;
-  for (let t = 0; !a && t < 30; t++) { const c = from[Math.floor(Math.random() * from.length)]; if (!recent.includes(key(c)) || t === 29) a = c; }
+  const from = picker(fresh.length && Math.random() < 0.85 ? fresh : ids, mix);
+  for (let t = 0; !a && t < 30; t++) { const c = from(); if (!recent.includes(key(c)) || t === 29) a = c; }
   remember(key(a));
   return a;
 }
@@ -1441,19 +1487,22 @@ function commitPractice() {
   const card = c.mode && c.mode !== "anagram" ? cardKey(c.mode, c.card) : c.letters;
   schedule(card, c.ok); setLearnt(card, c.ok);
   if (c.ok) { P.streak++; P.solved++; } else P.streak = 0;
+  P.best = Math.max(P.best || 0, P.streak); (P.cards ||= []).push({ k: card, ok: c.ok });
   recordRun(P.streak);
   // a rack with extra letters: each answer on its own, since a rack can be half found
   if (c.rack) { for (const x of c.want) record(x, c.ok || c.found.includes(x)); saveP(); return; }
   for (const x of c.mode === "pattern" ? fitWords(c.card) : c.mode && c.mode !== "anagram" ? [c.card] : anagrams(c.letters)) record(x, c.ok);
   saveP();
 }
+// a new Practice session; target and queue say how many cards it has and which come first (Practise the missed)
+function newSession(key, target = 0, queue = []) { P = { key, streak: 0, solved: 0, seen: 0, start: Date.now(), hist: [], cards: [], best: 0, target, queue }; saveP(); }
 VIEWS.practice = () => {
   poSoft = null; poDirty = false;
   const o = practiceOpts();
   const pool = practicePool(o);
   const key = JSON.stringify(o);
   if (store.get("pcur")?.key !== key) commitPractice();
-  if (!P || P.key !== key) { P = { key, streak: 0, solved: 0, seen: 0, start: Date.now(), hist: [] }; saveP(); }
+  if (!P || P.key !== key) newSession(key);
   const open = store.get("pOpen", false);
   const tf = (id, label, ph) => `<div class="field"><label for="po_${id}">${label}</label><input id="po_${id}" value="${esc(o[id])}" placeholder="${ph}" spellcheck="false" autocorrect="off" autocapitalize="characters"></div>`;
   // main: where the words come from and their lengths (always in view); more: the rest, folded on the setup page
@@ -1468,13 +1517,7 @@ VIEWS.practice = () => {
       </div>`;
   const more = `
     <details class="card" id="pOpts" ${open ? "open" : ""}><summary class="lbl" style="cursor:pointer;margin:0">More options · ${pool.length.toLocaleString()} words in play</summary>
-      ${o.mode === "hooks" ? `<div class="form hopts" style="margin-top:12px">
-        <div class="field wide"><span class="flabel">Hooks: ask for</span><div class="seg">${[["fb", "Both"], ["f", "Front"], ["b", "Back"]].map(([k, n]) => `<button type="button" class="btn sm ${(o.hSide || "fb") === k ? "on" : ""}" data-hside="${k}">${n}</button>`).join("")}</div></div>
-        <div class="field wide"><span class="flabel">How many hooks</span><div class="chips">${HCOUNTS.map(([k, n]) => `<button type="button" class="btn sm ${o.hCount.includes(k) ? "on" : ""}" data-hcount="${k}">${n}</button>`).join("")}</div></div>
-        ${tf("hTakes", "Takes this letter", "e.g. Y")}
-        <div class="field"><span class="flabel">Leave out</span><label class="check"><input type="checkbox" id="po_hNone" ${o.hNone ? "checked" : ""}> Words with no hooks</label>
-          <label class="check"><input type="checkbox" id="po_hNoS" ${o.hNoS ? "checked" : ""}> Words whose only hook is a back S</label></div>
-      </div>` : ""}
+      ${typeOptsHTML(o, tf)}
       <div class="form" style="margin-top:12px">
         ${tf("starts", "Starts with", "e.g. UN")}${tf("ends", "Ends with", "e.g. ING")}${tf("contains", "Contains in a row", "e.g. QI")}
         <div class="field"><span class="flabel">Starred</span><label class="check"><input type="checkbox" id="po_star" ${o.starOnly ? "checked" : ""}> Only words I've starred</label>
@@ -1501,11 +1544,11 @@ VIEWS.practice = () => {
     $("#view").querySelectorAll("[data-pmode]").forEach(b => b.onclick = () => { saveSettings({ practice: { ...latest(), mode: b.dataset.pmode } }); VIEWS.practice(); });
     $("#po_star").onchange = e => { saveSettings({ practice: { ...latest(), starOnly: e.target.checked } }); VIEWS.practice(); };
     $("#po_known").onchange = e => { saveSettings({ practice: { ...latest(), skipKnown: e.target.checked } }); VIEWS.practice(); };
-    if (o.mode === "hooks") {
-      $("#view").querySelectorAll("[data-hside]").forEach(b => b.onclick = () => { saveSettings({ practice: { ...latest(), hSide: b.dataset.hside } }); VIEWS.practice(); });
-      $("#view").querySelectorAll("[data-hcount]").forEach(b => b.onclick = () => { const n = latest(), k = b.dataset.hcount; saveSettings({ practice: { ...n, hCount: n.hCount.includes(k) ? n.hCount.filter(x => x !== k) : [...n.hCount, k] } }); VIEWS.practice(); });
-      for (const k of ["hNone", "hNoS"]) $("#po_" + k).onchange = e => { saveSettings({ practice: { ...latest(), [k]: e.target.checked } }); VIEWS.practice(); };
-    }
+    // the type's options and the session's: one choice (data-pset), several (data-ptog) or a tick (data-pchk)
+    const put = (k, val) => { saveSettings({ practice: { ...latest(), [k]: val } }); VIEWS.practice(); };
+    $("#view").querySelectorAll("[data-pset]").forEach(b => b.onclick = () => put(b.dataset.pset, b.dataset.pval));
+    $("#view").querySelectorAll("[data-ptog]").forEach(b => b.onclick = () => { const k = b.dataset.ptog, a = latest()[k], x = b.dataset.pval; put(k, a.includes(x) ? a.filter(y => y !== x) : [...a, x]); });
+    $("#view").querySelectorAll("[data-pchk]").forEach(c => c.onchange = () => put(c.dataset.pchk, c.checked));
     const gather = () => { const n = { ...practiceOpts() }; for (const k of ["src", "starts", "ends", "contains", "incl", "excl", "pattern", "anas", "from", "to", "by", "hTakes"]) if ($("#po_" + k)) n[k] = $("#po_" + k).value.trim(); n.lax = $("#po_lax").checked; n.lens = lensOf($("#po_lens").value); return n; };
     let timer = 0;
     const read = () => { clearTimeout(timer); poSoft = null; saveSettings({ practice: gather() }); VIEWS.practice(); };
@@ -1522,6 +1565,27 @@ VIEWS.practice = () => {
   };
   return location.hash === "#practice/go" ? practicePlay(pool, o, main + more, wire) : practiceSetup(pool, o, main, more, wire);
 };
+// More options' own part for each type (Hooks, Patterns, Valid or phony, Definition), then the session's, for all but recall
+const oSeg = (k, cur, opts) => `<div class="seg">${opts.map(([v, n]) => `<button type="button" class="btn sm ${String(cur) === v ? "on" : ""}" data-pset="${k}" data-pval="${v}">${n}</button>`).join("")}</div>`;
+const oChips = (k, cur, opts) => `<div class="chips">${opts.map(([v, n]) => `<button type="button" class="btn sm ${cur.includes(v) ? "on" : ""}" data-ptog="${k}" data-pval="${v}">${n}</button>`).join("")}</div>`;
+const oChk = (k, on, label) => `<label class="check"><input type="checkbox" data-pchk="${k}" ${on ? "checked" : ""}> ${label}</label>`;
+const oField = (label, inner, wide = true) => `<div class="field${wide ? " wide" : ""}"><span class="flabel">${label}</span>${inner}</div>`;
+function typeOptsHTML(o, tf) {
+  const part = (title, inner) => `<p class="lbl" style="margin:14px 0 0">${title}</p><div class="form" style="margin-top:8px">${inner}</div>`;
+  const own = o.mode === "hooks" ? part("Hooks", oField("Ask for", oSeg("hSide", o.hSide, [["fb", "Both"], ["f", "Front"], ["b", "Back"]]))
+      + oField("How many hooks", oChips("hCount", o.hCount, HCOUNTS)) + tf("hTakes", "Takes this letter", "e.g. Y")
+      + oField("Leave out", oChk("hNone", o.hNone, "Words with no hooks") + oChk("hNoS", o.hNoS, "Words whose only hook is a back S"), false))
+    : o.mode === "pattern" ? part("Patterns", oField("How many letters fit", oChips("pFits", o.pFits, [["2-3", "2–3"], ["4-6", "4–6"], ["7+", "7+"]]))
+      + oField("Where the gap is", oChips("pGap", o.pGap, [["start", "Start"], ["middle", "Middle"], ["end", "End"]])))
+    : o.mode === "phony" ? part("Valid or phony", oField("Phonies", oSeg("pPhony", o.pPhony, [["", `As in Settings (${SET.phony}%)`], ["30", "Few (30%)"], ["50", "Half"], ["70", "Lots (70%)"]])))
+    : o.mode === "def" ? part("Definition", oField("Hint", oSeg("dHint", o.dHint, [["none", "None"], ["len", "Length"], ["first", "First letter and length"]]))
+      + oField("Answer by", oSeg("dPick", o.dPick ? "1" : "", [["", "Typing"], ["1", "Picking from four"]])))
+    : "";
+  const sess = o.mode === "recall" ? "" : part("Session", oField("Cards", oSeg("sLen", o.sLen, [["", "Endless"], ["10", "10"], ["20", "20"], ["50", "50"]]))
+    + oField("Timer", oSeg("sTime", o.sTime, [["", "Off"], ["10", "10s"], ["20", "20s"], ["30", "30s"]]))
+    + oField("Mix", oChk("sMix", o.sMix, "An even mix of the lengths I picked") + oChk("sMiss", o.sMiss, `Only cards I've got wrong (${getPQ().items.filter(x => o.mode === "anagram" ? !x.a.includes(":") : x.a.startsWith(CARD_PRE[o.mode])).length})`), false));
+  return own + sess;
+}
 const lensLabel = o => o.lens.length ? `${o.lens.join(", ")} letters` : "Any length";
 
 // practice card (full screen on a phone). The rack's tiles can be tapped into the next empty slot or dragged
@@ -1531,7 +1595,8 @@ let pSheetOpen = false;
 function practicePlay(pool, o, opts, wire) {
   const v = $("#view"), pq = getPQ().items.length, pr = progress(pool, o.mode);
   const src = o.src.startsWith("g:") ? groupOf(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src] || (o.src.startsWith("f:") ? folderById(o.src.slice(2))?.name : "");
-  const pills = [o.mode !== "anagram" && PMODES.find(m => m[0] === o.mode)?.[1], ...hookOptsText(o), lensLabel(o), src, o.order !== "rand" && orderText(o.order, o.rev), o.starOnly && "★ only", likelyText(o.from, o.to, o.by, o.lax), anaText(o.anas), o.mode !== "recall" && `Streak ${P.streak}`, o.mode !== "recall" && pq && `${pq} to review`].filter(Boolean);
+  const target = P.target || +o.sLen;
+  const pills = [o.mode !== "anagram" && PMODES.find(m => m[0] === o.mode)?.[1], target && o.mode !== "recall" && `Card ${Math.min(P.seen + 1, target)} / ${target}`, ...typeOptsText(o), lensLabel(o), src, o.order !== "rand" && orderText(o.order, o.rev), o.starOnly && "★ only", likelyText(o.from, o.to, o.by, o.lax), anaText(o.anas), o.mode !== "recall" && `Streak ${P.streak}`, o.mode !== "recall" && pq && `${pq} to review`].filter(Boolean);
   const ana = o.mode === "anagram", rec = o.mode === "recall";
   const copts = ana || rec || o.mode === "pattern" ? cardOpts({ rack: ana && pool.some(w => w.length <= RACK_LEN), skip: ana || rec ? !!o.skipKnown : undefined, hard: rec }) : "";
   const top = `<div class="fc-top"><button type="button" class="ib2" id="pExit" aria-label="Leave practice">×</button><div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div>
@@ -1563,6 +1628,7 @@ function practicePlay(pool, o, opts, wire) {
     v.innerHTML = `<div class="foc"><div class="stage">${top}<div class="fc-card"><p class="empty">${esc(big ? recallAdvice(pool.length) : poolCache.error || "No words match these options. Tap ☰ to change them.")}</p></div></div>${practiceRail(pr, "prail")}</div>` + sh;
     return wireTop();
   }
+  if (target && o.mode !== "recall" && P.seen >= target) return practiceDone(o, top, sh, wireTop, pr);
   if (o.mode === "hooks" || o.mode === "pattern") return practiceLetters(pool, o, top, sh, wireTop, pr);
   if (o.mode === "phony" || o.mode === "def") return practiceWord(pool, o, top, sh, wireTop, pr);
   if (o.mode === "recall") return practiceRecall(pool, o, top, sh, wireTop, pr, [src || "Any word", lensLabel(o), likelyText(o.from, o.to, o.by, o.lax), anaText(o.anas), o.starOnly && "★ only", o.starts && `starts ${o.starts}`, o.ends && `ends ${o.ends}`, o.contains && `contains ${o.contains}`, o.incl && `with ${o.incl}`, o.excl && `without ${o.excl}`, o.pattern && `pattern ${o.pattern}`].filter(Boolean).join(" · "));
@@ -1571,7 +1637,7 @@ function practicePlay(pool, o, opts, wire) {
   const cur = store.get("pcur");
   P.done = false; P.verdict = null;
   const same = cur?.key === P.key && ANA.has(cur.letters), marked = same && typeof cur.ok === "boolean";
-  if (same) { P.letters = cur.letters; P.found = cur.found; } else { P.letters = alpha(pickPractice(pool, o.order, !!o.rev)); P.found = []; }
+  if (same) { P.letters = cur.letters; P.found = cur.found; } else { P.letters = alpha(pickPractice(pool, o.order, !!o.rev, o.sMix)); P.found = []; }
   // the rack stays as dealt unless the rack size was just changed
   const size = rackFor(P.letters);
   if (same && (marked || (cur.size || 0) === size)) { P.rack = cur.rack || ""; P.size = cur.size || 0; P.all = cur.all || anagrams(P.letters); }
@@ -1658,6 +1724,7 @@ function practicePlay(pool, o, opts, wire) {
   // a card that was marked (or fully found) before leaving comes back marked
   if (marked) finish(cur.ok);
   else if (!SET.hideCount && allFound()) finish(true);
+  cardTimer(o, () => !P.done, () => finish(SET.hideCount && allFound()));
 }
 // ---------- options on the Practice and Quiz cards, kept in Settings so both share them ----------
 // extra letters: 2 and 3-letter cards only, dealt from a real bag. The answers are the words of up to 3 letters in the
@@ -1700,20 +1767,34 @@ function wireCardOpts(redraw, toggleSkip) {
     redraw();
   });
 }
+// three other words of the same length, with definitions, for picking from four: from the list being practised if it
+// has enough, otherwise from the whole word list
+function defChoices(card, pool) {
+  const ok = w => w !== card && w.length === card.length && !DICT.get(w).d.startsWith("<") && DICT.get(w).d !== DICT.get(card).d;
+  const near = pool.filter(ok), out = new Set();
+  for (let t = 0; out.size < 3 && t < 2000; t++) { const w = near.length >= 3 ? near[Math.floor(Math.random() * near.length)] : ALL[Math.floor(Math.random() * ALL.length)]; if (ok(w)) out.add(w); }
+  return shuffle([card, ...out]);
+}
 // a valid-or-phony or definition card. Each deal of a word is freshly real or phony, at the share set in Settings;
 // the card left last time comes back as it was
 function practiceWord(pool, o, top, sh, wireTop, pr) {
   const v = $("#view"), mode = o.mode, ph = mode === "phony", cur = store.get("pcur");
   let card, show, phony = false, typed = "", ok = null;
   if (cur?.key === P.key && cur.mode === mode && DICT.has(cur.card)) { card = cur.card; show = cur.show || card; phony = !!cur.phony; typed = cur.typed || ""; ok = typeof cur.ok === "boolean" ? cur.ok : null; }
-  else { card = pickCard(pool, mode, o.order, !!o.rev); const p = ph && Math.random() * 100 < SET.phony && makePhony(card); show = p || card; phony = !!p; }
-  const save = () => store.set("pcur", { key: P.key, mode, card, show, phony, typed, ok });
+  else { card = pickCard(pool, mode, o.order, !!o.rev, o.sMix); const p = ph && Math.random() * 100 < (+o.pPhony || SET.phony) && makePhony(card); show = p || card; phony = !!p; }
+  // a definition can be answered by picking from four words of its length (kept with the card, so they stay put)
+  const pick = !ph && o.dPick;
+  let choices = cur?.key === P.key && cur.card === card && cur.choices?.length === 4 ? cur.choices : pick ? defChoices(card, pool) : null;
+  const save = () => store.set("pcur", { key: P.key, mode, card, show, phony, typed, ok, choices });
   save();
   const e = DICT.get(card), review = !!getPQ().items.find(x => x.a === cardKey(mode, card)), kb = k => `<kbd>${k}</kbd>`, tx = t => `<span class="tx">${t}</span>`;
   v.innerHTML = `<div class="foc"><div class="stage">${top}<div class="fc-card lcard">
       <p class="q" style="margin:0 0 12px">${ph ? "Valid or phony?" : "Which word is this?"}${review ? ` · <b style="color:var(--warn)">review</b>` : ""}</p>
-      ${ph ? `<div class="qprompt">${show}</div>` : `<div class="qdef">${esc(e.d)}</div><p class="small" style="margin:8px 0 0">${card.length} letters · <a href="#" id="pHint">show tiles</a></p><div id="pHintBox"></div>
-        <form id="lform" class="lform"><label><span>The word</span><input class="qinput" id="lf" value="${esc(typed)}" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done"></label><button type="submit" hidden></button></form>`}
+      ${ph ? `<div class="qprompt">${show}</div>` : `<div class="qdef">${esc(e.d)}</div>
+        ${o.dHint === "first" ? `<p class="dhint">${card[0]} ${"• ".repeat(card.length - 1).trim()}</p>` : ""}
+        ${pick ? "" : `<p class="small" style="margin:8px 0 0">${o.dHint === "none" ? "" : `${card.length} letters · `}<a href="#" id="pHint">show tiles</a></p><div id="pHintBox"></div>`}
+        ${pick ? `<div class="dpick">${choices.map((w, i) => `<button type="button" class="btn" data-pick="${w}">${w}<kbd>${i + 1}</kbd></button>`).join("")}</div>`
+          : `<form id="lform" class="lform"><label><span>The word</span><input class="qinput" id="lf" value="${esc(typed)}" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done"></label><button type="submit" hidden></button></form>`}`}
       <div id="lres"></div></div>
     <div class="thumb"><div class="acts"><button type="button" class="btn mk" id="pAlt"></button><button type="button" class="btn mk" id="pMain"></button></div></div></div>
     ${practiceRail(pr, "prail")}</div>` + sh;
@@ -1723,6 +1804,9 @@ function practiceWord(pool, o, top, sh, wireTop, pr) {
     a.setAttribute("aria-label", ask ? "Phony" : ok === null ? "Didn't know" : ok ? "Switch to didn't know" : "Switch to knew it");
     m.className = `btn mk ${ok === null ? "yes" : ok ? "yes on" : "no on"}`; m.innerHTML = ask ? `${tx("Valid")}${kb("V")}` : ok === null ? `✓${kb("2")}` : `${tx("Next")}${kb("↵")}`;
     m.setAttribute("aria-label", ask ? "Valid" : ok === null ? "Check" : "Next card");
+    // picking from four: the pick is the answer, so there's only ✗ (don't know) until then; the picks show right and wrong
+    m.hidden = pick && ok === null; if (pick) a.innerHTML = ok === null ? `${tx("Don't know")}` : a.innerHTML;
+    v.querySelectorAll("[data-pick]").forEach(b => { b.disabled = ok !== null; b.classList.toggle("right", ok !== null && defRight(b.dataset.pick)); b.classList.toggle("wrong", ok !== null && b.dataset.pick === typed && !defRight(typed)); });
   };
   const reveal = () => {
     if (ok === null) { $("#lres").innerHTML = ""; return; }
@@ -1735,17 +1819,20 @@ function practiceWord(pool, o, top, sh, wireTop, pr) {
   const nextCard = () => { commitPractice(); VIEWS.practice(); };
   $("#lform")?.addEventListener("submit", ev => { ev.preventDefault(); ok === null ? mark(defRight(typedNow())) : nextCard(); });
   $("#lf")?.addEventListener("input", () => { typed = typedNow(); if (ok === null) { save(); if (defRight(typed)) mark(true); } });
+  v.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => { if (ok !== null) return; typed = b.dataset.pick; mark(defRight(typed)); });
   $("#pHint")?.addEventListener("click", ev => { ev.preventDefault(); $("#pHintBox").innerHTML = tilesHTML(alpha(card), true); });
   $("#pAlt").onclick = () => ok !== null ? mark(!ok) : mark(ph ? phony : false);
   $("#pMain").onclick = () => ok !== null ? nextCard() : mark(ph ? !phony : defRight(typedNow()));
   document.onkeydown = ev => {
     if (pSheetOpen || pkOpen || ev.metaKey || ev.ctrlKey || ev.altKey || ev.target.closest?.("input, select, textarea")) return;
     if (ph && ok === null) { if (/^[vp]$/i.test(ev.key)) $(ev.key.toLowerCase() === "v" ? "#pMain" : "#pAlt").click(); return; }
+    if (pick && ok === null) { if (/^[1-4]$/.test(ev.key)) v.querySelectorAll("[data-pick]")[+ev.key - 1]?.click(); return; }
     if (ev.key === "1") $("#pAlt").click();
     else if (ev.key === "2" || ev.key === "Enter") { ev.preventDefault(); $("#pMain").click(); }
   };
   marks(); reveal(); wireTop();
-  if (!ph && ok === null && !phone()) $("#lf").focus();
+  if (!ph && ok === null && !pick && !phone()) $("#lf").focus();
+  cardTimer(o, () => ok === null, () => mark(false));
 }
 const recallAdvice = n => `${recallTooBig(n)} Pick a shorter list, or a Top number under Probability in the options.`;
 // the list, a section per first letter: found words, words shown or missed, and a dotted blank for each one to find
@@ -1823,7 +1910,7 @@ function practiceLetters(pool, o, top, sh, wireTop, pr) {
   const valid = id => mode === "hooks" ? DICT.has(id) : /^[A-Z]*\?[A-Z]*$/.test(id || "") && fitsOf(id).length > 0;
   let card, typed = { f: "", b: "" }, ok = null;
   if (cur?.key === P.key && cur.mode === mode && valid(cur.card)) { card = cur.card; typed = cur.typed || typed; ok = typeof cur.ok === "boolean" ? cur.ok : null; }
-  else card = pickCard(pool, mode, o.order, !!o.rev);
+  else card = pickCard(pool, mode, o.order, !!o.rev, o.sMix);
   const save = () => store.set("pcur", { key: P.key, mode, card, typed, ok });
   save();
   const review = !!getPQ().items.find(x => x.a === cardKey(mode, card));
@@ -1880,7 +1967,42 @@ function practiceLetters(pool, o, top, sh, wireTop, pr) {
   };
   marks(); show(); chipsDraw(); wireTop();
   if (ok !== null) pad?.done();
+  // out of time: what was typed is checked
+  cardTimer(o, () => ok === null, () => finish());
   if (ok === null && !phone()) $("#lf")?.focus();
+}
+// the end of a session of 10, 20 or 50 cards: the score, the best run, and the cards missed, which can be practised again
+function practiceDone(o, top, sh, wireTop, pr) {
+  const cards = (P.cards || []).slice(-P.seen), miss = cards.filter(c => !c.ok).map(c => c.k), n = +o.sLen;
+  const words = k => k.startsWith("p:") ? fitWords(k.slice(2)) : /^[hvd]:/.test(k) ? [k.slice(2)] : ANA.get(k) || [];
+  $("#view").innerHTML = `<div class="foc"><div class="stage">${top}<div class="fc-card lcard pdone">
+      <p class="lbl" style="justify-content:center">Session done</p><p class="pscore">${P.solved} / ${P.seen}</p>
+      <p class="small" style="margin:0">Best run ${P.best || 0} · ${miss.length} missed</p>
+      ${miss.length ? `<p class="lbl" style="margin:16px 0 4px">Missed</p>${miss.map(k => `<p class="small" style="margin:10px 0 2px;text-align:left"><b>${esc(k.startsWith("h:") ? k.slice(2) + " hooks" : k.startsWith("p:") ? k.slice(2) : /^[vd]:/.test(k) ? k.slice(2) : k)}</b></p><div class="rows">${words(k).map(w => rowHTML(w)).join("")}</div>`).join("")}` : ""}</div>
+    <div class="thumb"><div class="acts">${miss.length ? `<button type="button" class="btn mk no" id="pRedo"><span class="tx">Practise the ${miss.length} missed</span></button>` : ""}<button type="button" class="btn mk yes" id="pMore"><span class="tx">${n ? `${n} more` : "Carry on"}</span>${"<kbd>↵</kbd>"}</button></div></div></div>
+    ${practiceRail(pr, "prail")}</div>` + sh;
+  $("#pRedo")?.addEventListener("click", () => { newSession(P.key, miss.length, miss); VIEWS.practice(); });
+  $("#pMore").onclick = () => { newSession(P.key); VIEWS.practice(); };
+  document.onkeydown = ev => { if (!pSheetOpen && ev.key === "Enter" && !ev.target.closest?.("input, select, textarea")) { ev.preventDefault(); $("#pMore").click(); } };
+  wireTop();
+}
+// the card's timer: a bar runs down at the top of the card (it stops while the options are open); when it runs out,
+// fail() marks the card
+function cardTimer(o, open, fail) {
+  const secs = +o.sTime, card = $("#view .fc-card");
+  if (!secs || !card || !open()) return;
+  card.insertAdjacentHTML("afterbegin", `<div class="ptimer"><i></i></div>`);
+  const box = card.querySelector(".ptimer"), bar = box.firstElementChild;
+  let used = 0, last = Date.now();
+  const tick = () => {
+    if (!document.contains(box)) return;
+    if (!open()) return box.remove();
+    const now = Date.now(); if (!pSheetOpen && !document.hidden) used += now - last; last = now;
+    const left = 1 - used / (secs * 1000);
+    bar.style.width = Math.max(0, left * 100) + "%"; bar.classList.toggle("low", left < .25);
+    if (left <= 0) { box.remove(); fail(); } else requestAnimationFrame(tick);
+  };
+  tick();
 }
 const ICON_PLAY = '<svg viewBox="0 0 24 24" class="play" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
 const ICON_SHUF = '<path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>', ICON_BACK = '<path d="M21 5H9l-6 7 6 7h12z"/><path d="M17 9l-6 6M11 9l6 6"/>';
