@@ -1108,6 +1108,11 @@ main.wrap:has(> .foc) { max-width: 1400px; }
 .hcols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; text-align: left; }
 .hcols > div { min-width: 0; }
 .hcols .lbl { margin: 0 0 4px; }
+/* the columns are narrow, so each row is the word on one line and its definition on the next */
+.hcols .rows { display: block; }
+.hcols .r { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.hcols .r .ra { margin-left: auto; }
+.hcols .r .d, .hcols .r .sa { flex-basis: 100%; order: 10; }
 .lkopts { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-top: 8px; }
 .lkopts select { max-width: 100%; }
 /* a pattern letter taken (a green pulse) or refused (a shake) */
