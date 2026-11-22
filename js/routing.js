@@ -23,7 +23,8 @@ function route() {
   const t = VIEWS[tab] ? tab : "w";
   // Lists, Practice and Quiz share the Study tab, which goes back to exactly where you were: the list that was
   // open, or the practice card
-  if (STUDY.includes(t)) store.set("studyLast", location.hash.slice(1));
+  // each of them keeps its own place too, for the switch along the top
+  if (STUDY.includes(t)) { store.set("studyLast", location.hash.slice(1)); store.set("studyLast:" + t, location.hash.slice(1)); }
   // My words does the same: the folder or list that was open, at the same spot
   if (t === "mine") store.set("mineLast", location.hash.slice(1));
   // and Board: the game, review or tool that was open

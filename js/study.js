@@ -616,7 +616,7 @@ function famView(f, pick) {
   // opened from one of its lists (#lists/fours-x), the address becomes the family's, so coming back from another tab
   // keeps the chips as they were left rather than going back to that list's chip
   if (location.hash !== "#lists/" + f.id) {
-    history.replaceState(null, "", "#lists/" + f.id); curHash = location.hash; store.set("studyLast", "lists/" + f.id); $('#tabs [data-tab="study"]').href = location.hash;
+    history.replaceState(null, "", "#lists/" + f.id); curHash = location.hash; store.set("studyLast", "lists/" + f.id); store.set("studyLast:lists", "lists/" + f.id); $('#tabs [data-tab="study"]').href = location.hash;
     if (backHome) backHome = f.id;
   }
   let g, chips;
@@ -2502,6 +2502,7 @@ phoneMQ.addEventListener?.("change", () => { const [t, arg] = location.hash.slic
 const sampleWord = () => [$("#q").value, store.get("hist", [])[0], "SCRABBLE"].map(w => (w || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 15)).find(Boolean);
 
 // ---------- study: Lists, Practice, Quiz and Scoring share one tab, with a switch along the top ----------
+// (the switch goes back to where each was left: the list that was open, the practice card; its lit one goes to the start)
 const STUDY = ["lists", "practice", "quiz", "scoring"];
 VIEWS.scoring = () => viewCount();
 for (const k of STUDY) {
@@ -2509,7 +2510,7 @@ for (const k of STUDY) {
   VIEWS[k] = arg => {
     f(arg);
     const top = location.hash !== "#practice/go" && !(k === "quiz" && Q && !Q.done && !Q.paused);
-    if (top && !$("#view .studyseg")) $("#view").insertAdjacentHTML("afterbegin", `<nav class="studyseg">${[["lists", "Lists"], ["practice", "Practice"], ["quiz", "Quiz"], ["scoring", "Scoring"], ["games", "Games"]].map(([h, n]) => `<a href="#${h}" class="${h === k ? "on" : ""}">${n}</a>`).join("")}</nav>`);
+    if (top && !$("#view .studyseg")) $("#view").insertAdjacentHTML("afterbegin", `<nav class="studyseg">${[["lists", "Lists"], ["practice", "Practice"], ["quiz", "Quiz"], ["scoring", "Scoring"], ["games", "Games"]].map(([h, n]) => `<a href="#${h === k ? h : store.get("studyLast:" + h, h)}" class="${h === k ? "on" : ""}">${n}</a>`).join("")}</nav>`);
   };
 }
 
