@@ -1363,13 +1363,6 @@ function hookFits(w, o) {
   return true;
 }
 const dash = rs => rs.map(r => r.replace("-", "–")).join(", ");
-// the pills on the card for the options of each type, and the session's
-const typeOptsText = o => [...(o.mode !== "hooks" ? [] : [o.hSide === "f" ? "Front only" : o.hSide === "b" ? "Back only" : "",
-  o.hCount?.length ? `${dash(o.hCount)} hooks` : "", o.hNone && !o.hCount?.length ? "Has hooks" : "", o.hTakes && `Takes ${letterSet(o.hTakes)}`, o.hNoS && "No lone S"]),
-  ...(o.mode !== "pattern" ? [] : [o.pFits.length && `${dash(o.pFits)} fit`, o.pGap.length && `Gap: ${o.pGap.join(", ")}`]),
-  o.mode === "phony" && o.pPhony && `${o.pPhony}% phonies`,
-  ...(o.mode !== "def" ? [] : [o.dHint === "none" ? "No hint" : o.dHint === "first" ? "First letter" : "", o.dPick && "Pick from 4"]),
-  ...(o.mode === "recall" ? [] : [o.sMix && "Even mix", o.sMiss && "Mistakes only", +o.sTime && `${o.sTime}s a card`])].filter(Boolean);
 // a rack's answers keep the crossed-off words in the list: not asked for, but taken if typed. Kept beside poolCache
 // (which it leaves alone) so dealing a card doesn't search the list again
 let rackMemo = {};
@@ -1593,22 +1586,21 @@ const lensLabel = o => o.lens.length ? `${o.lens.join(", ")} letters` : "Any len
 // a keyboard places tiles, and the keyboard button shows a box for the phone's own keyboard.
 let pSheetOpen = false;
 function practicePlay(pool, o, opts, wire) {
-  const v = $("#view"), pq = getPQ().items.length, pr = progress(pool, o.mode);
+  const v = $("#view"), pr = progress(pool, o.mode);
   const src = o.src.startsWith("g:") ? groupOf(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src] || (o.src.startsWith("f:") ? folderById(o.src.slice(2))?.name : "");
   const target = P.target || +o.sLen;
-  const pills = [o.mode !== "anagram" && PMODES.find(m => m[0] === o.mode)?.[1], target && o.mode !== "recall" && `Card ${Math.min(P.seen + 1, target)} / ${target}`, ...typeOptsText(o), lensLabel(o), src, o.order !== "rand" && orderText(o.order, o.rev), o.starOnly && "★ only", likelyText(o.from, o.to, o.by, o.lax), anaText(o.anas), o.mode !== "recall" && `Streak ${P.streak}`, o.mode !== "recall" && pq && `${pq} to review`].filter(Boolean);
   const ana = o.mode === "anagram", rec = o.mode === "recall";
   const copts = ana || rec || o.mode === "pattern" ? cardOpts({ rack: ana && pool.some(w => w.length <= RACK_LEN), skip: ana || rec ? !!o.skipKnown : undefined, hard: rec }) : "";
   const top = `<div class="fc-top"><button type="button" class="ib2" id="pExit" aria-label="Leave practice">×</button><div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div>
       <span class="n" title="${pr.unit} learnt">${pr.racks.toLocaleString()} / ${pr.racksAll.toLocaleString()}</span><button type="button" class="ib2 phone-only" id="pStatsBtn" aria-label="Stats">${icon('<path d="M5 20V11M12 20V4M19 20v-6"/>')}</button><button type="button" class="ib2" id="pOptBtn" aria-label="Options">${icon('<path d="M4 6h16M7 12h10M10 18h4"/>')}</button></div>
-    <div class="hscroll ppills">${pills.map(p => `<button type="button" class="pill" data-popt>${esc(p)}</button>`).join("")}</div>${copts}`;
+    ${copts}`;
   const sh = sheetHTML("psheet", `<h3>Practice options<button type="button" id="pDone">Done</button></h3>${opts.replace('id="pOpts"', 'id="pOpts" open')}`)
     + sheetHTML("pstats", `<h3>Stats<button type="button" id="pStatsDone">Done</button></h3>${practiceRail(pr, "")}`);
   const openSheet = on => { pSheetOpen = on; sheet("psheet", on); };
   const wireTop = () => {
     // × leaves to the Practice page (tabs and all); the card is kept and its Continue card brings it back
     $("#pExit").onclick = () => location.replace("#practice");
-    v.querySelectorAll("#pOptBtn, [data-popt]").forEach(b => b.onclick = () => openSheet(true));
+    $("#pOptBtn").onclick = () => openSheet(true);
     // options typed in the sheet deal a new card when it closes
     $("#pDone").onclick = $("#psheet .scrim").onclick = () => { poSoft?.(); openSheet(false); if (poDirty) VIEWS.practice(); };
     $("#pStatsBtn").onclick = () => sheet("pstats", true);
@@ -2094,9 +2086,11 @@ function rackBoard(slotsEl, rackEl, letters, word, opts = {}) {
 function practiceRail(pr, cls) {
   if (pr.recall) return recallRail(pr.recall, pr.racksAll, pr.recall.at, cls);
   const q = getPQ(), mins = Math.round((Date.now() - P.start) / 60000), last = P.hist.slice(-20), ok = last.filter(Boolean).length;
+  // a session of 10, 20 or 50 cards: which card this is
+  const target = P.target || +practiceOpts().sLen, card = target ? `Card ${Math.min(P.seen + 1, target)} / ${target} · ` : "";
   const due = x => x.due <= q.n ? `<em class="due">due now</em>` : `<em>in ${x.due - q.n} card${x.due - q.n === 1 ? "" : "s"}</em>`;
   return `<aside class="rail ${cls}">
-    <div><h4>This session<em>${mins ? `${mins} min` : "just started"}</em></h4>
+    <div><h4>This session<em>${card}${mins ? `${mins} min` : "just started"}</em></h4>
       <div class="kpis"><div><b>${P.streak}</b><span>streak</span></div><div><b>${P.seen ? Math.round(P.solved / P.seen * 100) + "%" : "–"}</b><span>known</span></div>
         <div><b>${P.seen}</b><span>${pr.unit} seen</span></div><div><b>${pr.racks.toLocaleString()}</b><span>of ${pr.racksAll.toLocaleString()} learnt</span></div></div></div>
     <div><h4>Last ${last.length || 20}<em>${last.length ? `✓ ${ok} · ✗ ${last.length - ok}` : ""}</em></h4>

@@ -599,7 +599,6 @@ main.wrap:has(> .foc) { max-width: 1400px; }
   /* the card (and the answers once shown) sits at the top; the rack and its buttons sit at the bottom, just above
      the ✗ ✓ bar, in thumb reach. A card with lots of answers grows and pushes the rack down, and the page scrolls
      (the bottom padding keeps it clear of the bar) */
-  body.full .ppills { display: none; }
   body.full .foc > .stage { min-height: calc(100dvh - 150px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
   body.full .fc-card { padding: 22px 10px 18px; }
   body.full .rack { margin-top: auto; }
