@@ -783,15 +783,16 @@ const letterSet = s => [...new Set(String(s || "").toUpperCase().replace(/[^A-Z]
 // the word's tiles with an empty, dashed tile for each gap
 const gapTile = `<div class="tile gap">?</div>`, aTile = c => `<div class="tile">${c}<sub>${VALUES[c]}</sub></div>`;
 const gapHTML = pat => `<div class="tiles gapt">${[...pat].map(c => c === "?" ? gapTile : aTile(c)).join("")}</div>`;
-const hookHTML = w => `<div class="tiles gapt">${gapTile}${[...w].map(aTile).join("")}${gapTile}</div>`;
+const hookHTML = (w, sides = "fb") => `<div class="tiles gapt">${sides.includes("f") ? gapTile : ""}${[...w].map(aTile).join("")}${sides.includes("b") ? gapTile : ""}</div>`;
 // hooks (Quiz and Practice): a Front and a Back box and a keyboard on the page. Tapping a box picks it (it lights up,
 // and a phone's own keyboard stays down); a key adds its letter to that box, or takes it out if it's already there
 const HOOK_KEYS = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
-const hookPadHTML = () => `<div class="hbox">${[["f", "Front"], ["b", "Back"]].map(([s, l]) => `<button type="button" class="hside" data-side="${s}"><span>${l}</span><b></b></button>`).join("")}</div>
+const hookPadHTML = (sides = "fb") => `<div class="hbox">${[["f", "Front"], ["b", "Back"]].filter(([s]) => sides.includes(s)).map(([s, l]) => `<button type="button" class="hside" data-side="${s}"><span>${l}</span><b></b></button>`).join("")}</div>
   <div class="hkeys">${HOOK_KEYS.map((r, i) => `<div>${[...r].map(c => `<button type="button" data-k="${c}">${c}</button>`).join("")}${i === 2 ? `<button type="button" class="del" data-k="del" aria-label="Take back a letter">⌫</button>` : ""}</div>`).join("")}</div>`;
-// typed is { f, b }, changed as keys are pressed; key(ev) takes a real keyboard's letters, Backspace and ← →
-function hookPad(root, typed, changed) {
-  let side = "f";
+// typed is { f, b }, changed as keys are pressed; key(ev) takes a real keyboard's letters, Backspace and ← →.
+// sides is the boxes shown ("fb", or "f" or "b" when only one side is asked)
+function hookPad(root, typed, changed, sides = "fb") {
+  let side = sides[0];
   const draw = () => {
     root.querySelectorAll(".hside").forEach(b => { b.classList.toggle("on", b.dataset.side === side); b.querySelector("b").innerHTML = esc(typed[b.dataset.side]) || "<em>none</em>"; });
     root.querySelectorAll(".hkeys [data-k]").forEach(k => k.classList.toggle("on", typed[side].includes(k.dataset.k)));
@@ -804,7 +805,7 @@ function hookPad(root, typed, changed) {
     key: ev => {
       if (/^[a-z]$/i.test(ev.key)) press(ev.key.toUpperCase());
       else if (ev.key === "Backspace") press("del");
-      else if (/^Arrow(Left|Right)$/.test(ev.key)) { side = ev.key === "ArrowLeft" ? "f" : "b"; draw(); }
+      else if (/^Arrow(Left|Right)$/.test(ev.key) && sides.length > 1) { side = ev.key === "ArrowLeft" ? "f" : "b"; draw(); }
       else return false;
       return true;
     },
@@ -1292,7 +1293,8 @@ const saveP = () => store.set("psess", { key: P.key, streak: P.streak, solved: P
 // ok: the card's mark once it's marked (null before)
 const saveCard = () => store.set("pcur", { key: P.key, letters: P.letters, found: P.found, ok: P.verdict ? P.verdict.ok : null, rack: P.rack, size: P.size, all: P.all, want: P.want });
 // practice options: where words come from + the same filters as Search
-const PO_DEFAULT = { mode: "anagram", by: "rank", lax: false, src: "", lens: [7], top: "", starts: "", ends: "", contains: "", incl: "", excl: "", pattern: "", from: "", to: "", anas: "", order: "rand", rev: false };
+const PO_DEFAULT = { mode: "anagram", by: "rank", lax: false, src: "", lens: [7], top: "", starts: "", ends: "", contains: "", incl: "", excl: "", pattern: "", from: "", to: "", anas: "", order: "rand", rev: false,
+  hSide: "fb", hCount: [], hNone: false, hTakes: "", hNoS: false };
 // the saved options, with a single length from before the length chips turned into a list
 function practiceOpts() {
   const sp = SET.practice || {}, o = { ...PO_DEFAULT, ...sp };
@@ -1322,8 +1324,24 @@ function practicePool(o) {
   if (o.skipKnown) { const set = new Set(getKnown()); pool = pool.filter(w => !set.has(w)); }
   // optional rank range, counted in probability order within each length (e.g. ranks 1–50 or 30–80)
   pool = likelyRange(pool, o.from, o.to, o.by, o.lax);
+  if (o.mode === "hooks") pool = pool.filter(w => hookFits(w, o));
   return (poolCache = { key, pool, error: r.error }).pool;
 }
+// the Hooks options: which side is asked, how many hooks it has there, a letter it must take, and leaving out words
+// with no hooks, or whose only hook asked is a back S
+const HCOUNTS = [["1", "1"], ["2-4", "2–4"], ["5+", "5+"]];
+const askedHooks = (w, side) => { const e = DICT.get(w); return (side.includes("f") ? e.fh : "") + (side.includes("b") ? e.bh : ""); };
+function hookFits(w, o) {
+  const side = o.hSide || "fb", e = DICT.get(w), h = askedHooks(w, side), n = h.length;
+  if (o.hNone && !n) return false;
+  if (o.hCount?.length && !o.hCount.some(c => c === "1" ? n === 1 : c === "2-4" ? n >= 2 && n <= 4 : n >= 5)) return false;
+  if (o.hTakes && ![...letterSet(o.hTakes)].every(c => h.toUpperCase().includes(c))) return false;
+  if (o.hNoS && side.includes("b") && (side.includes("f") ? e.fh : "") === "" && e.bh === "s") return false;
+  return true;
+}
+const hookOptsText = o => o.mode !== "hooks" ? [] : [o.hSide === "f" ? "Front only" : o.hSide === "b" ? "Back only" : "",
+  o.hCount?.length ? `${o.hCount.map(c => HCOUNTS.find(x => x[0] === c)?.[1]).join(", ")} hooks` : "", o.hNone && !o.hCount?.length ? "Has hooks" : "",
+  o.hTakes && `Takes ${letterSet(o.hTakes)}`, o.hNoS && "No lone S"].filter(Boolean);
 // a rack's answers keep the crossed-off words in the list: not asked for, but taken if typed. Kept beside poolCache
 // (which it leaves alone) so dealing a card doesn't search the list again
 let rackMemo = {};
@@ -1450,6 +1468,13 @@ VIEWS.practice = () => {
       </div>`;
   const more = `
     <details class="card" id="pOpts" ${open ? "open" : ""}><summary class="lbl" style="cursor:pointer;margin:0">More options · ${pool.length.toLocaleString()} words in play</summary>
+      ${o.mode === "hooks" ? `<div class="form hopts" style="margin-top:12px">
+        <div class="field wide"><span class="flabel">Hooks: ask for</span><div class="seg">${[["fb", "Both"], ["f", "Front"], ["b", "Back"]].map(([k, n]) => `<button type="button" class="btn sm ${(o.hSide || "fb") === k ? "on" : ""}" data-hside="${k}">${n}</button>`).join("")}</div></div>
+        <div class="field wide"><span class="flabel">How many hooks</span><div class="chips">${HCOUNTS.map(([k, n]) => `<button type="button" class="btn sm ${o.hCount.includes(k) ? "on" : ""}" data-hcount="${k}">${n}</button>`).join("")}</div></div>
+        ${tf("hTakes", "Takes this letter", "e.g. Y")}
+        <div class="field"><span class="flabel">Leave out</span><label class="check"><input type="checkbox" id="po_hNone" ${o.hNone ? "checked" : ""}> Words with no hooks</label>
+          <label class="check"><input type="checkbox" id="po_hNoS" ${o.hNoS ? "checked" : ""}> Words whose only hook is a back S</label></div>
+      </div>` : ""}
       <div class="form" style="margin-top:12px">
         ${tf("starts", "Starts with", "e.g. UN")}${tf("ends", "Ends with", "e.g. ING")}${tf("contains", "Contains in a row", "e.g. QI")}
         <div class="field"><span class="flabel">Starred</span><label class="check"><input type="checkbox" id="po_star" ${o.starOnly ? "checked" : ""}> Only words I've starred</label>
@@ -1476,7 +1501,12 @@ VIEWS.practice = () => {
     $("#view").querySelectorAll("[data-pmode]").forEach(b => b.onclick = () => { saveSettings({ practice: { ...latest(), mode: b.dataset.pmode } }); VIEWS.practice(); });
     $("#po_star").onchange = e => { saveSettings({ practice: { ...latest(), starOnly: e.target.checked } }); VIEWS.practice(); };
     $("#po_known").onchange = e => { saveSettings({ practice: { ...latest(), skipKnown: e.target.checked } }); VIEWS.practice(); };
-    const gather = () => { const n = { ...practiceOpts() }; for (const k of ["src", "starts", "ends", "contains", "incl", "excl", "pattern", "anas", "from", "to", "by"]) n[k] = $("#po_" + k).value.trim(); n.lax = $("#po_lax").checked; n.lens = lensOf($("#po_lens").value); return n; };
+    if (o.mode === "hooks") {
+      $("#view").querySelectorAll("[data-hside]").forEach(b => b.onclick = () => { saveSettings({ practice: { ...latest(), hSide: b.dataset.hside } }); VIEWS.practice(); });
+      $("#view").querySelectorAll("[data-hcount]").forEach(b => b.onclick = () => { const n = latest(), k = b.dataset.hcount; saveSettings({ practice: { ...n, hCount: n.hCount.includes(k) ? n.hCount.filter(x => x !== k) : [...n.hCount, k] } }); VIEWS.practice(); });
+      for (const k of ["hNone", "hNoS"]) $("#po_" + k).onchange = e => { saveSettings({ practice: { ...latest(), [k]: e.target.checked } }); VIEWS.practice(); };
+    }
+    const gather = () => { const n = { ...practiceOpts() }; for (const k of ["src", "starts", "ends", "contains", "incl", "excl", "pattern", "anas", "from", "to", "by", "hTakes"]) if ($("#po_" + k)) n[k] = $("#po_" + k).value.trim(); n.lax = $("#po_lax").checked; n.lens = lensOf($("#po_lens").value); return n; };
     let timer = 0;
     const read = () => { clearTimeout(timer); poSoft = null; saveSettings({ practice: gather() }); VIEWS.practice(); };
     // while typing, save and refresh the counts without redrawing, so the box and a phone's keyboard stay put
@@ -1501,7 +1531,7 @@ let pSheetOpen = false;
 function practicePlay(pool, o, opts, wire) {
   const v = $("#view"), pq = getPQ().items.length, pr = progress(pool, o.mode);
   const src = o.src.startsWith("g:") ? groupOf(o.src.slice(2))?.name : { "my:stars": "Starred words", "my:missed": "Missed words", "my:last": "Last search results" }[o.src] || (o.src.startsWith("f:") ? folderById(o.src.slice(2))?.name : "");
-  const pills = [o.mode !== "anagram" && PMODES.find(m => m[0] === o.mode)?.[1], lensLabel(o), src, o.order !== "rand" && orderText(o.order, o.rev), o.starOnly && "★ only", likelyText(o.from, o.to, o.by, o.lax), anaText(o.anas), o.mode !== "recall" && `Streak ${P.streak}`, o.mode !== "recall" && pq && `${pq} to review`].filter(Boolean);
+  const pills = [o.mode !== "anagram" && PMODES.find(m => m[0] === o.mode)?.[1], ...hookOptsText(o), lensLabel(o), src, o.order !== "rand" && orderText(o.order, o.rev), o.starOnly && "★ only", likelyText(o.from, o.to, o.by, o.lax), anaText(o.anas), o.mode !== "recall" && `Streak ${P.streak}`, o.mode !== "recall" && pq && `${pq} to review`].filter(Boolean);
   const ana = o.mode === "anagram", rec = o.mode === "recall";
   const copts = ana || rec || o.mode === "pattern" ? cardOpts({ rack: ana && pool.some(w => w.length <= RACK_LEN), skip: ana || rec ? !!o.skipKnown : undefined, hard: rec }) : "";
   const top = `<div class="fc-top"><button type="button" class="ib2" id="pExit" aria-label="Leave practice">×</button><div class="pbar"><div style="width:${pr.racksAll ? pr.racks / pr.racksAll * 100 : 0}%"></div></div>
@@ -1798,18 +1828,20 @@ function practiceLetters(pool, o, top, sh, wireTop, pr) {
   save();
   const review = !!getPQ().items.find(x => x.a === cardKey(mode, card));
   const e = mode === "hooks" ? DICT.get(card) : null, want = mode === "hooks" ? { f: letterSet(e.fh), b: letterSet(e.bh) } : { f: fitsOf(card).join("") };
+  // Hooks can ask for one side only
+  const sides = mode === "hooks" ? o.hSide || "fb" : "f", asks = s => sides.includes(s);
   const words = mode === "hooks" ? [card, ...hookWords(card)] : fitWords(card);
   const kb = k => `<kbd>${k}</kbd>`, typing = 'autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done"';
   v.innerHTML = `<div class="foc"><div class="stage">${top}<div class="fc-card lcard">
-      <p class="q">${mode === "hooks" ? "Which letters go on the front, and the back?" : "Which letters fit the gap?"}${review ? ` · <b style="color:var(--warn)">review</b>` : ""}</p>
-      ${mode === "hooks" ? hookHTML(card) : gapHTML(card)}
-      ${mode === "hooks" ? `<div id="lpad">${hookPadHTML()}</div>` : `<form id="lform" class="lform"><label><span>Type a letter</span><input class="qinput" id="lf" placeholder="one at a time" ${typing}></label><button type="submit" hidden></button></form>`}
+      <p class="q">${mode === "hooks" ? { fb: "Which letters go on the front, and the back?", f: "Which letters go on the front?", b: "Which letters go on the back?" }[sides] : "Which letters fit the gap?"}${review ? ` · <b style="color:var(--warn)">review</b>` : ""}</p>
+      ${mode === "hooks" ? hookHTML(card, sides) : gapHTML(card)}
+      ${mode === "hooks" ? `<div id="lpad">${hookPadHTML(sides)}</div>` : `<form id="lform" class="lform"><label><span>Type a letter</span><input class="qinput" id="lf" placeholder="one at a time" ${typing}></label><button type="submit" hidden></button></form>`}
       ${mode === "pattern" ? `<p class="q" id="lleft" style="margin:10px 0 4px"></p><div id="lchips"></div>` : ""}
       <div id="lres"></div></div>
     <div class="thumb"><div class="acts"><button type="button" class="btn mk" id="pAlt"></button><button type="button" class="btn mk" id="pMain"></button></div></div></div>
     ${practiceRail(pr, "prail")}</div>` + sh;
   // patterns are typed a letter at a time (each one that fits is kept); hooks go in their two boxes from the keyboard on the page
-  const pad = mode === "hooks" ? hookPad($("#lpad"), typed, () => { if (ok === null) save(); }) : null;
+  const pad = mode === "hooks" ? hookPad($("#lpad"), typed, () => { if (ok === null) save(); }, sides) : null;
   const chipsDraw = () => { if (mode !== "pattern") return; const n = want.f.length, f = typed.f.length;
     $("#lleft").textContent = ok !== null ? "" : SET.hideCount ? (f ? `${f} found` : "Find every letter") : `${n} letter${n === 1 ? " fits" : "s fit"} · ${f} found · ${n - f} left`; $("#lchips").innerHTML = ok !== null ? "" : patChips(card, typed.f); };
   const marks = () => {
@@ -1822,10 +1854,10 @@ function practiceLetters(pool, o, top, sh, wireTop, pr) {
   const show = () => {
     if (ok === null) { $("#lres").innerHTML = ""; return; }
     $("#lres").innerHTML = `<p class="fb ${ok ? "ok" : "no"}" style="margin:12px 0 6px">${ok ? "Correct" : "Not quite"}</p>
-      <p class="lans">${mode === "hooks" ? `<span>Front</span>${letterMarks(typed.f, want.f)}<span>Back</span>${letterMarks(typed.b, want.b)}` : `<span>Fits</span>${letterMarks(typed.f, want.f)}`}</p>
+      <p class="lans">${mode === "hooks" ? `${asks("f") ? `<span>Front</span>${letterMarks(typed.f, want.f)}` : ""}${asks("b") ? `<span>Back</span>${letterMarks(typed.b, want.b)}` : ""}` : `<span>Fits</span>${letterMarks(typed.f, want.f)}`}</p>
       ${mode === "hooks" ? hookCols(card) : `<div class="rows">${words.map(w => rowHTML(w)).join("")}</div>`}`;
   };
-  const finish = force => { const right = letterSet(typed.f) === want.f && (mode !== "hooks" || letterSet(typed.b) === want.b); ok = force === undefined ? right : force; save(); show(); marks(); chipsDraw(); pad?.done(); };
+  const finish = force => { const right = (!asks("f") || letterSet(typed.f) === want.f) && (mode !== "hooks" || !asks("b") || letterSet(typed.b) === want.b); ok = force === undefined ? right : force; save(); show(); marks(); chipsDraw(); pad?.done(); };
   const nextCard = () => { commitPractice(); VIEWS.practice(); };
   $("#lform")?.addEventListener("submit", ev => { ev.preventDefault(); ok === null ? finish() : nextCard(); });
   if (mode === "pattern") $("#lf").addEventListener("input", ev => {
