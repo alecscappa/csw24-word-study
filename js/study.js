@@ -1777,6 +1777,9 @@ function notepad(box) {
   if (!box.hidden) requestAnimationFrame(fit);
   return { fit, clear };
 }
+// a hook card's answer: the word, then its front hooks and its back hooks side by side
+const hookCols = w => { const e = DICT.get(w), col = (s, l, f) => `<div><p class="lbl">${l}</p>${s ? `<div class="rows">${[...s].map(c => rowHTML(f(c.toUpperCase()))).join("")}</div>` : `<p class="small">None</p>`}</div>`;
+  return `<div class="rows">${rowHTML(w)}</div><div class="hcols">${col(e.fh, "Front hooks", c => c + w)}${col(e.bh, "Back hooks", c => w + c)}</div>`; };
 // a hook or pattern card: the word (gaps dashed), a box for the letters (two for hooks), then ✗ / ✓. Checking shows
 // each letter as got, missed or wrong, and every word the card makes
 function practiceLetters(pool, o, top, sh, wireTop, pr) {
@@ -1814,7 +1817,7 @@ function practiceLetters(pool, o, top, sh, wireTop, pr) {
     if (ok === null) { $("#lres").innerHTML = ""; return; }
     $("#lres").innerHTML = `<p class="fb ${ok ? "ok" : "no"}" style="margin:12px 0 6px">${ok ? "Correct" : "Not quite"}</p>
       <p class="lans">${mode === "hooks" ? `<span>Front</span>${letterMarks(typed.f, want.f)}<span>Back</span>${letterMarks(typed.b, want.b)}` : `<span>Fits</span>${letterMarks(typed.f, want.f)}`}</p>
-      <div class="rows">${words.map(w => rowHTML(w)).join("")}</div>`;
+      ${mode === "hooks" ? hookCols(card) : `<div class="rows">${words.map(w => rowHTML(w)).join("")}</div>`}`;
   };
   const finish = force => { const right = letterSet(typed.f) === want.f && (mode !== "hooks" || letterSet(typed.b) === want.b); ok = force === undefined ? right : force; save(); show(); marks(); chipsDraw(); pad?.done(); };
   const nextCard = () => { commitPractice(); VIEWS.practice(); };
@@ -1828,8 +1831,9 @@ function practiceLetters(pool, o, top, sh, wireTop, pr) {
     if (!SET.hideCount && typed.f.length === want.f.length) finish(true);
   });
   $("#pAlt").onclick = () => { if (ok === null) finish(false); else { ok = !ok; save(); show(); marks(); } };
-  // ✓ before the end: "knew it", as with anagrams (a pattern with the count hidden checks what was found)
-  $("#pMain").onclick = () => ok === null ? finish(mode === "hooks" || !SET.hideCount ? true : undefined) : nextCard();
+  // ✓ before the end: "knew it", as with anagrams (hooks, and a pattern with the count hidden, check what was typed,
+  // so a missed or wrong letter makes it wrong)
+  $("#pMain").onclick = () => ok === null ? finish(mode === "pattern" && !SET.hideCount ? true : undefined) : nextCard();
   document.onkeydown = ev => {
     if (pSheetOpen || pkOpen || ev.metaKey || ev.ctrlKey || ev.altKey || ev.target.closest?.("input, select, textarea")) return;
     if (pad && ok === null && pad.key(ev)) ev.preventDefault();

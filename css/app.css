@@ -1104,6 +1104,9 @@ main.wrap:has(> .foc) { max-width: 1400px; }
 .lmk i.extra { color: var(--bad); text-decoration: line-through; }
 .lmk em { font-style: normal; color: var(--muted); }
 .lcard .rows { text-align: left; }
+.hcols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; text-align: left; }
+.hcols > div { min-width: 0; }
+.hcols .lbl { margin: 0 0 4px; }
 .lkopts { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-top: 8px; }
 .lkopts select { max-width: 100%; }
 /* a pattern letter taken (a green pulse) or refused (a shake) */
