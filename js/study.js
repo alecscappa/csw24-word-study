@@ -1339,10 +1339,14 @@ function practicePool(o) {
   const mine = folder ? folder.words : { "my:stars": getStars(), "my:missed": store.get("missed", []), "my:last": practiceLast() }[o.src];
   if (mine) { const set = new Set(mine); pool = pool.filter(w => set.has(w)); }
   if (o.starOnly) { const set = new Set(getStars()); pool = pool.filter(w => set.has(w)); }
-  if (o.skipKnown) { const set = new Set(getKnown()); pool = pool.filter(w => !set.has(w)); }
+  // (for Hooks it's the hook words that count: knowing ZED isn't knowing its hooks, so ZED goes once ZEDS is crossed off)
+  if (o.skipKnown && o.mode !== "hooks") { const set = new Set(getKnown()); pool = pool.filter(w => !set.has(w)); }
   // optional rank range, counted in probability order within each length (e.g. ranks 1–50 or 30–80)
   pool = likelyRange(pool, o.from, o.to, o.by, o.lax);
   if (o.mode === "hooks") pool = pool.filter(w => hookFits(w, o));
+  if (o.mode === "hooks" && o.skipKnown) { const set = new Set(getKnown()), side = o.hSide || "fb";
+    pool = pool.filter(w => { const e = DICT.get(w), hs = [...(side.includes("f") ? [...e.fh].map(c => c.toUpperCase() + w) : []), ...(side.includes("b") ? [...e.bh].map(c => w + c.toUpperCase()) : [])];
+      return !hs.length || !hs.every(h => set.has(h)); }); }
   if (o.mode === "pattern" && (o.pGap.length || o.pFits.length)) pool = pool.filter(w => { const pt = patternIn(w, o.pGap); return pt && (!o.pFits.length || inRanges(fitsOf(pt).length, o.pFits)); });
   // only my mistakes: words whose card is waiting in the review queue
   if (o.sMiss && o.mode !== "recall") { const q = new Set(getPQ().items.map(x => x.a)); pool = pool.filter(w => q.has(o.mode === "anagram" ? alpha(w) : o.mode === "pattern" ? "p:" + patternIn(w, o.pGap) : cardKey(o.mode, w))); }
