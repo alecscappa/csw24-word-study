@@ -1154,6 +1154,17 @@ main.wrap:has(> .foc) { max-width: 1400px; }
 .nbtitle { border: 0; background: none; font: 700 1.1rem var(--display); color: var(--ink); padding: 2px 0; outline: none; width: 100%; }
 .nbbody { border: 0; background: none; font: 1rem/1.55 var(--body); color: var(--ink); padding: 0; min-height: 3.2em; resize: none; outline: none; width: 100%; overflow: hidden; }
 .nbfoot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* Scratch pad */
+.padpages { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.padname { margin-bottom: 8px; }
+.padbar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 10px; }
+.padgrp { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.padcol { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); background: var(--c); cursor: pointer; padding: 0; }
+.padcol.on { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent); border-color: var(--panel); }
+.padsz { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; min-height: 28px; }
+.padsz i { display: block; border-radius: 50%; background: currentColor; }
+.padcanvas { display: block; width: min(100%, calc((100vh - 230px) * .75)); min-width: min(100%, 300px); aspect-ratio: 1000 / 1333; margin: 0 auto 10px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 12px; touch-action: none; cursor: crosshair; }
 
 /* crossing a word off: the ✓ left of the star; a known word is struck through (it stays where it is) */
 .r .ra { display: inline-flex; align-items: center; gap: 2px; align-self: center; }

@@ -2149,14 +2149,15 @@ VIEWS.mine = (tab) => {
   tab ||= "stars";
   if (tab.startsWith("f-")) return folderView(tab.slice(2));
   const notes = getNotes();
-  const tabs = { stats: ["Stats", null], ach: ["Achievements", null], stars: ["Starred", getStars()], folders: ["Folders", getFolders()], missed: ["Missed", store.get("missed", [])], notebook: ["Notes", getNotebook()], notes: ["Word notes", Object.keys(notes)], hist: ["Recently viewed", store.get("hist", [])] };
+  const tabs = { stats: ["Stats", null], ach: ["Achievements", null], stars: ["Starred", getStars()], folders: ["Folders", getFolders()], missed: ["Missed", store.get("missed", [])], notebook: ["Notes", getNotebook()], pad: ["Scratch pad", getPad()], notes: ["Word notes", Object.keys(notes)], hist: ["Recently viewed", store.get("hist", [])] };
   $("#view").innerHTML = `<div><h3 class="title">My words</h3><p class="sub">${typeof SYNC !== "undefined" && SYNC.user ? "Synced to your account." : "Saved in this browser."}</p></div>
     <nav class="mtabs">${Object.entries(tabs).map(([k, [n, l]]) => `<a class="${k === tab ? "on" : ""}" href="#mine/${k}" ${k === tab ? `aria-current="page"` : ""}>${n}${l ? `<em>${l.length.toLocaleString()}</em>` : ""}</a>`).join("")}</nav>
     ${tab === "stars" && tabs.stars[1].length ? `<div class="row"><button class="btn sm" id="copyList">Copy list</button><button class="btn sm" id="clearStars">Clear starred</button><span class="small" id="msg"></span></div>` : ""}
     ${tab === "missed" && tabs.missed[1].length ? `<div class="row"><button class="btn sm" id="clearMissed">Clear missed</button></div>` : ""}
-    <div class="card ${["stats", "ach", "notebook", "folders"].includes(tab) ? "" : "fitscroll"}" id="mres"></div>`;
+    <div class="card ${["stats", "ach", "notebook", "pad", "folders"].includes(tab) ? "" : "fitscroll"}" id="mres"></div>`;
   $(".mtabs a.on")?.scrollIntoView({ block: "nearest", inline: "nearest" });
   if (tab === "notebook") return notebook();
+  if (tab === "pad") return padView();
   if (tab === "stats" || tab === "ach") return statsView(tab);
   if (tab === "folders") return folderList();
   const words = tabs[tab][1].filter(w => DICT.has(w));
