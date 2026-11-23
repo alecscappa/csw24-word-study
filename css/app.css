@@ -267,7 +267,7 @@ html::-webkit-scrollbar { display: none; }
 .studyseg a { flex: 1; text-align: center; padding: 9px 0; border-radius: 9px; font: 600 .92rem var(--display); color: var(--muted); text-decoration: none; }
 .studyseg a.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .15); }
 details.more-themes { margin-top: 10px; }
-details.more-themes > summary { cursor: pointer; font: 600 .88rem var(--display); color: var(--link); padding: 6px 0; }
+details.more-themes > summary { cursor: pointer; font: 600 .88rem var(--display); color: var(--link-small); padding: 6px 0; }
 details.more-themes .swatches { margin-top: 8px; }
 
 /* settings */
