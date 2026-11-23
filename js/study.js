@@ -2010,7 +2010,7 @@ function rackBoard(slotsEl, rackEl, letters, word, opts = {}) {
   const n = letters.length, ns = opts.slots || n, rt = rackEl.querySelector(".tiles");
   slotsEl.style.setProperty("--n", ns); rt.style.setProperty("--n", n);
   // rack = tiles in the order shown; slots = which rack tile sits in each slot (null = empty); order = the order they went in
-  let rack = [...letters].map((c, i) => ({ c, i })), slots = Array(ns).fill(null), order = [], busy = false, drag = null;
+  let rack = [...letters].map((c, i) => ({ c, i })), slots = Array(ns).fill(null), order = [], busy = false, drag = null, held = "";
   const tile = (t, cls = "", s) => `<div class="tile ${cls}" data-i="${t.i}"${s !== undefined ? ` data-s="${s}"` : ""}>${t.c}<sub>${VALUES[t.c]}</sub></div>`;
   const byI = i => rack.find(t => t.i === i);
   const draw = () => {
@@ -2026,7 +2026,10 @@ function rackBoard(slotsEl, rackEl, letters, word, opts = {}) {
     if (slots.includes(null) && !opts.early?.(row)) return;
     const ok = word(row);
     flash(ok === true || ok === "keep" ? "good" : ok === false ? "bad" : ""); busy = true;
-    if (ok !== "keep") setTimeout(() => { busy = false; slots.fill(null); order = []; flash(""); draw(); }, ok ? 350 : 450);
+    // letters typed while the row is lit or shaking are kept and put down once it clears, so a quick typist
+    // can start the next word straight away
+    if (ok !== "keep") setTimeout(() => { busy = false; slots.fill(null); order = []; flash(""); draw(); const h = held; held = ""; for (const k of h) typeKey(k); }, ok ? 350 : 450);
+    else held = "";
   };
   const put = (i, s) => { slots[s] = i; order = [...order.filter(x => x !== i), i]; };
   const unput = i => { const s = slots.indexOf(i); if (s >= 0) slots[s] = null; order = order.filter(x => x !== i); };
@@ -2075,11 +2078,12 @@ function rackBoard(slotsEl, rackEl, letters, word, opts = {}) {
   };
   slotsEl.onpointerdown = e => down(e, "slot");
   rt.onpointerdown = e => down(e, "rack");
+  function typeKey(k) { if (busy) { if (slotsEl.isConnected) held += k; return; } const t = rack.find(t => t.c === k && !slots.includes(t.i)); if (t) place(t.i); }
   draw();
   return {
     shuffle: () => { rack = shuffle(rack); draw(); },
-    back: () => { if (busy || !order.length) return; unput(order[order.length - 1]); draw(); },
-    type: k => { const t = rack.find(t => t.c === k && !slots.includes(t.i)); if (t) place(t.i); },
+    back: () => { if (busy) { held = held.slice(0, -1); return; } if (!order.length) return; unput(order[order.length - 1]); draw(); },
+    type: typeKey,
   };
 }
 // the stats panel beside the card: this session, the last few marks, and the review queue
