@@ -755,7 +755,7 @@ function drawStems(box, g) {
 
 // ---------- quiz ----------
 const MODES = {
-  anagram: { name: "Anagram", help: "See the tiles, type every valid word they make." },
+  anagram: { name: "Anagrams", help: "See the tiles, type every valid word they make." },
   hooks: { name: "Hooks", help: "See a word, type every letter that can go on its front, and on its back." },
   pattern: { name: "Patterns", help: "See a word with one letter gone, type every letter that fits the gap." },
   phony: { name: "Valid or phony", help: "Is the word good? Phonies are one letter off real words. Keys: V and P." },
