@@ -572,8 +572,8 @@ main.wrap:has(> .foc) { max-width: 1400px; }
   .hdef { font-size: 1.12rem; margin: 12px 8px 0; }
   .hdef a { color: inherit; text-decoration: underline dotted; }
   .hdef .pos { color: inherit; opacity: .7; }
-  .segtabs { display: flex; background: var(--panel); border-bottom: 1px solid var(--line); }
-  .segtabs button { flex: 1; min-height: 48px; border: 0; background: none; border-bottom: 2.5px solid transparent; font: 600 .86rem var(--display); color: var(--muted); cursor: pointer; }
+  .segtabs { display: flex; background: var(--panel); border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+  .segtabs button { flex: 1 0 auto; padding: 0 10px; min-height: 48px; border: 0; background: none; border-bottom: 2.5px solid transparent; font: 600 .86rem var(--display); color: var(--muted); cursor: pointer; }
   .segtabs button.on { color: var(--ink); border-bottom-color: var(--accent); }
   /* the count sits in its own little pill so "Add one 96" can't be read as one thing */
   .segtabs em { font: 600 .66rem var(--mono); font-style: normal; color: var(--muted); background: var(--chip); border: 1px solid var(--line); border-radius: 99px; padding: 0 6px; margin-left: 5px; }
@@ -1516,3 +1516,7 @@ body.fit main.wrap.sx:has(> .lmain) { gap: 12px; }
 .pscore { font: 800 2.2rem var(--display); margin: 4px 0; }
 .pdone .rows { text-align: left; }
 .acts .btn[hidden] { display: none; }
+/* a sideways-scrolling row fades at an edge with more past it (js/routing.js sets .fl / .fr) */
+:is(.numpick, .tacts, .chips, .rangebar, .hscroll, .blevels, .stabs, .mtabs, .llens-row, .lchips, .frow-c, .lkp, .lacts, .segtabs).fr { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); }
+:is(.numpick, .tacts, .chips, .rangebar, .hscroll, .blevels, .stabs, .mtabs, .llens-row, .lchips, .frow-c, .lkp, .lacts, .segtabs).fl { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 36px), transparent); }
+:is(.numpick, .tacts, .chips, .rangebar, .hscroll, .blevels, .stabs, .mtabs, .llens-row, .lchips, .frow-c, .lkp, .lacts, .segtabs).fl.fr { -webkit-mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent); }

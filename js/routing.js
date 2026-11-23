@@ -149,4 +149,14 @@ document.addEventListener("click", ev => {
   const t = ev.target.closest("[data-go]");
   if (t) { ev.preventDefault(); freshWord(t.dataset.go); location.hash = "w/" + t.dataset.go; }
 });
+// rows of buttons that scroll sideways (mostly on a phone) fade out at an edge with more past it, so it's clear
+// there's more to swipe to
+const SCROLL_ROWS = ".numpick, .tacts, .chips, .toolbar + .rangebar, .hscroll, .blevels, .stabs, .mtabs, .llens-row, .lchips, .frow-c, .lkp, .lacts, .segtabs";
+const fadeRow = el => { const l = el.scrollLeft > 2, r = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+  if (el.classList.contains("fl") !== l) el.classList.toggle("fl", l); if (el.classList.contains("fr") !== r) el.classList.toggle("fr", r); };
+let fadeQueued = false;
+const fadeRows = () => { if (fadeQueued) return; fadeQueued = true; requestAnimationFrame(() => { fadeQueued = false; document.querySelectorAll(SCROLL_ROWS).forEach(fadeRow); }); };
+document.addEventListener("scroll", ev => { if (ev.target.matches?.(SCROLL_ROWS)) fadeRow(ev.target); }, true);
+addEventListener("resize", fadeRows);
+new MutationObserver(fadeRows).observe($("#view"), { childList: true, subtree: true });
 route();
