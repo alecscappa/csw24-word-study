@@ -107,7 +107,7 @@ a.badge.plain:hover { color: var(--accent); }
 .w sup, .wl sup, .fh sup, .bh sup, .hook sup { color: var(--new); font-size: .65em; }
 .grp { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; border-top: 1px dashed var(--line); }
 .grp:first-child { border-top: 0; }
-.grp > b { font: 700 .95rem var(--mono); color: var(--accent); width: 18px; flex: none; }
+.grp > b { font: 700 .95rem var(--mono); color: var(--accent-text, var(--accent)); width: 18px; flex: none; }
 .online ol { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 8px; }
 .ex { display: block; font-style: italic; color: var(--muted); }
 .ex::before { content: "“"; } .ex::after { content: "”"; }

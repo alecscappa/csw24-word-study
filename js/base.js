@@ -245,6 +245,10 @@ function tokensFor(dark) {
   if (SET.accentCustom) { const a = dark ? mix(SET.accentCustom, "#ffffff", .2) : SET.accentCustom; Object.assign(tok, { accent: a, "on-accent": inkOn(a) }); }
   // text on the main buttons: if the theme's own colour is hard to read on its accent, near-black or white instead
   if (ratioOf(tok["on-accent"], tok.accent) < 4.5) tok["on-accent"] = ["#161410", "#ffffff"].reduce((b, c) => ratioOf(c, tok.accent) > ratioOf(b, tok.accent) ? c : b, tok["on-accent"]);
+  // the accent as a text colour on a card: the theme's own where it's readable, otherwise nudged towards the ink
+  // only as far as it takes (pale accents like Grape or Royal in light mode)
+  let at = tok.accent; for (let i = 1; i <= 10 && ratioOf(at, tok.panel) < 3.1; i++) at = mix(tok.accent, tok.ink, i / 10);
+  tok["accent-text"] = at;
   return tok;
 }
 function applySettings() {
