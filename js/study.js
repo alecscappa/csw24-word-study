@@ -66,7 +66,7 @@ VIEWS.w = (arg) => {
   ${valid ? `<div class="card"><h2 class="lbl">Sound-alikes (${sas.length}) and swaps</h2>${saSection}</div>` : ""}
   <div class="grid2">
     <div class="card"><h2 class="lbl">Add one letter (${plusN})${w.length === 6 ? " · 7-letter bingos" : ""}</h2>
-      ${plus.length ? `<p class="small" style="margin:0 0 6px">Letters: <b style="color:var(--accent);letter-spacing:.08em">${plus.map(g => g[0]).join("")}</b></p>${groupsHTML(plus)}` : `<p class="empty">Nothing.</p>`}</div>
+      ${plus.length ? `<p class="small" style="margin:0 0 6px">Letters: <b style="color:var(--accent-text);letter-spacing:.08em">${plus.map(g => g[0]).join("")}</b></p>${groupsHTML(plus)}` : `<p class="empty">Nothing.</p>`}</div>
     <div class="card"><h2 class="lbl">Drop one letter (${minusN})</h2>${minus.length ? groupsHTML(minus) : `<p class="empty">Nothing.</p>`}</div>
   </div>`;
   const onlineCard = SET.online ? `<div class="card online" id="online"><h2 class="lbl">Pronunciation, examples &amp; origin</h2><p class="small">Looking up ${esc(w.toLowerCase())} online…</p></div>` : "";
@@ -81,7 +81,7 @@ VIEWS.w = (arg) => {
     const hk = (s, side) => s ? `<div class="hk ${side}">${[...s].map(h => { const x = side === "f" ? h.toUpperCase() + w : w + h.toUpperCase(); return `<button type="button" data-go="${x}" title="${x}">${h}${(side === "f" ? e.fhNew : e.bhNew).includes(h) ? "<sup>+</sup>" : ""}</button>`; }).join("")}</div>` : `<div class="hk none ${side}">none</div>`;
     const panes = {
       ana: ana.length ? `<div class="bigchips">${ana.map(x => `<a href="#w/${x}">${x}${DICT.get(x).n ? "<sup>+</sup>" : ""}<small>›</small></a>`).join("")}</div>` : `<p class="empty">No other anagrams.</p>`,
-      plus: `<div class="card">${plus.length ? `<p class="small" style="margin:0 0 6px">Letters: <b style="color:var(--accent);letter-spacing:.08em">${plus.map(g => g[0]).join("")}</b>${w.length === 6 ? " · 7-letter bingos" : ""}</p>${groupsHTML(plus)}` : `<p class="empty">Nothing.</p>`}</div>`,
+      plus: `<div class="card">${plus.length ? `<p class="small" style="margin:0 0 6px">Letters: <b style="color:var(--accent-text);letter-spacing:.08em">${plus.map(g => g[0]).join("")}</b>${w.length === 6 ? " · 7-letter bingos" : ""}</p>${groupsHTML(plus)}` : `<p class="empty">Nothing.</p>`}</div>`,
       minus: `<div class="card">${minus.length ? groupsHTML(minus) : `<p class="empty">Nothing.</p>`}</div>`,
       ...(valid ? { sa: `<div class="card">${saSection}</div>` } : {}),
       facts: valid ? `<div class="card"><div class="stats">
