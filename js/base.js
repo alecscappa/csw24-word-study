@@ -245,14 +245,18 @@ function tokensFor(dark) {
   if (SET.accentCustom) { const a = dark ? mix(SET.accentCustom, "#ffffff", .2) : SET.accentCustom; Object.assign(tok, { accent: a, "on-accent": inkOn(a) }); }
   // text on the main buttons: if the theme's own colour is hard to read on its accent, near-black or white instead
   if (ratioOf(tok["on-accent"], tok.accent) < 4.5) tok["on-accent"] = ["#161410", "#ffffff"].reduce((b, c) => ratioOf(c, tok.accent) > ratioOf(b, tok.accent) ? c : b, tok["on-accent"]);
+  // the header's text the same way, when it's very hard to read (Lemon's pale gold header with white text)
+  if (ratioOf(tok["head-ink"], tok.head) < 3) tok["head-ink"] = ["#161410", "#ffffff"].reduce((b, c) => ratioOf(c, tok.head) > ratioOf(b, tok.head) ? c : b, tok["head-ink"]);
   // the accent as a text colour on a card: the theme's own where it's readable, otherwise nudged towards the ink
   // only as far as it takes (pale accents like Grape or Royal in light mode)
   // the same for the other colours used as text in light mode (links, the green of right / valid, the orange of
   // wrong / phony): readable on both the page and the cards
-  const legible = c => { let x = c; for (let i = 1; i <= 10 && Math.min(ratioOf(x, tok.panel), ratioOf(x, tok.bg)) < 3; i++) x = mix(c, tok.ink, i / 10); return x; };
+  const legible = (c, r = 3) => { let x = c; for (let i = 1; i <= 10 && Math.min(ratioOf(x, tok.panel), ratioOf(x, tok.bg)) < r; i++) x = mix(c, tok.ink, i / 10); return x; };
   let at = tok.accent; for (let i = 1; i <= 10 && ratioOf(at, tok.panel) < 3.1; i++) at = mix(tok.accent, tok.ink, i / 10);
   tok["accent-text"] = at;
   if (!dark) Object.assign(tok, { link: legible(tok.link), good: legible("#22804e"), warn: legible(tok.warn) });
+  // the link colour for small text (the More themes line in Settings): darker still, as far as it takes
+  tok["link-small"] = legible(tok.link, 4.5);
   return tok;
 }
 function applySettings() {
