@@ -2364,7 +2364,7 @@ let themesOpen = false;
 // Settings: on a phone, a short menu of rows (each showing what it's set to) that open their own pages, with a live
 // preview pinned at the top of Look and Tiles; on a computer, the pages down the left, the page in the middle and the
 // preview on the right. Each change applies to the whole app straight away
-const SET_PAGES = [["look", "Look", "Theme, light or dark, text size"], ["tiles", "Tiles", "Colour, style, letters, rack"], ["study", "Study", "Lists, quiz, random word"], ["data", "Data", "Lexicon, sync, your data"]];
+const SET_PAGES = [["look", "Look", "Theme, light or dark, text size"], ["tiles", "Tiles", "Colour, style, letters, rack"], ["study", "Study", "Lists, quiz, random word"], ["data", "Data", "Lexicon, sync, your data"], ["about", "About & privacy", "What stays here, what goes online"]];
 VIEWS.settings = (arg) => {
   const seg = (key, opts) => `<div class="seg">${opts.map(([v, t]) => `<button type="button" class="btn ${String(SET[key]) === String(v) ? "on" : ""}" data-set="${key}" data-val="${v}">${t}</button>`).join("")}</div>`;
   const chk = (key, label) => `<label class="check"><input type="checkbox" data-chk="${key}" ${SET[key] ? "checked" : ""}> ${label}</label>`;
@@ -2422,9 +2422,21 @@ VIEWS.settings = (arg) => {
     data: () => `<div class="card"><div class="fs"><h2 class="lbl">Your data</h2><p class="small" style="margin:0 0 10px">Starred ${getStars().length} · notes ${Object.keys(getNotes()).length} · quiz records ${Object.keys(store.get("stats", {})).length}</p>
       <div class="row"><button class="btn sm" id="clrHist">Clear history</button><button class="btn sm" id="clrStats">Clear quiz records</button><button class="btn sm" id="clrReview">Clear practice review (${getPQ().items.length})</button><button class="btn sm" id="resetSet">Reset settings</button></div></div></div>`,
   };
+  // what the app keeps, and the few times it talks to anything outside this device
+  P.about = () => { const sec = (t, body) => `<div class="fs"><h2 class="lbl">${t}</h2>${body}</div>`;
+    return `<div class="card about">
+      ${sec("This app", `<p>A study tool for Collins Scrabble Words 2024. It isn't made by or connected with Collins, HarperCollins, Hasbro, Mattel or Woogles.</p>
+        <p>The word list isn't part of the app. It comes from your own copy (<code>words.js</code>, built from your Zyzzyva lexicon) and stays on this device.</p>`)}
+      ${sec("What stays on this device", `<p>Stars, notes, folders, quiz and practice records, games and settings are saved in this browser. There are no ads, analytics or tracking, and nothing is sent anywhere unless you use one of the things below.</p>`)}
+      ${sec("Sync", `<p>${SYNC.user ? "You're signed in, so" : "If you sign in with Google,"} your stars, notes, folders, progress, games and study settings are kept in your own space in Firebase (run by Google), so your other devices get them. The look (theme, tiles, board) stays on each device. Signed out, nothing goes up.</p>`)}
+      ${sec("Looking words up online", `<p>${SET.online ? "On" : "Off"}: a word page asks dictionaryapi.dev and Wiktionary about that word, for pronunciation, examples and origin. They see the word and your internet address, as any website would. <a href="#settings/study">Turn it ${SET.online ? "off" : "on"} in Study</a>.</p>
+        <p>The Wiktionary, Collins and Images links on a word page open those sites only when you tap them.</p>`)}
+      ${sec("Game reviews", `<p>Full reviews are worked out by Macondo on your Mac; games go to it there, not online. A Woogles link is fetched from Woogles by the same program on the Mac.</p>`)}
+      ${sec("Fonts", `<p>Bricolage Grotesque, Source Serif 4 and JetBrains Mono come with the app (SIL Open Font License), so nothing is fetched from Google Fonts.</p>`)}
+    </div>`; };
   const card = (...ks) => `<div class="card">${ks.map(k => P[k]()).join("")}</div>`;
   // what each page of the split layouts holds
-  const PAGE = { look: (pv) => card("theme", "mode", "size", "custom"), tiles: (pv) => `<div class="card">${P.tiles(pv)}</div>`, study: () => card("lists", "wordpage", "quiz", "random"), data: () => P.lexicon() + P.sync() + P.data() };
+  const PAGE = { look: (pv) => card("theme", "mode", "size", "custom"), tiles: (pv) => `<div class="card">${P.tiles(pv)}</div>`, study: () => card("lists", "wordpage", "quiz", "random"), data: () => P.lexicon() + P.sync() + P.data(), about: () => P.about() };
   // a live preview: a small word page drawn with the app's own styles, so it changes the moment a setting does
   // a live preview: a small word page drawn with the app's own styles, so it changes the moment a setting does. Its
   // last card is a list row laid out by the row settings (definitions, hooks, ranks and so on)
@@ -2445,7 +2457,7 @@ VIEWS.settings = (arg) => {
   const tileName = SET.tiles === "custom" ? "Your colour" : TILES[SET.tiles]?.[0] || "Theme", styleName = SET.tileLook === "theme" ? "theme style" : TILE_STYLES[SET.tileLook]?.[0] || "";
   const modeName = { auto: "Match my device", light: "Light", dark: "Dark" }[SET.mode] || "", sizeName = { xs: "Extra small", sm: "Small", md: "Normal", lg: "Large", xl: "Extra large" }[SET.size] || "Normal";
   const sw = t => { const c = isDark() ? t.dark : lightOf(SET.theme, t); return `<span class="nsw"><i style="background:${c.head}"></i><i style="background:${c.tile}"></i><i style="background:${c.accent}"></i></span>`; };
-  const ICONS = { look: '<circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h9"/>', mode: '<path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/>', size: '<path d="M4 20h4M6 20 11 4h2l5 16M16 20h4M8 14h8"/>', tiles: '<rect x="4" y="4" width="16" height="16" rx="3"/>', study: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>', quiz: '<path d="M5 12l4 4 10-10"/>', random: '<path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>', data: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>', sync: '<path d="M21 12a9 9 0 0 1-15 6.7L3 16M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M3 21v-5h5"/>', lex: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21V5"/>' };
+  const ICONS = { look: '<circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h9"/>', mode: '<path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/>', size: '<path d="M4 20h4M6 20 11 4h2l5 16M16 20h4M8 14h8"/>', tiles: '<rect x="4" y="4" width="16" height="16" rx="3"/>', study: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>', quiz: '<path d="M5 12l4 4 10-10"/>', random: '<path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>', data: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>', about: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/>', sync: '<path d="M21 12a9 9 0 0 1-15 6.7L3 16M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M3 21v-5h5"/>', lex: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21V5"/>' };
   const li = (href, ic, colr, title, val, extra = "") => `<a class="li" href="${href}"><span class="ic" style="background:${colr}">${icon(ICONS[ic])}</span><span class="lt"><b>${title}</b>${extra}</span><span class="val">${val}</span><span class="chev">›</span></a>`;
   const menuN = () => `<div><h3 class="title">Settings</h3><p class="sub">Saved in this browser and applied straight away.</p></div>
     <div class="ig"><h4>Look</h4><div class="box">
@@ -2461,7 +2473,8 @@ VIEWS.settings = (arg) => {
     <div class="ig"><h4>Your data</h4><div class="box">
       ${li("#settings/data", "lex", "#6b5a48", "Lexicon", LEX.source === "saved" ? "On this device" : LEX.source === "file" ? "words.js" : "None")}
       ${li("#settings/data", "sync", "#3a6a8a", "Sync", SYNC.user ? "On" : "Off")}
-      ${li("#settings/data", "data", "#5b6a62", "Your data", `${getStars().length} starred`)}</div></div>`;
+      ${li("#settings/data", "data", "#5b6a62", "Your data", `${getStars().length} starred`)}
+      ${li("#settings/about", "about", "#7a6a5a", "About & privacy", "")}</div></div>`;
   const back = id => `<div class="sethd"><a class="btn sm" href="#settings">‹ Settings</a><h3 class="title">${titleOf(id)}</h3></div>`;
   let html;
   if (lay === "menu") html = !page ? menuN() : back(page) + (page === "look" || page === "tiles" ? `<div class="pinprev">${preview()}</div>` : "") + PAGE[page](false);
