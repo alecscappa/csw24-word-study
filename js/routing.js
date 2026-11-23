@@ -17,10 +17,11 @@ function route() {
   if (AZY?.sim?.running && location.hash !== "#board/analyse") { ENG.stop(AZY.sim.job); AZY.sim.running = false; }
   if (routed) saveScroll();
   routed = true;
-  const from = curHash.slice(1).split("/")[0] || "w";
+  const from = curHash.slice(1).split("/")[0] || "today";
   curHash = location.hash;
   const [tab, arg] = decodeURIComponent(location.hash.slice(1)).split("/");
-  const t = VIEWS[tab] ? tab : "w";
+  // the app opens to Today; anything else it doesn't know is the Word page
+  const t = !tab ? "today" : VIEWS[tab] ? tab : "w";
   // Lists, Practice and Quiz share the Study tab, which goes back to exactly where you were: the list that was
   // open, or the practice card
   // each of them keeps its own place too, for the switch along the top
@@ -69,8 +70,8 @@ $("#form").addEventListener("submit", ev => {
   const q = $("#q").value.toUpperCase().replace(/[^A-Z?.*\[\]^]/g, "");
   if (!q) return;
   const tab = location.hash.slice(1).split("/")[0], onSearch = tab === "search";
-  // on the Word page a plain word opens that word; everything else is a search
-  if (/^[A-Z]+$/.test(q) && (!VIEWS[tab] || tab === "w")) { freshWord(q); location.hash = "w/" + q; return; }
+  // on the Word page (and Today) a plain word opens that word; everything else is a search
+  if (/^[A-Z]+$/.test(q) && (!VIEWS[tab] || tab === "w" || tab === "today")) { freshWord(q); location.hash = "w/" + q; return; }
   // on the Search page the bar replaces just the letters, keeping the group, length and other filters
   const keep = onSearch ? Object.fromEntries(Object.entries(searchState).filter(([k]) => !LETTER_KEYS.includes(k))) : {};
   searchFromBar = true;
@@ -87,7 +88,7 @@ $("#qClear").addEventListener("click", () => { $("#q").value = ""; $("#q").focus
 $("#q").addEventListener("input", clearBarLetters);
 // on the Word page the box holds the word being shown; tapping it starts a fresh word when that word was a random one
 // (see clearOnTap), and leaving it empty puts the word back
-const onWordPage = () => { const tab = location.hash.slice(1).split("/")[0]; return !VIEWS[tab] || tab === "w"; };
+const onWordPage = () => { const tab = location.hash.slice(1).split("/")[0]; return (tab && !VIEWS[tab]) || tab === "w"; };
 $("#q").addEventListener("focus", () => { if (onWordPage() && clearOnTap && $("#q").value === wordShown) $("#q").value = ""; });
 $("#q").addEventListener("blur", () => { if (onWordPage() && !$("#q").value) $("#q").value = wordShown; });
 // recent searches drop down under the empty bar; picking one runs it again (in the open search tab when on Search,

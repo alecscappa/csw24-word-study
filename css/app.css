@@ -1535,3 +1535,53 @@ body.fit main.wrap.sx:has(> .lmain) { gap: 12px; }
 :is(.numpick, .tacts, .chips, .rangebar, .hscroll, .blevels, .stabs, .mtabs, .llens-row, .lchips, .frow-c, .lkp, .lacts, .segtabs).fl { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 36px), transparent); }
 :is(.numpick, .tacts, .chips, .rangebar, .hscroll, .blevels, .stabs, .mtabs, .llens-row, .lchips, .frow-c, .lkp, .lacts, .segtabs).fl.fr { -webkit-mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent); }
 .about p { margin: 0 0 8px; line-height: 1.5; max-width: 62ch; } .about p:last-child { margin-bottom: 0; }
+
+/* ---------- Today ---------- */
+.today { display: flex; flex-direction: column; gap: 16px; }
+.today .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.tdgrid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.td-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.td-big { font: 800 2.4rem/1 var(--display); }
+.td-big small { font: 700 1rem var(--display); opacity: .8; margin-left: 6px; text-transform: none; letter-spacing: 0; }
+.today .goal { display: flex; align-items: center; gap: 14px; }
+.today .goal .lring { width: 58px; height: 58px; }
+.today .goal .lring b { width: calc(100% - 8px); height: calc(100% - 8px); font: 700 .82rem var(--display); color: var(--ink); }
+.goal-t b { display: block; font: 700 1rem/1.25 var(--display); }
+.goal-t span { font-size: .82rem; color: var(--muted); }
+.goal-t .lnk { border: 0; background: none; padding: 0; font: inherit; color: var(--link); text-decoration: underline; cursor: pointer; }
+.today .wk { display: flex; gap: 6px; margin-top: 14px; }
+.today .wk i { flex: 1; max-width: 34px; display: flex; flex-direction: column; align-items: center; gap: 3px; font: 700 .66rem var(--display); font-style: normal; color: var(--muted); }
+.today .wk i::before { content: ""; width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--bg); }
+.today .wk i.on::before { background: var(--good); border-color: var(--good); }
+.today .wk i.now::before { border-color: var(--good); }
+.today .row2 { display: flex; align-items: center; gap: 12px; }
+.today .row2 > div { flex: 1; min-width: 0; }
+.today .row2 .nm { display: block; font: 700 1rem/1.25 var(--display); }
+.today .row2 .sm2 { font-size: .82rem; color: var(--muted); }
+.today .row2 .tiles { margin: 0; flex-wrap: nowrap; }
+.today .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.today .lbl { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.today .lbl em { font-style: normal; text-transform: none; letter-spacing: 0; color: var(--accent); font-weight: 600; }
+.tdw { display: inline-block; text-decoration: none; color: inherit; }
+.wotd .tiles { margin: 2px 0 10px; }
+.wotd .def { font-size: 1rem; margin: 0 0 10px; }
+.today .hooks { display: flex; align-items: center; gap: 8px; font: 600 .95rem var(--mono); letter-spacing: .05em; flex-wrap: wrap; }
+.today .hooks .hk { color: var(--good); font-weight: 700; }
+.today .hooks .none { color: var(--muted); font-weight: 500; }
+.mwords { display: flex; flex-wrap: wrap; gap: 6px 12px; font: 700 .86rem var(--mono); letter-spacing: .05em; margin: 2px 0 12px; }
+.mwords a { color: var(--ink); text-decoration: none; }
+.mwords a:hover { color: var(--accent); }
+.mwords span { color: var(--muted); font-weight: 500; letter-spacing: 0; }
+.almost { display: flex; flex-direction: column; gap: 8px; margin: 2px 0 12px; }
+.almost > div { display: flex; align-items: center; gap: 10px; }
+.almost .tiles { flex: 1; margin: 0; }
+.dots3 { display: flex; gap: 4px; flex: none; }
+.dots3 i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--good); }
+.dots3 i.on { background: var(--good); }
+@media (max-width: 620px) {
+  .today, .today .col { gap: 14px; }
+  .td-big { font-size: 2rem; }
+  .today .wk i { max-width: none; }
+  /* seven tabs share the pill bar */
+  nav.tabs a { font-size: clamp(.62rem, 3vw, .78rem); padding: 9px 1px; letter-spacing: -.02em; }
+}

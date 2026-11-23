@@ -1,10 +1,10 @@
 // Offline copy of the app for the phone. Network first so updates show straight away; no-cache asks the server
 // each time, as GitHub Pages otherwise lets the browser reuse its copy of a file for 10 minutes.
 // The word list isn't cached here: it lives in IndexedDB, loaded from Settings → Lexicon.
-const CACHE = "csw24-v6";
+const CACHE = "csw24-v7";
 const SHELL = ["./", "index.html", "manifest.json", "icons/icon-32.png", "icons/icon-64.png", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png",
   "css/app.css", "css/games.css", "fonts/fonts.css", "fonts/BricolageGrotesque-normal-latin.woff2", "fonts/SourceSerif4-normal-latin.woff2",
-  "fonts/SourceSerif4-italic-latin.woff2", "fonts/JetBrainsMono-normal-latin.woff2", "js/paint.js", "js/start.js", "js/engine.js", "js/base.js", "js/data.js", "js/study.js", "js/board.js", "js/review.js", "js/firebase-config.js", "js/sync.js", "js/games.js", "js/routing.js"];
+  "fonts/SourceSerif4-italic-latin.woff2", "fonts/JetBrainsMono-normal-latin.woff2", "js/paint.js", "js/start.js", "js/engine.js", "js/base.js", "js/data.js", "js/study.js", "js/board.js", "js/review.js", "js/firebase-config.js", "js/sync.js", "js/games.js", "js/today.js", "js/routing.js"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 // drop older copies (csw24-v1 was the single-file page)
 self.addEventListener("activate", e => e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));

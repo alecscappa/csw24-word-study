@@ -22,7 +22,7 @@ const LEX = {
     document.getElementById("lexFile").onchange = e => { const f = e.target.files[0]; if (!f) return; msg.textContent = "Loading…"; LEX.load(f).catch(err => msg.textContent = "Couldn't load that file: " + err.message); };
   },
 };
-const APP_FILES = ["js/base.js", "js/data.js", "js/study.js", "js/board.js", "js/review.js", "js/firebase-config.js", "js/sync.js", "js/games.js", "js/routing.js"];
+const APP_FILES = ["js/base.js", "js/data.js", "js/study.js", "js/board.js", "js/review.js", "js/firebase-config.js", "js/sync.js", "js/games.js", "js/today.js", "js/routing.js"];
 if (location.protocol === "https:" && "serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 (async () => {
   const lists = LEX.get("lists").catch(() => null);
