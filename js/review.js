@@ -323,6 +323,9 @@ function viewReview(id) {
   const before = [0, 1].map(p => { const last = [...P.ev.slice(0, P.ev.indexOf(e))].reverse().find(x => x.p === p); return last ? last.tot : 0; });
   const sumOf = p => R?.sums.find(s => s.who === P.nicks[p]) || R?.sums[p];
   const nextMistake = R ? (() => { for (let j = 1; j <= n; j++) { const q = (k + j) % n; if (R.turns[q]?.size) return q; } return k; })() : k;
+  const prevMistake = R ? (() => { for (let j = 1; j <= n; j++) { const q = (k - j + n) % n; if (R.turns[q]?.size) return q; } return k; })() : k;
+  // every turn that wasn't the best play, for the list under the graph
+  const mistakes = R ? P.moves.map((m, j) => ({ m, j, t: R.turns[j] })).filter(x => x.t?.size) : [];
   // the top plays: Macondo's, looked ahead with their chance of winning, then our engine's ranking for the rest
   const mine = rvKey(e.k === "play" ? e.at + " " + e.raw : e.k === "swap" ? "-" + e.x : "-", e.before);
   const rows = (t ? t.tops.map(p => ({ mv: p[0], s: p[1], lv: p[2], win: p[3] })) : []);
@@ -339,13 +342,16 @@ function viewReview(id) {
     <div class="rvstrip">${P.moves.map((m, j) => { const gr = rvGrade(R?.turns[j]), lost = R?.turns[j]?.loss || 0;
       return `<button type="button" data-rn="${j}" class="g-${gr ? gr[1] : "none"}${j === k ? " on" : ""}" title="${esc(P.names[m.p])}, turn ${j + 1}: ${esc(m.k === "play" ? m.w.toUpperCase() : m.k)}"><i style="height:${!gr || gr[1] === "opt" ? 5 : Math.min(34, 9 + lost * 400)}px"></i><span>${esc(P.names[m.p][0] || "")}${j + 1}</span></button>`; }).join("")}</div>
     <div class="rvnav"><button class="btn" data-rn="0" aria-label="First turn">⏮</button><button class="btn" data-rn="${k - 1}" aria-label="Previous turn">←</button><span class="rvturn">Turn ${k + 1} of ${n}</span><button class="btn" data-rn="${k + 1}" aria-label="Next turn">→</button><button class="btn" data-rn="${n - 1}" aria-label="Last turn">⏭</button>
-      <span class="rvgap"></span><button type="button" class="rvtoggle ${RVS.best ? "on" : ""}" id="rvBest" ${bestMv ? "" : "disabled"}><i></i>Best play</button>${R ? `<button class="btn primary" data-rn="${nextMistake}">Next mistake</button>` : ""}</div>
+      <span class="rvgap"></span><button type="button" class="rvtoggle ${RVS.best ? "on" : ""}" id="rvBest" ${bestMv ? "" : "disabled"}><i></i>Best play</button>${R && mistakes.length ? `<span class="rvmisnav"><button class="btn" data-rn="${prevMistake}" aria-label="Previous mistake">‹</button><button class="btn primary" data-rn="${nextMistake}">Next mistake</button></span>` : ""}</div>
   </div>
   <div class="bside">
     <div class="card">
       <div class="rvhead"><h2 class="lbl">${R ? "Game review" : "Quick check"}</h2><span class="small">${R ? `Macondo · ${new Date(R.at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : srcName[g.src] || ""}</span></div>
       ${R ? `<div class="rvsums">${[0, 1].map(p => { const s = sumOf(p); return s ? `<div><span class="rvav">${esc(P.names[p][0] || "?")}</span><span><b>${s.best}/${s.turns}</b>best</span><span><b>${s.mi.toFixed(1)}</b>mistakes</span><span><b>${s.elo}</b>rating</span></div>` : ""; }).join("")}</div>
-        <p class="lbl rvsub2">${whose(P.names[0])} chance of winning<span class="small">tap a dot</span></p>${rvGraph(P, R, k)}`
+        <p class="lbl rvsub2">${whose(P.names[0])} chance of winning<span class="small">tap a dot</span></p>${rvGraph(P, R, k)}
+        ${mistakes.length ? `<details class="rvmis" ${RVS.misOpen ? "open" : ""}><summary class="lbl">Mistakes <span class="small">${mistakes.length} · tap one to go to it</span></summary>
+          ${mistakes.map(({ m, j, t }) => `<button type="button" data-rt="${j}" class="g-${rvGrade(t)[1]}${j === k ? " on" : ""}"><span class="rvav">${esc(P.names[m.p][0] || "?")}</span><span class="rvmt">${j + 1}</span>
+            <span class="rvmw">${m.k === "play" ? `<b class="rvw">${esc(m.w.toUpperCase())}</b>` : m.k === "swap" ? "swap" : "pass"} → ${rvWord(t.best, m.before)}</span><span class="rvml">−${pct(t.loss)}</span></button>`).join("")}</details>` : ""}`
       : `<p class="small" style="margin:0 0 10px">Our engine's top plays for each turn, by points and the tiles kept. A full review from Macondo adds win chances, a look ahead and the endgame solved exactly.</p>
         ${g.job ? `<div class="rvprog"><span class="simbar"><i style="width:${g.job.total ? (g.job.done / g.job.total * 100).toFixed(0) : 2}%"></i></span><span class="small">${g.job.total ? `Reviewing · turn ${g.job.done} of ${g.job.total}` : "Starting the review"}</span></div>`
         : rvHelper ? `<button class="btn primary" data-greview="${g.id}">Full review on the Mac</button>` : `<p class="small">${rvHelper === false ? "The reviewer isn't running on this device. On the Mac, run <code>reviewer/install.sh</code> once." : "Looking for the Mac…"}</p>`}
@@ -372,6 +378,7 @@ function viewReview(id) {
   $("#view").querySelectorAll("[data-rt]").forEach(b => b.addEventListener("click", () => go(+b.dataset.rt)));
   $("#view").querySelectorAll("[data-rp]").forEach(b => b.onclick = () => { RVS.page += +b.dataset.rp; go(k); });
   $("#rvBest").onclick = () => { RVS.best = !RVS.best; go(k); };
+  $("#view").querySelector(".rvmis")?.addEventListener("toggle", ev => RVS.misOpen = ev.target.open);
   $("#rvAna").onclick = () => anaOpen(e.before, e.rack);
   $("#view").querySelectorAll("[data-greview]").forEach(b => b.onclick = async () => { await rvStart(g); rvRedraw(); });
   $("#rvGcg").onclick = () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([g.gcg], { type: "text/plain" })); a.download = `${g.names.join("-v-").replace(/[^\w-]+/g, "_")}.gcg`; a.click(); };
