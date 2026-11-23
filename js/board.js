@@ -768,7 +768,7 @@ function viewPlay() {
   }
   const playable = r && !r.error && (GAME.rule === "chal" || !r.phony.length);
   $("#view").innerHTML = `${boardSeg("play")}
-  <div class="bgrid"><div class="gmain">
+  <div class="bgrid playgrid"><div class="gmain">
     ${scoreHTML(GAME, GAME.over ? -1 : GAME.turn)}
     <div id="gBoard">${boardHTML(strCells(GAME.board), pNews(GUI), myTurn && !cover ? GUI.cur : -1, GUI.dir, false, { last: lastSet, pend: true })}</div>
     ${pRack(GUI, cover)}

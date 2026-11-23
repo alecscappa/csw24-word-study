@@ -1083,6 +1083,8 @@ main.wrap:has(> .foc) { max-width: 1400px; }
   .rvstrip button span { font-size: .48rem; }
 }
 /* the review keeps the board, its turn strip and the arrows on one screen: the board shrinks on a short window */
+/* Play keeps the board, your rack and the Play button on one screen too: the board shrinks on a short window */
+@media (min-width: 861px) { .playgrid { grid-template-columns: minmax(0, max(380px, min(620px, calc(100vh - 420px)))) minmax(260px, 1fr); } }
 @media (min-width: 621px) { .rvgrid { grid-template-columns: minmax(0, max(380px, min(620px, calc(100vh - 300px)))) minmax(300px, 1fr); } }
 @media (max-width: 620px) {
   .rvgrid .bside .rvturncard { order: -1; }
