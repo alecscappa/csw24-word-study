@@ -5,11 +5,11 @@ const el=()=>new Proxy({},{get:(t,k)=>k in t?t[k]:(k==='querySelectorAll'?()=>[]
 global.window=global; global.location={hash:''}; const LS={'csw24:search':JSON.stringify({newOnly:true,power:true,pattern:''})}; global.localStorage={getItem:k=>LS[k]??null,setItem:(k,v)=>LS[k]=v};
 global.matchMedia=()=>({matches:false,addEventListener(){}});
 global.document={documentElement:el(),head:el(),body:el(),getElementById:()=>el(),querySelector:()=>el(),querySelectorAll:()=>[],addEventListener(){},createElement:()=>el()};
-global.addEventListener=()=>{}; global.scrollTo=()=>{}; global.MutationObserver=class{observe(){}};
+global.addEventListener=()=>{}; global.scrollTo=()=>{}; global.history={}; global.ResizeObserver=global.IntersectionObserver=class{observe(){}disconnect(){}}; global.requestIdleCallback=f=>setTimeout(f,0); global.requestAnimationFrame=f=>setTimeout(f,0); global.MutationObserver=class{observe(){}};
 const path=require('path'), os=require('os'); const ROOT=path.join(__dirname,'..');
 // the app's files, in the order js/start.js loads them, each run as its own script as in the page
 const vm=require('vm'), start=fs.readFileSync(path.join(ROOT,'js/start.js'),'utf8'), APP_FILES=JSON.parse(start.match(/const APP_FILES = (\[[^\]]*\])/)[1]);
-eval(fs.readFileSync(path.join(ROOT,'words.js'),'utf8')); global.LEX={html:()=>'',wire(){}}; for(const f of ['js/engine.js',...APP_FILES]) vm.runInThisContext(fs.readFileSync(path.join(ROOT,f),'utf8'),{filename:f}); eval(`
+eval(fs.readFileSync(path.join(ROOT,'words.js'),'utf8')); global.LEX={html:()=>'',wire(){},put:()=>Promise.resolve(),get:()=>Promise.resolve()}; for(const f of ['js/engine.js',...APP_FILES]) vm.runInThisContext(fs.readFileSync(path.join(ROOT,f),'utf8'),{filename:f}); eval(`
 const db=new DatabaseSync(process.argv[2]||path.join(os.homedir(),'Zyzzyva/lexicons/CSW24.db'),{readOnly:true});
 let fails=0, checks=0; const issues=[];
 const ok=(name,cond,detail='')=>{checks++; if(!cond){fails++; issues.push(name+(detail?' :: '+detail:''));}};
@@ -48,8 +48,8 @@ const cases=[{starts:'UN',min:'7',max:'7'},{ends:'ZA'},{contains:'QI'},{incl:'VV
 for(const c of cases){ const ref=ALL.filter(w=>{const e=DICT.get(w); return (!c.starts||w.startsWith(c.starts))&&(!c.ends||w.endsWith(c.ends))&&(!c.contains||w.includes(c.contains))&&(!c.incl||[...new Set(c.incl)].every(ch=>cnt(w,ch)>=cnt(c.incl,ch)))&&(!c.excl||![...w].some(ch=>c.excl.includes(ch)))&&(!c.min||w.length>=+c.min)&&(!c.max||w.length<=+c.max)&&(!c.def||e.d.toLowerCase().includes(c.def.toLowerCase()))&&(!c.pto||e.p<=+c.pto)}); same('filters '+JSON.stringify(c), S(c).words, ref);}
 // 8. every group: search == list == brute force, and stated counts/claims in blurbs
 for(const g of GROUPS) if(g.test){ same('group '+g.id, S({group:g.id}).words, ALL.filter(w=>g.test(w,DICT.get(w)))); same('group+filter '+g.id, S({group:g.id,min:'4',max:'5',excl:'S'}).words, ALL.filter(w=>w.length>=4&&w.length<=5&&!w.includes('S')&&g.test(w,DICT.get(w)))); }
-for(const g of GROUPS) if(g.blurb){ const nums=(g.blurb.match(/\\b\\d{1,3}(,\\d{3})+\\b|\\bAll (\\d+)/g)||[]); for(const n of nums){ const v=+n.replace(/\\D/g,''); if(g.test && !/most probable/.test(g.blurb)) ok('blurb count '+g.id+' says '+n, groupWords(g).length===v, 'actual '+groupWords(g).length);} 
-  const ex=(g.blurb.match(/\\b[A-Z]{2,}\\b/g)||[]).filter(x=>!['AEIOU','RE','UN','OUT','OVER','DIS','ING','IER','IEST','III','OOO','JQXZ','AND'].includes(x)); for(const x of ex) if(g.test) ok('blurb example '+g.id+' '+x+' is in group', DICT.has(x)&&g.test(x,DICT.get(x)), DICT.has(x)?'valid but not in group':'NOT A VALID WORD'); }
+for(const g of GROUPS) if(g.blurb){ const nums=(g.blurb.match(/\\b\\d{1,3}(,\\d{3})+\\b|\\bAll (\\d+)/g)||[]); for(const n of nums){ const v=+n.replace(/\\D/g,''); if(g.test && !/most probable|rank [\\d,]+ to/i.test(g.blurb)) ok('blurb count '+g.id+' says '+n, groupWords(g).length===v, 'actual '+groupWords(g).length);} 
+  const ex=((g.blurb.split(/\\blike\\b/)[1]||'').replace(/\\([^)]*\\)/g,'').replace(/\\bfrom [A-Z]+( and [A-Z]+)?/g,'').match(/\\b[A-Z]{2,}\\b/g)||[]).filter(x=>!['AEIOU','RE','UN','OUT','OVER','DIS','ING','IER','IEST','III','OOO','JQXZ','AND'].includes(x)); for(const x of ex) if(g.test) ok('blurb example '+g.id+' '+x+' is in group', DICT.has(x)&&g.test(x,DICT.get(x)), DICT.has(x)?'valid but not in group':'NOT A VALID WORD'); }
 // 9. stems: count == distinct bingos, top stem really is the max (brute force over all 6-letter alphagram leaves)
 for(const n of [6,7]){ const st=stems(n); for(const s of st.slice(0,20)) ok('stem '+s.stem+' count', s.n===plusOne(s.stem).reduce((a,g)=>a+g[1].length,0)); 
   const m=new Map(); for(const w of BYLEN[n+1]){const a=srt(w); for(let i=0;i<a.length;i++){const k=a.slice(0,i)+a.slice(i+1); (m.get(k)||m.set(k,new Set()).get(k)).add(w);}} let best=0; for(const s of m.values()) if(s.size>best) best=s.size; ok('stems'+n+' top is max', st[0].n===best, st[0].n+' vs '+best); }

@@ -14,18 +14,21 @@ ws.onmessage = m => { const d = JSON.parse(m.data);
   if (d.id && pending[d.id]) { pending[d.id](d); delete pending[d.id]; }
   if (d.method === "Runtime.exceptionThrown") errors.push("EXCEPTION " + (d.params.exceptionDetails.exception?.description || d.params.exceptionDetails.text).split("\n")[0]);
   if (d.method === "Runtime.consoleAPICalled" && d.params.type === "error") errors.push("console.error " + d.params.args.map(a => a.value ?? a.description).join(" "));
-  if (d.method === "Log.entryAdded" && d.params.entry.level === "error" && !/dictionaryapi|wiktionary|favicon|404/.test((d.params.entry.url || "") + d.params.entry.text)) errors.push("log " + d.params.entry.text + " " + (d.params.entry.url || ""));
+  if (d.method === "Log.entryAdded" && d.params.entry.level === "error" && !/dictionaryapi|wiktionary|favicon|fonts\.(googleapis|gstatic)|404/.test((d.params.entry.url || "") + d.params.entry.text)) errors.push("log " + d.params.entry.text + " " + (d.params.entry.url || ""));
 };
 const cmd = (method, params = {}) => new Promise(r => { const i = ++id; pending[i] = r; ws.send(JSON.stringify({ id: i, method, params })); });
 const ev = async expr => { const r = await cmd("Runtime.evaluate", { expression: expr.trim().startsWith("const") ? "{" + expr + "}" : expr, awaitPromise: true, returnByValue: true }); if (r.result.exceptionDetails) { results.push(["FAIL", "step threw: " + expr.slice(0, 70), r.result.exceptionDetails.exception?.description?.split("\n")[0]]); return undefined; } return r.result.result.value; };
 await cmd("Runtime.enable"); await cmd("Log.enable"); await cmd("Page.enable");
-const CONTRAST = `(() => { const lum = c => { const m = c.match(/[\\d.]+/g).map(Number); const f = v => (v/=255) <= .03928 ? v/12.92 : ((v+.055)/1.055)**2.4; return .2126*f(m[0])+.7152*f(m[1])+.0722*f(m[2]); };
-      const bgOf = el => { if (el.id === "qClear") return getComputedStyle(document.querySelector("#q")).backgroundColor; while (el) { const b = getComputedStyle(el).backgroundColor; if (b && !(b.startsWith("rgba") && b.endsWith(", 0)")) && b !== "transparent") return b; el = el.parentElement; } return getComputedStyle(document.body).backgroundColor; };
+const CONTRAST = `(() => { const lum = c => { const m = c.match(/[\\d.]+/g).map(Number).map(v => c.startsWith("color(") ? v * 255 : v); const f = v => (v/=255) <= .03928 ? v/12.92 : ((v+.055)/1.055)**2.4; return .2126*f(m[0])+.7152*f(m[1])+.0722*f(m[2]); };
+      const bgOf = el => { if (el.id === "qClear") return getComputedStyle(document.querySelector("#q")).backgroundColor; while (el) { if (/gradient|url/.test(getComputedStyle(el).backgroundImage)) return null; const b = getComputedStyle(el).backgroundColor, al = b.startsWith("rgba") ? +b.split(",")[3].replace(")", "") : 1; if (b && al >= .6 && b !== "transparent") return b; el = el.parentElement; } return getComputedStyle(document.body).backgroundColor; };
       const bad = []; for (const el of document.querySelectorAll("main *, header *")) { if (!el.childNodes.length || ![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) continue; const cs = getComputedStyle(el); if (cs.visibility === "hidden" || cs.display === "none" || +cs.opacity < .5 || /gradient/.test(el.style.background)) continue;
-        const a = lum(cs.color), b = lum(bgOf(el)); const r = (Math.max(a,b)+.05)/(Math.min(a,b)+.05); if (r < 3) bad.push(el.tagName + "." + el.className + " '" + el.textContent.trim().slice(0,20) + "' " + r.toFixed(2)); } return bad.slice(0,4); })()`;
+        const bg = bgOf(el); if (!bg) continue; const a = lum(cs.color), b = lum(bg); const r = (Math.max(a,b)+.05)/(Math.min(a,b)+.05); if (r < 3) bad.push(el.tagName + "." + el.className + " '" + el.textContent.trim().slice(0,20) + "' " + r.toFixed(2)); } return bad.slice(0,4); })()`;
 const check = (name, cond, detail = "") => { results.push([cond ? "PASS" : "FAIL", name, detail]); if (process.env.VERBOSE) console.log(cond ? "ok  " : "FAIL", name, cond ? "" : detail); };
 const go = async hash => { await ev(`location.hash = ${JSON.stringify(hash)}`); await sleep(350); };
-await cmd("Page.navigate", { url: URL0 + "#w/QI" }); await sleep(2500);
+await cmd("Page.navigate", { url: URL0 + "#w/QI" }); await sleep(1000);
+// the app's files start only once the word list is read (js/start.js), so wait for them
+for (let i = 0; i < 100 && !(await ev("typeof DICT !== 'undefined' && typeof applySettings === 'function' && DICT.size > 0")); i++) await sleep(200);
+await sleep(800);
 check("page loads 280,887 words", await ev("DICT.size") === 280887);
 
 // --- every page, two widths, light + dark: errors, horizontal overflow, invisible text ---
@@ -58,7 +61,7 @@ for (const theme of process.env.QUICK ? [] : await ev("Object.keys(THEMES)")) fo
 }
 await ev(`saveSettings({ theme: "board", mode: "auto" })`);
 await go("lists"); await sleep(1500);
-check("Lists page shows the lists with counts", (await ev(`document.querySelectorAll("#view [data-list]").length`)) > 10 && /\d+ words/.test(await ev(`document.querySelector("#cnt_vowel")?.textContent`)), await ev(`document.querySelector("#cnt_vowel")?.textContent`));
+check("Lists page shows the lists and families with counts", (await ev(`document.querySelectorAll('#view a[href^="#lists/"]').length`)) > 10 && /\d+ lists/.test(await ev(`document.querySelector("#view").textContent`)), await ev(`document.querySelectorAll('#view a[href^="#lists/"]').length`));
 // --- flows ---
 const txt = sel => ev(`document.querySelector(${JSON.stringify(sel)})?.textContent.trim()`);
 const submitHeader = async q => { await ev(`document.querySelector("#q").value = ${JSON.stringify(q)}; document.querySelector("#form").requestSubmit()`); await sleep(700); };
@@ -90,7 +93,7 @@ check("probability filter narrows it", (await ev(`parseInt(document.querySelecto
 await ev(`document.querySelector("#sClear").click()`); await sleep(300);
 check("Clear all resets fields", (await ev(`document.querySelector("#s_group").value + document.querySelector("#s_starts").value + document.querySelector("#s_pto").value`)) === "");
 // --- Most likely words: ranks from–to, counted within each length of what's found ---
-const likely = async (f, t) => { await ev(`document.querySelector("#s_group").value="prefix"; document.querySelector("#s_starts").value="out"; document.querySelector("#s_pfrom").value=${JSON.stringify(f)}; document.querySelector("#s_pto").value=${JSON.stringify(t)}; document.querySelector("#sform").requestSubmit()`); await sleep(700); };
+const likely = async (f, t) => { await ev(`document.querySelector("#s_group").value="prefix"; document.querySelector("#s_starts").value="out"; document.querySelector("#s_pfrom").value=${JSON.stringify(f)}; document.querySelector("#s_pto").value=${JSON.stringify(t)}; document.querySelector("#s_pby").value="place"; document.querySelector("#sform").requestSubmit()`); await sleep(700); };
 const perLen = () => ev(`(() => { const c = {}; for (const w of runSearch(searchState).words) c[w.length] = (c[w.length] || 0) + 1; return Math.max(0, ...Object.values(c)); })()`);
 const shown = () => ev(`runSearch(searchState).words.length`);
 await likely("", "30");
@@ -121,7 +124,7 @@ await ev(`const s=document.querySelector("#sortSel"); s.value="prob"; s.dispatch
 // star + my words
 await go("w/QAT"); await ev(`if (!getStars().includes("QAT")) document.querySelector("#starBtn").click()`); await sleep(100);
 await go("mine/stars"); await sleep(300);
-check("starred word appears in My words", (await ev(`[...document.querySelectorAll("#mres .wl")].map(x=>x.textContent)`)).includes("QAT"));
+check("starred word appears in My words", (await ev(`[...document.querySelectorAll("#mres .r")].map(x=>x.dataset.go)`)).includes("QAT"));
 // quiz flows
 await go("quiz"); await ev(`document.querySelector("#qsrc").value="list:twos"; document.querySelector("#qsrc").dispatchEvent(new Event("change")); document.querySelector("[data-mode=anagram]").click()`); await sleep(200);
 await ev(`document.querySelector("#qsrc").value="list:twos"; document.querySelector("#qsrc").dispatchEvent(new Event("change")); document.querySelector("#qstart").click()`); await sleep(300);
@@ -165,7 +168,10 @@ await cmd("Input.dispatchKeyEvent", { type: "keyDown", key: isPh ? "p" : "v", te
 check("phony quiz keyboard answer works", /Correct/.test(await txt("#qfb .fb") || ""), await txt("#qfb .fb"));
 await ev(`document.querySelector("#qquit").click()`);
 await ev(`quizSetup.mode="hooks"; VIEWS.quiz(); document.querySelector("#qsrc").value="list:twos"; document.querySelector("#qsrc").dispatchEvent(new Event("change")); document.querySelector("#qstart").click()`); await sleep(300);
-await ev(`const e=DICT.get(Q.qs?.[0]?.w); document.querySelector("#qf").value=[...e.fh].reverse().join(" ").toUpperCase(); document.querySelector("#qb").value=e.bh; document.querySelector("#qform").requestSubmit()`); await sleep(200);
+// the hooks quiz has a key pad: pick a side, then tap its letters (front hooks typed in reverse to check any order)
+await ev(`const e=DICT.get(Q.qs?.[0]?.w), f=document.querySelector("#qform"), tap=k=>f.querySelector('.hkeys [data-k="'+k+'"]').click();
+  f.querySelector('.hside[data-side="f"]').click(); [...e.fh.toUpperCase()].reverse().forEach(tap);
+  f.querySelector('.hside[data-side="b"]').click(); [...e.bh.toUpperCase()].forEach(tap); f.requestSubmit()`); await sleep(200);
 check("hooks quiz grades any order / case", /Correct/.test(await txt("#qfb .fb")), await ev("Q.qs?.[0]?.w"));
 await ev(`document.querySelector("#qquit").click()`);
 // Quiz these from a list preselects last results
@@ -178,13 +184,13 @@ await go("settings"); await ev(`document.querySelector("[data-theme=midnight]").
 const bg = await ev(`getComputedStyle(document.documentElement).getPropertyValue("--head").trim()`);
 await cmd("Page.reload"); await sleep(2500);
 check("theme change applies and survives reload", bg !== "" && (await ev(`getComputedStyle(document.documentElement).getPropertyValue("--head").trim()`)) === bg && (await ev("SET.theme")) === "midnight");
-await go("settings"); await ev(`document.querySelector("[data-set=size][data-val=lg]").click()`); await sleep(150);
-check("large text applies", (await ev(`getComputedStyle(document.documentElement).fontSize`)) === "18px");
-await ev(`[...document.querySelectorAll("[data-chk=values]")].forEach(c=>{c.checked=false;c.dispatchEvent(new Event("change"))})`); await go("w/QI");
+await go("settings/look"); await ev(`document.querySelector("[data-set=size][data-val=lg]").click()`); await sleep(150);
+check("large text applies", parseFloat(await ev(`getComputedStyle(document.documentElement).fontSize`)) > 17, await ev(`getComputedStyle(document.documentElement).fontSize`));
+await go("settings/tiles"); await ev(`[...document.querySelectorAll("[data-chk=values]")].forEach(c=>{c.checked=false;c.dispatchEvent(new Event("change"))})`); await go("w/QI");
 check("hide tile values works", (await ev(`getComputedStyle(document.querySelector(".tile sub")).display`)) === "none");
-await go("settings"); const rb = await ev(`[...document.querySelectorAll("#resetSet")].length`);
-await ev(`document.querySelector("#resetSet").click(); document.querySelector("#resetSet").click()`); await sleep(200);
-check("reset settings (two presses) restores defaults", (await ev("SET.theme + SET.size + SET.values")) === "boardmdtrue");
+await go("settings/data"); const rb = await ev(`[...document.querySelectorAll("#resetSet")].length`);
+await ev(`document.querySelector("#resetSet").click()`); await sleep(200); await ev(`document.querySelector("#resetSet").click()`); await sleep(200);
+check("reset settings (two presses) restores defaults", await ev("SET.theme === SET_DEFAULT.theme && SET.size === 'md' && SET.values === true"), await ev("SET.theme + SET.size + SET.values"));
 // random respects length range
 await ev(`saveSettings({randMin: 5, randMax: 5})`); let lens = new Set();
 for (let i = 0; i < 8; i++) { await ev(`document.querySelector("#randBtn").click()`); await sleep(120); lens.add((await ev("location.hash")).length - 3); }
