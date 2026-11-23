@@ -1248,7 +1248,7 @@ details.swmore > summary { cursor: pointer; font: 600 .85rem var(--display); col
 .setmenu a.on { background: var(--panel); border-color: var(--line); box-shadow: inset 3px 0 0 var(--accent); }
 .setmenu a b { font: 600 .98rem var(--display); }
 .setmenu a small { color: var(--muted); font-size: .76rem; }
-.setmenu > .small { margin: 10px 12px 0; color: var(--good); }
+.setmenu > .small { margin: 10px 12px 0; color: color-mix(in srgb, var(--good) 70%, var(--ink)); }
 .setform { display: flex; flex-direction: column; gap: 14px; }
 .setside { position: sticky; top: calc(var(--hdr, 0px) + 12px); display: flex; flex-direction: column; gap: 8px; }
 /* on a computer only the middle column scrolls; the pages on the left and the preview stay where they are */
