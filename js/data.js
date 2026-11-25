@@ -501,7 +501,7 @@ function results(el, words, opts = {}) {
     const hasQ = !!opts.masks?.size, byQ = hasQ && SET.sort === "blank";
     const qOf = w => qLetters(w, opts.masks.get(w));
     // Hide crossed off leaves out the words ticked as known (they still count everywhere else)
-    const hideK = SET.hideKnown ? new Set(getKnown()) : null, nHid = hideK ? words.filter(w => hideK.has(w) && (!st.lens.size || st.lens.has(w.length))).length : 0;
+    const hideK = SET.hideKnown ? opts.known?.() || new Set(getKnown()) : null, nHid = hideK ? words.filter(w => hideK.has(w) && (!st.lens.size || st.lens.has(w.length))).length : 0;
     const full = (st.lens.size ? words.filter(w => st.lens.has(w.length)) : [...words]).filter(w => !hideK?.has(w)).sort(byQ ? (a, b) => (qOf(a) < qOf(b) ? -1 : qOf(a) > qOf(b) ? 1 : 0) || sorters.prob(a, b) : sorters[SET.sort] || sorters.prob);
     // grouped results (one-letter swaps): each group together under its heading, in the sort order within it
     const G = opts.groups, gw = {};
@@ -513,7 +513,7 @@ function results(el, words, opts = {}) {
     const per = perPage(), pages = Math.max(1, Math.ceil(list.length / per));
     st.page = Math.min(st.page, pages - 1);
     const at = st.page * per, view = list.slice(at, at + per);
-    const starSet = new Set(getStars()), knownSet = new Set(getKnown()), allStarred = list.length > 0 && list.every(w => starSet.has(w));
+    const starSet = new Set(getStars()), knownSet = opts.known?.() || new Set(getKnown()), allStarred = list.length > 0 && list.every(w => starSet.has(w));
     const total = st.lens.size ? `${full.length.toLocaleString()} ${[...st.lens].sort((a, b) => a - b).join(", ")}-letter words <span class="small">(${words.length.toLocaleString()} in all)</span>` : `${full.length.toLocaleString()} word${full.length === 1 ? "" : "s"}`;
     el.innerHTML = `
       <div class="toolbar">
@@ -543,7 +543,7 @@ function results(el, words, opts = {}) {
       ${lens.length > 1 ? `<div class="chips" style="margin:10px 0 6px"><button class="btn sm ${st.lens.size ? "" : "on"}" data-len="0">All lengths</button>${lens.map(n => `<button class="btn sm ${st.lens.has(n) ? "on" : ""}" data-len="${n}">${n}</button>`).join("")}</div>` : ""}
       ${list.length ? `<div class="rows ${st.sel ? "selecting" : ""} ${ranged ? "ranked" : ""} ${SET.defs ? "" : "nodefs"} ${SET.ags ? "" : "noags"} ${SET.sas ? "sashow" : ""} ${SET.prob ? "" : "noprob"} ${SET.sort === "play" ? "byplay" : ""} ${SET.plays ? "plshow" : ""} ${SET.hooks ? "" : "nohooks"}">${view.map((w, i) => (G && (!i || G.by(w) !== G.by(view[i - 1])) ? `<h3 class="rhead">${G.name(G.by(w), gw[G.by(w)])}<span class="small">${gw[G.by(w)].length}</span></h3>` : "") + rowHTML(w, opts.masks?.get(w), ranged ? at + i + 1 : 0, starSet, knownSet, st.sel?.has(w))).join("")}</div>` : `<p class="empty" style="margin-top:10px">${ranged && full.length ? `There are only ${full.length.toLocaleString()} words, so rank ${lo.toLocaleString()} is past the end.` : "No words match."}</p>`}
       ${list.length > PER_PAGE[0] ? pagerHTML(st.page, pages, per) : ""}
-      ${st.sel ? `<div class="selbar"><span class="count" id="selN"></span><button class="btn sm" id="selAll"></button><button class="btn sm primary" id="selFolder">Add to folder</button><button class="btn sm" id="selStar">☆ Star</button><button class="btn sm" id="selKnown">✓ Cross off</button><button class="btn sm" id="selDone">Done</button></div>` : ""}`;
+      ${st.sel ? `<div class="selbar"><span class="count" id="selN"></span><button class="btn sm" id="selAll"></button><button class="btn sm primary" id="selFolder">Add to folder</button><button class="btn sm" id="selStar">☆ Star</button><button class="btn sm" id="selKnown">✓ Cross off</button>${opts.remove ? `<button class="btn sm" id="selRemove">Remove</button>` : ""}<button class="btn sm" id="selDone">Done</button></div>` : ""}`;
     // length chips: tap several to see them together; All lengths clears them
     el.querySelectorAll("[data-len]").forEach(b => b.onclick = () => {
       const n = +b.dataset.len; if (!n) st.lens.clear(); else st.lens.has(n) ? st.lens.delete(n) : st.lens.add(n);
@@ -580,7 +580,9 @@ function results(el, words, opts = {}) {
       // star or cross off the picked words; if they all already are, undo it for them
       const mark = (key, get) => { const p = picked(); if (!p.length) return; if (key === "known") learntDates(); const had = new Set(get()), all = p.every(w => had.has(w)); store.set(key, all ? get().filter(w => !st.sel.has(w)) : [...p.filter(w => !had.has(w)), ...get()]); if (key === "known") learntDates(); draw(); };
       el.querySelector("#selStar").onclick = () => mark("stars", getStars);
-      el.querySelector("#selKnown").onclick = () => mark("known", getKnown);
+      el.querySelector("#selKnown").onclick = () => { if (opts.mark) { if (picked().length) opts.mark(picked()); } else mark("known", getKnown); };
+      // in a folder: take the picked words out of it (two presses)
+      const rm = el.querySelector("#selRemove"); if (rm) confirmBtn(rm, () => picked().length && opts.remove(picked()));
       el.querySelector("#selDone").onclick = () => { st.sel = null; draw(); };
       selBar();
     }
@@ -592,7 +594,10 @@ function results(el, words, opts = {}) {
     const n = shownList.filter(w => st.sel.has(w)).length;
     el.querySelector("#selN").textContent = `${n.toLocaleString()} picked`;
     el.querySelector("#selAll").textContent = n && n === shownList.length ? "Clear" : `All ${shownList.length.toLocaleString()}`;
-    for (const id of ["#selFolder", "#selStar", "#selKnown"]) el.querySelector(id).disabled = !n;
+    for (const id of ["#selFolder", "#selStar", "#selKnown", "#selRemove"]) { const b = el.querySelector(id); if (b) b.disabled = !n; }
+    // the ✓ button unticks when every picked word is already crossed off
+    const K = opts.known?.() || new Set(getKnown()), p = shownList.filter(w => st.sel.has(w));
+    el.querySelector("#selKnown").textContent = p.length && p.every(w => K.has(w)) ? "✓ Untick" : "✓ Cross off";
   }
   // while picking, tapping a row picks it instead of opening the word
   el.addEventListener("click", ev => {

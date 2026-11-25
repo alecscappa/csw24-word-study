@@ -74,7 +74,7 @@ VIEWS.w = (arg) => {
       <textarea id="note" placeholder="A sentence, picture or trick that helps you remember ${esc(w)}…">${esc(getNotes()[w] || "")}</textarea>
       <p class="small" style="margin:6px 0 0">Saved in this browser as you type.</p></div>`;
   if (valid) html += `${onlineCard}
-    ${noteCard}`;
+    <div class="grid2">${noteCard}${padWordCard(w)}</div>`;
   // phone: tiles, hooks, badges and definition in a big header; Anagrams / +1 / −1 / Facts as tabs underneath
   if (phone()) {
     const wt = store.get("wtab", "ana") === "sa" && !valid ? "ana" : store.get("wtab", "ana");
@@ -101,7 +101,7 @@ VIEWS.w = (arg) => {
         ${valid ? `<div class="hacts"><button type="button" class="btn sm ${getKnown().includes(w) ? "on" : ""}" id="knownBtnW">${getKnown().includes(w) ? "✓ Known" : "✓ Cross off"}</button><button type="button" class="btn sm" id="folderBtn">Add to folder</button></div>` : ""}</div>
       <nav class="segtabs">${[["ana", "Anagrams", ana.length], ["plus", "Add one", plusN], ["minus", "Drop one", minusN], ...(valid ? [["sa", "Swaps", swapN]] : []), ["facts", "Facts"]].map(([k, n, c]) => `<button type="button" class="${k === wt ? "on" : ""}" data-wtab="${k}">${n}${c !== undefined ? `<em>${c}</em>` : ""}</button>`).join("")}</nav></div>
       ${Object.entries(panes).map(([k, h]) => `<div class="wpane" data-pane="${k}" ${k === wt ? "" : "hidden"}>${h}</div>`).join("")}
-      ${valid ? noteCard : ""}`;
+      ${valid ? noteCard + padWordCard(w) : ""}`;
   }
   $("#view").innerHTML = html;
   // a long word reaches the star in the corner, so the tiles drop below it
@@ -117,6 +117,7 @@ VIEWS.w = (arg) => {
   $("#note").addEventListener("input", ev => { const n = getNotes(); if (ev.target.value.trim()) n[w] = ev.target.value; else delete n[w]; store.set("notes", n); });
   $("#knownBtnW").addEventListener("click", ev => { const on = toggleKnown(w); ev.currentTarget.classList.toggle("on", on); ev.currentTarget.textContent = on ? "✓ Known" : "✓ Cross off"; });
   $("#folderBtn").addEventListener("click", () => folderSheet([w]));
+  padWordWire(w);
   $("#starBtn").addEventListener("click", ev => { const b = ev.currentTarget, on = toggleStar(w); b.classList.toggle("on", on); b.textContent = b.classList.contains("hstar") ? (on ? "★" : "☆") : on ? "★ Starred" : "☆ Star"; });
 };
 
@@ -498,7 +499,18 @@ function doSearch() {
     const sa = new Set(swap ? soundAlikes(swap) : []);
     const groups = swap ? { by: w => r.masks.get(w).indexOf("up"), name: (i, ws) => `${swap.slice(0, i)}?${swap.slice(i + 1)}${ws.some(w => sa.has(w)) ? ` <span class="badge">sounds alike</span>` : ""}` } : null;
     results(box, r.words, { masks: r.masks, groups, len: onlyGroup ? g.len : 0, range: { from: s.from, to: s.to, save: (from, to) => { searchState.from = from; searchState.to = to; store.set("search", searchState); } } });
+    smartSave(box);
   }, 10);
+}
+// Save as folder: a smart folder holding this search's words, which keeps itself up to date
+function smartSave(box) {
+  if (!$("#smartRow")) box.insertAdjacentHTML("beforebegin", `<div class="smartrow" id="smartRow"><button type="button" class="btn sm" id="smartSave">📁 Save as folder</button><span class="small" id="smartMsg"></span></div>`);
+  $("#smartMsg").textContent = "";
+  $("#smartSave").onclick = () => {
+    const sm = Object.fromEntries(Object.entries(searchState).filter(([k, v]) => v && v !== SEARCH_DEFAULT[k] && !["from", "to"].includes(k)));
+    const f = newFolder(searchName(searchState).slice(0, 40)); saveFolder(f.id, { smart: sm });
+    $("#smartMsg").innerHTML = `Saved as <a href="#mine/f-${f.id}">${esc(f.name)}</a>, a smart folder that keeps itself up to date.`;
+  };
 }
 // phone search: each filter that's set is a chip (× removes it); tapping a chip or a "+" opens that section in a bottom sheet
 function searchPhone() {
@@ -847,12 +859,12 @@ let Q = store.get("quiz", null);
 const saveQ = () => store.set("quiz", Q);
 function quizSources() {
   return [["stars", `Starred words (${getStars().length})`], ["missed", `Missed words (${store.get("missed", []).length})`], ["last", `Last search results (${lastResults.length})`],
-    ...getFolders().map(f => ["folder:" + f.id, `📁 ${f.name} (${f.words.length})`])];
+    ...getFolders().map(f => ["folder:" + f.id, `📁 ${folderPath(f)} (${fWords(f).length})`])];
 }
 // withKnown: crossed-off words stay in, for a rack's answers
 function sourceWords(src, withKnown = false) {
   const g = groupOf(src.replace("list:", ""));
-  let words = src === "stars" ? getStars() : src === "missed" ? store.get("missed", []) : src === "last" ? lastResults : src.startsWith("folder:") ? folderById(src.slice(7))?.words || []
+  let words = src === "stars" ? getStars() : src === "missed" ? store.get("missed", []) : src === "last" ? lastResults : src.startsWith("folder:") ? (folderById(src.slice(7)) ? fWords(folderById(src.slice(7))) : [])
     : !g ? [] : g.special === "stems" ? stems(g.n).flatMap(s => s.words) : groupWords(g);
   const lens = quizSetup.lens || [];
   if (lens.length) words = words.filter(w => lens.includes(w.length));
@@ -1331,16 +1343,16 @@ const practiceLast = () => store.get("pLast", null) ?? lastResults;
 const keepLast = () => store.set("pLast", [...lastResults]);
 function practicePool(o) {
   const folder = o.src.startsWith("f:") ? folderById(o.src.slice(2)) : null;
-  const key = JSON.stringify(o) + (o.sMiss ? "q" + getPQ().items.length : "") + (o.src.startsWith("my:") || folder || o.starOnly || o.skipKnown ? getStars().length + ":" + store.get("missed", []).length + ":" + practiceLast().length + ":" + (folder?.words.join() || "") + ":" + getKnown().length : "");
+  const key = JSON.stringify(o) + (o.sMiss ? "q" + getPQ().items.length : "") + (o.src.startsWith("my:") || folder || o.starOnly || o.skipKnown ? getStars().length + ":" + store.get("missed", []).length + ":" + practiceLast().length + ":" + (folder ? fWords(folder).join() + ":" + (folder.crossed || []).length + folder.own : "") + ":" + getKnown().length : "");
   if (poolCache.key === key) return poolCache.pool;
   const g = o.src.startsWith("g:") ? o.src.slice(2) : "";
   const r = runSearch({ ...SEARCH_DEFAULT, group: g, lens: o.lens.join(","), starts: o.starts, ends: o.ends, contains: o.contains, incl: o.incl, excl: o.excl, pattern: o.pattern, anas: o.anas });
   let pool = r.words || [];
-  const mine = folder ? folder.words : { "my:stars": getStars(), "my:missed": store.get("missed", []), "my:last": practiceLast() }[o.src];
+  const mine = folder ? fWords(folder) : { "my:stars": getStars(), "my:missed": store.get("missed", []), "my:last": practiceLast() }[o.src];
   if (mine) { const set = new Set(mine); pool = pool.filter(w => set.has(w)); }
   if (o.starOnly) { const set = new Set(getStars()); pool = pool.filter(w => set.has(w)); }
   // (for Hooks it's the hook words that count: knowing ZED isn't knowing its hooks, so ZED goes once ZEDS is crossed off)
-  if (o.skipKnown && o.mode !== "hooks") { const set = new Set(getKnown()); pool = pool.filter(w => !set.has(w)); }
+  if (o.skipKnown && o.mode !== "hooks") { const set = folder ? fKnown(folder) : new Set(getKnown()); pool = pool.filter(w => !set.has(w)); }
   // optional rank range, counted in probability order within each length (e.g. ranks 1–50 or 30–80)
   pool = likelyRange(pool, o.from, o.to, o.by, o.lax);
   if (o.mode === "hooks") pool = pool.filter(w => hookFits(w, o));
@@ -1507,7 +1519,7 @@ VIEWS.practice = () => {
         <div class="field wide"><span class="flabel">Type</span><div class="seg" id="po_mode">${PMODES.map(([k, n]) => `<button type="button" class="btn sm ${o.mode === k ? "on" : ""}" data-pmode="${k}">${n}</button>`).join("")}</div>
           <p class="small" style="margin:6px 0 0">${PHELP[o.mode] || PHELP.anagram}</p></div>
         <div class="field wide"><label for="po_src">Words from</label><select id="po_src"><option value="">Any word</option>
-          <optgroup label="Mine"><option value="my:stars" ${o.src === "my:stars" ? "selected" : ""}>Starred words (${getStars().length})</option><option value="my:missed" ${o.src === "my:missed" ? "selected" : ""}>Missed words (${store.get("missed", []).length})</option><option value="my:last" ${o.src === "my:last" ? "selected" : ""}>Last search results (${o.src === "my:last" ? practiceLast().length : lastResults.length})</option>${getFolders().map(f => `<option value="f:${f.id}" ${o.src === "f:" + f.id ? "selected" : ""}>📁 ${esc(f.name)} (${f.words.length})</option>`).join("")}</optgroup>
+          <optgroup label="Mine"><option value="my:stars" ${o.src === "my:stars" ? "selected" : ""}>Starred words (${getStars().length})</option><option value="my:missed" ${o.src === "my:missed" ? "selected" : ""}>Missed words (${store.get("missed", []).length})</option><option value="my:last" ${o.src === "my:last" ? "selected" : ""}>Last search results (${o.src === "my:last" ? practiceLast().length : lastResults.length})</option>${getFolders().map(f => `<option value="f:${f.id}" ${o.src === "f:" + f.id ? "selected" : ""}>📁 ${esc(folderPath(f))} (${fWords(f).length})</option>`).join("")}</optgroup>
           ${groupOptions(o.src.startsWith("g:") ? o.src.slice(2) : "").replace(/value="/g, 'value="g:')}</select></div>
         <div class="field wide"><span class="flabel">Length</span>${lenPick("po_lens", o.lens)}</div>
         ${o.mode === "recall" ? "" : `<div class="field wide"><span class="flabel">Order</span>${orderPick("po_order", o.order, o.rev)}</div>`}
@@ -2145,22 +2157,25 @@ const getNotes = () => store.get("notes", {});
 function toggleStar(w) { const s = getStars(); const i = s.indexOf(w); i >= 0 ? s.splice(i, 1) : s.unshift(w); store.set("stars", s); return i < 0; }
 function addHistory(w) { const h = store.get("hist", []).filter(x => x !== w); h.unshift(w); store.set("hist", h.slice(0, 50)); }
 
+// My words opens on a home page with sections (Folders, Saved words, Writing, Progress); each row opens its own
+// page, and "‹ My words" comes back
+const MINE_PAGES = { stars: "Starred", missed: "Missed", hist: "Recently viewed", notebook: "Notes", pad: "Scratch pad", notes: "Word notes", stats: "Stats", ach: "Achievements", folders: "Folders" };
 VIEWS.mine = (tab) => {
-  tab ||= "stars";
-  if (tab.startsWith("f-")) return folderView(tab.slice(2));
+  if (!tab || !MINE_PAGES[tab] && !tab.startsWith("f-")) return mineHome();
+  if (tab.startsWith("f-")) return folderLook() === "old" ? folderViewOld(tab.slice(2)) : folderView(tab.slice(2));
   const notes = getNotes();
-  const tabs = { stats: ["Stats", null], ach: ["Achievements", null], stars: ["Starred", getStars()], folders: ["Folders", getFolders()], missed: ["Missed", store.get("missed", [])], notebook: ["Notes", getNotebook()], pad: ["Scratch pad", getPad()], notes: ["Word notes", Object.keys(notes)], hist: ["Recently viewed", store.get("hist", [])] };
-  $("#view").innerHTML = `<div><h3 class="title">My words</h3><p class="sub">${typeof SYNC !== "undefined" && SYNC.user ? "Synced to your account." : "Saved in this browser."}</p></div>
-    <nav class="mtabs">${Object.entries(tabs).map(([k, [n, l]]) => `<a class="${k === tab ? "on" : ""}" href="#mine/${k}" ${k === tab ? `aria-current="page"` : ""}>${n}${l ? `<em>${l.length.toLocaleString()}</em>` : ""}</a>`).join("")}</nav>
-    ${tab === "stars" && tabs.stars[1].length ? `<div class="row"><button class="btn sm" id="copyList">Copy list</button><button class="btn sm" id="clearStars">Clear starred</button><span class="small" id="msg"></span></div>` : ""}
-    ${tab === "missed" && tabs.missed[1].length ? `<div class="row"><button class="btn sm" id="clearMissed">Clear missed</button></div>` : ""}
-    <div class="card ${["stats", "ach", "notebook", "pad", "folders"].includes(tab) ? "" : "fitscroll"}" id="mres"></div>`;
-  $(".mtabs a.on")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  const lists = { stars: getStars(), missed: store.get("missed", []), hist: store.get("hist", []), notes: Object.keys(notes), notebook: getNotebook(), pad: getPad() };
+  const n = lists[tab]?.length;
+  $("#view").innerHTML = `<div class="mhd"><a class="bbk" href="#mine">‹ My words</a></div>
+    <h3 class="title">${MINE_PAGES[tab]}${n ? ` <span class="mcount">${n.toLocaleString()}</span>` : ""}</h3>
+    ${tab === "stars" && n ? `<div class="row"><button class="btn sm" id="copyList">Copy list</button><button class="btn sm" id="clearStars">Clear starred</button><span class="small" id="msg"></span></div>` : ""}
+    ${tab === "missed" && n ? `<div class="row"><button class="btn sm" id="clearMissed">Clear missed</button></div>` : ""}
+    <div class="${tab === "pad" ? "" : "card "}${["stats", "ach", "notebook", "pad", "folders"].includes(tab) ? "" : "fitscroll"}" id="mres"></div>`;
   if (tab === "notebook") return notebook();
-  if (tab === "pad") return padView();
+  if (tab === "pad") { PAD.menu = ""; return padView(); }
   if (tab === "stats" || tab === "ach") return statsView(tab);
-  if (tab === "folders") return folderList();
-  const words = tabs[tab][1].filter(w => DICT.has(w));
+  if (tab === "folders") return folderLook() === "old" ? folderListOld() : folderList();
+  const words = lists[tab].filter(w => DICT.has(w));
   if (tab === "notes") {
     if (!words.length) $("#mres").innerHTML = `<p class="empty">Write notes on any word page and it shows up here.</p>`;
     else pagedList($("#mres"), words, w => `<div class="r nrow" data-go="${w}"><span class="wl">${w}</span><span class="d">${esc(notes[w])}</span></div>`, `<div class="toolbar"><span class="count">${words.length.toLocaleString()} word${words.length === 1 ? "" : "s"} with notes</span></div>`);
@@ -2170,6 +2185,20 @@ VIEWS.mine = (tab) => {
   confirmBtn($("#clearStars"), () => { store.set("stars", []); VIEWS.mine("stars"); });
   confirmBtn($("#clearMissed"), () => { store.set("missed", []); VIEWS.mine("missed"); });
 };
+function mineHome() {
+  const fs = folderKids(""), days = studyDays(), today = new Date();
+  let wk = 0; for (let i = 0; i < 7; i++) { const d = new Date(today); d.setDate(d.getDate() - i); wk += days[dayKey(d)]?.l || 0; }
+  const row = (href, ic, t, c) => `<a class="mrow" href="#mine/${href}"><span class="mic" aria-hidden="true">${ic}</span><span class="mt">${t}</span><span class="mc">${c}</span><span class="mch" aria-hidden="true">›</span></a>`;
+  const show = fs.slice(0, phone() ? 4 : 6);
+  const folders = `<section class="msec"><h4 class="lbl">Folders<a href="#mine/folders">${fs.length > show.length ? `See all ${fs.length} ›` : fs.length ? "Open ›" : "+ New folder"}</a></h4>
+    ${show.length ? `<div class="fgrid">${show.map(f => folderCard(f, true)).join("")}</div>` : `<a class="mrow" href="#mine/folders"><span class="mic">📁</span><span class="mt">Make your first folder</span><span class="mch">›</span></a>`}</section>`;
+  const saved = `<section class="msec"><h4 class="lbl">Saved words</h4><div class="mlist">${row("stars", "★", "Starred", getStars().length)}${row("missed", "✗", "Missed", store.get("missed", []).length)}${row("hist", "↺", "Recently viewed", store.get("hist", []).length)}</div></section>`;
+  const pages = getPad().length;
+  const writing = `<section class="msec"><h4 class="lbl">Writing</h4><div class="mlist">${row("notebook", "✎", "Notes", getNotebook().length)}${row("pad", "✐", "Scratch pad", `${pages} page${pages === 1 ? "" : "s"}`)}${row("notes", "¶", "Word notes", Object.keys(getNotes()).length)}</div></section>`;
+  const progress = `<section class="msec"><h4 class="lbl">Progress</h4><div class="mlist">${row("stats", "▤", "Stats", `${wk.toLocaleString()} learnt this week`)}${row("ach", "◎", "Achievements", "")}</div></section>`;
+  $("#view").innerHTML = `<div><h3 class="title">My words</h3><p class="sub">${typeof SYNC !== "undefined" && SYNC.user ? "Synced to your account." : "Saved in this browser."}</p></div>
+    <div class="mhome"><div class="mcol">${folders}${phone() ? saved + writing : progress}</div><div class="mcol">${phone() ? progress : saved + writing}</div></div>`;
+}
 // ---------- Stats (My words): this week against last, every length's %, the next milestone and charts from the
 // day log. Achievements: records and badges ----------
 function statsView(tab = "stats") {
@@ -2261,17 +2290,20 @@ function tickLearnt(words, on) {
 if (!store.get("tickSeeded")) { tickLearnt(getKnown().filter(w => DICT.has(w)), true); store.set("tickSeeded", true); }
 // words typed or pasted in any form (one a line, commas, spaces): the real ones, and the ones that aren't words
 const wordsIn = text => { const all = [...new Set(String(text).toUpperCase().split(/[^A-Z]+/).filter(Boolean))]; return { good: all.filter(w => DICT.has(w)), bad: all.filter(w => !DICT.has(w)) }; };
-function folderList() {
+// the old flat folders, kept for the Folders look switch
+function folderListOld() {
   const fs = getFolders(), known = new Set(getKnown());
   $("#mres").innerHTML = `<div class="row" style="margin-bottom:12px"><input class="arack" id="fName" placeholder="New folder name" maxlength="40" style="text-transform:none;flex:1;min-width:0"><button class="btn primary" id="fNew">+ New folder</button></div>
     ${fs.length ? `<div class="flist">${fs.map(f => { const k = f.words.filter(w => known.has(w)).length;
       return `<a class="fitem" href="#mine/f-${f.id}"><b>${esc(f.name)}</b><span class="small">${f.words.length} word${f.words.length === 1 ? "" : "s"}${f.words.length ? ` · ${k} crossed off` : ""}</span>${f.words.length ? `<span class="fbar"><i style="width:${k / f.words.length * 100}%"></i></span>` : ""}</a>`; }).join("")}</div>`
-      : `<p class="empty">No folders yet. Name one above, then add words to it here, from a word page, or from any list with Add to folder.</p>`}`;
+      : `<p class="empty">No folders yet. Name one above, then add words to it here, from a word page, or from any list with Add to folder.</p>`}
+    ${folderLookSwitch()}`;
+  wireLookSwitch();
   const make = () => { const f = newFolder($("#fName").value.trim()); location.hash = "mine/f-" + f.id; };
   $("#fNew").onclick = make;
   $("#fName").onkeydown = ev => { if (ev.key === "Enter") make(); };
 }
-function folderView(id) {
+function folderViewOld(id) {
   const f = folderById(id);
   if (!f) { location.replace("#mine/folders"); return; }
   const known = new Set(getKnown()), k = f.words.filter(w => known.has(w)).length;
@@ -2301,12 +2333,192 @@ function folderView(id) {
   };
   confirmBtn($("#fDel"), () => { keepDraft(null); store.set("folders", getFolders().filter(x => x.id !== id)); location.hash = "mine/folders"; });
 }
+// folders inside folders: a folder can hold other folders (parent), and its bar counts every word inside. A folder
+// can be smart (a saved search that fills and empties itself), keep its own cross offs (own, crossed) apart from
+// the rest of the app, and hold groups: a set of words learnt together, stamped Learnt once you name them all
+const FOLD_COLS = ["#d9483b", "#e08a1e", "#c9a227", "#2f9a55", "#2f6fd6", "#8a4fd0", "#c2457a", "#7a6a58"];
+const folderLook = () => store.get("foldLook", "new");
+// (a folder whose parent has gone shows at the top)
+const folderKids = (id, fs = getFolders()) => fs.filter(f => id ? f.parent === id : !f.parent || !fs.some(p => p.id === f.parent));
+const folderCol = f => f.color || FOLD_COLS[getFolders().findIndex(x => x.id === f.id) % FOLD_COLS.length] || FOLD_COLS[0];
+function folderPath(f, fs = getFolders()) { const out = []; let x = f; for (let n = 0; x && n < 20; n++) { out.unshift(x.name); x = x.parent && fs.find(p => p.id === x.parent); } return out.join(" › "); }
+const smartMemo = new Map();
+function smartWords(f) {
+  const k = JSON.stringify(f.smart);
+  if (!smartMemo.has(k)) { const r = runSearch({ ...SEARCH_DEFAULT, ...f.smart }); smartMemo.set(k, r.words || []); }
+  return smartMemo.get(k);
+}
+// a folder's own words (a smart folder's are its search's), then every folder's inside it
+function fWords(f, fs = getFolders(), seen = new Set()) {
+  if (seen.has(f.id)) return []; seen.add(f.id);
+  const own = f.smart ? smartWords(f) : f.words.filter(w => DICT.has(w));
+  const kids = folderKids(f.id, fs);
+  return kids.length ? [...new Set([...own, ...kids.flatMap(k => fWords(k, fs, seen))])] : own;
+}
+// which words count as crossed off here: the whole app's, or (with This folder only) the folder's own
+const fKnown = f => new Set(f.own ? f.crossed || [] : getKnown());
+function folderCard(f, mini) {
+  const fs = getFolders(), all = fWords(f, fs), K = fKnown(f), k = all.filter(w => K.has(w)).length, kids = folderKids(f.id, fs).length;
+  return `<a class="fold${mini ? " mini" : ""}" href="#mine/f-${f.id}" style="--fc:${folderCol(f)}"><span class="fdot" aria-hidden="true"></span><span class="ft"><b>${esc(f.name)}${f.smart ? ` <em class="ftag">Smart</em>` : ""}</b>
+    <span class="fbar"><i style="width:${all.length ? k / all.length * 100 : 0}%"></i></span><span class="small">${all.length ? `${k.toLocaleString()} of ${all.length.toLocaleString()} learnt` : "Empty"}${kids ? ` · ${kids} folder${kids === 1 ? "" : "s"}` : ""}</span></span>${mini ? "" : `<span class="mch" aria-hidden="true">›</span>`}</a>`;
+}
+function folderList() {
+  const fs = folderKids("");
+  $("#mres").innerHTML = `<div class="row" style="margin-bottom:12px"><input class="arack" id="fName" placeholder="New folder name" maxlength="40" style="text-transform:none;flex:1;min-width:0"><button class="btn primary" id="fNew">+ New folder</button></div>
+    ${fs.length ? `<div class="flist2">${fs.map(f => folderCard(f)).join("")}</div>`
+      : `<p class="empty">No folders yet. Name one above, then add words to it here, from a word page, or from any list with Add to folder. On Search, Save as folder makes a smart folder that keeps itself up to date.</p>`}
+    ${folderLookSwitch()}`;
+  const make = () => { const f = newFolder($("#fName").value.trim()); location.hash = "mine/f-" + f.id; };
+  $("#fNew").onclick = make;
+  $("#fName").onkeydown = ev => { if (ev.key === "Enter") make(); };
+  wireLookSwitch();
+}
+// try-out: the new folders (inside folders, groups) or the old flat ones; both use the same folders
+const folderLookSwitch = () => `<div class="flook"><span class="small">Folders look</span><div class="seg"><button type="button" class="btn sm ${folderLook() === "new" ? "on" : ""}" data-flook="new">New</button><button type="button" class="btn sm ${folderLook() === "old" ? "on" : ""}" data-flook="old">Old</button></div></div>`;
+const wireLookSwitch = () => document.querySelectorAll("[data-flook]").forEach(b => b.onclick = () => { store.set("foldLook", b.dataset.flook); VIEWS.mine("folders"); });
+let GRP = null, GMSG = null;   // the group being named ({ f, g, found }) or peeked at ({ peek }), and a word that ended a go
+function folderView(id) {
+  const fs = getFolders(), f = fs.find(x => x.id === id);
+  if (!f) { location.replace("#mine/folders"); return; }
+  const all = fWords(f, fs), own = f.smart ? smartWords(f) : f.words.filter(w => DICT.has(w)), K = fKnown(f), appK = new Set(getKnown());
+  const kids = folderKids(id, fs), groups = f.groups || [], k = all.filter(w => K.has(w)).length, left = own.filter(w => !K.has(w)), done = own.filter(w => K.has(w));
+  const path = []; for (let x = f.parent && fs.find(p => p.id === f.parent), n = 0; x && n < 20; x = x.parent && fs.find(p => p.id === x.parent), n++) path.unshift(x);
+  const toGo = all.filter(w => !K.has(w)).length;
+  // the page shows only what the folder has; making, moving and adding are all under Edit
+  $("#view").innerHTML = `<div class="fhead2"><nav class="fpath"><a href="#mine/folders">Folders</a>${path.map(p => ` › <a href="#mine/f-${p.id}">${esc(p.name)}</a>`).join("")} › <b>${esc(f.name)}</b></nav><button class="btn sm" id="fEdit">Edit</button></div>
+    <h3 class="title ftitle2" style="--fc:${folderCol(f)}"><span class="fdot" aria-hidden="true"></span>${esc(f.name)}${f.smart ? ` <em class="ftag">Smart</em>` : ""}</h3>
+    ${all.length ? `<div class="fprog" style="--fc:${folderCol(f)}"><span class="fbar big"><i style="width:${k / all.length * 100}%"></i></span>
+      <p class="small">${k.toLocaleString()} of ${all.length.toLocaleString()} learnt${kids.length ? `, in ${kids.length} folder${kids.length === 1 ? "" : "s"}${own.length ? ` and ${own.length} word${own.length === 1 ? "" : "s"} here` : ""}` : ""}${f.own ? ` · crossed off in this folder only (whole app: ${all.filter(w => appK.has(w)).length.toLocaleString()})` : ""}</p></div>` : ""}
+    ${f.smart ? `<p class="small fsmart">Smart folder: the words of the search <b>${esc(searchName({ ...SEARCH_DEFAULT, ...f.smart }))}</b>. It updates itself. <button class="btn sm" id="fSearch">Open the search</button></p>` : ""}
+    ${all.length ? `<button class="btn primary fgo" id="fPlay">${toGo ? `Practise the ${toGo.toLocaleString()} to go` : "Practise them all"}</button>` : ""}
+    ${kids.length ? `<section class="fsec"><h4 class="lbl">Folders inside<em>${kids.length}</em></h4><div class="flist2">${kids.map(x => folderCard(x)).join("")}</div></section>` : ""}
+    ${groups.length ? `<section class="fsec"><h4 class="lbl">Groups<em>${groups.filter(g => g.done).length} of ${groups.length} learnt</em></h4><div class="fgroups">${groups.map(g => groupHTML(f, g)).join("")}</div></section>` : ""}
+    ${own.length ? `<section class="fsec"><h4 class="lbl">To learn<em>${left.length.toLocaleString()}</em></h4><div class="card" id="mres"></div></section>
+      ${done.length ? `<details class="fsec fdone"${left.length ? "" : " open"}><summary class="lbl">Crossed off<em>${done.length.toLocaleString()}</em></summary><div class="card" id="mdone"></div></details>` : ""}`
+      : kids.length || groups.length || f.smart ? "" : `<p class="empty">This folder is empty. Press Edit to add words, a folder inside it, or a group.</p>`}
+    ${folderLookSwitch()}`;
+  wireLookSwitch();
+  // the lists: Select picks words to cross off (or untick) together, or to take out of the folder
+  const opts = { known: () => fKnown(folderById(id) || f),
+    mark: words => { const x = folderById(id), c = new Set(x.own ? x.crossed || [] : getKnown()), allOn = words.every(w => c.has(w));
+      if (x.own) { words.forEach(w => allOn ? c.delete(w) : c.add(w)); saveFolder(id, { crossed: [...c] }); }
+      else words.filter(w => c.has(w) === allOn).forEach(toggleKnown);
+      folderView(id); },
+    remove: f.smart ? null : words => { const out = new Set(words); saveFolder(id, { words: folderById(id).words.filter(w => !out.has(w)) }); folderView(id); } };
+  if (own.length) { if (left.length) results($("#mres"), left, opts); else $("#mres").innerHTML = `<p class="empty">All crossed off.</p>`; }
+  if (done.length) results($("#mdone"), done, opts);
+  // with This folder only, the ✓ on a row crosses it off here, not in the whole app
+  if (f.own) [$("#mres"), $("#mdone")].filter(Boolean).forEach(box => box.addEventListener("click", ev => {
+    const b = ev.target.closest("[data-known]"); if (!b) return;
+    ev.preventDefault(); ev.stopPropagation();
+    const w = b.dataset.known, x = folderById(id), c = new Set(x.crossed || []), on = !c.has(w);
+    on ? c.add(w) : c.delete(w); saveFolder(id, { crossed: [...c] });
+    b.closest(".r")?.classList.toggle("known", on); b.outerHTML = knownBtn(w, on);
+  }, true));
+  $("#fEdit").onclick = () => folderEdit(id);
+  $("#fSearch")?.addEventListener("click", () => { searchState = { ...SEARCH_DEFAULT, ...f.smart }; store.set("search", searchState); location.hash = "search"; });
+  $("#fPlay")?.addEventListener("click", () => { saveSettings({ practice: { ...PO_DEFAULT, mode: "anagram", order: SET.practice?.order || "rand", src: "f:" + id, lens: [], skipKnown: !!toGo } }); location.hash = "practice"; });
+  wireGroups(id);
+}
+// Edit, at the side (a sheet on a phone): name, colour, where it sits, cross offs, add words, a folder or a group
+// inside it, and Delete
+function folderEdit(id, open = "") {
+  const fs = getFolders(), f = fs.find(x => x.id === id);
+  if (!f) return;
+  const inside = new Set([id]); let grow = true; while (grow) { grow = false; for (const x of fs) if (x.parent && inside.has(x.parent) && !inside.has(x.id)) { inside.add(x.id); grow = true; } }
+  const kids = folderKids(id, fs).length;
+  document.getElementById("fesheet")?.remove();
+  document.body.insertAdjacentHTML("beforeend", sheetHTML("fesheet", `<h3>Edit folder<button type="button" id="feDone">Done</button></h3>
+    <div class="fedit">
+      <div class="field wide"><span class="flabel">Name</span><input class="arack" id="fTitle" value="${esc(f.name)}" maxlength="40" style="text-transform:none"></div>
+      <div class="field wide"><span class="flabel">Colour</span><div class="fcols">${FOLD_COLS.map(c => `<button type="button" class="padcol ${folderCol(f) === c ? "on" : ""}" data-fcol="${c}" style="--c:${c}" aria-label="Colour"></button>`).join("")}</div></div>
+      <div class="field wide"><span class="flabel">Inside</span><select id="fParent"><option value="">Folders (top)</option>${fs.filter(x => !inside.has(x.id) && !x.smart).map(x => `<option value="${x.id}" ${f.parent === x.id ? "selected" : ""}>${esc(folderPath(x, fs))}</option>`).join("")}</select></div>
+      <div class="field wide"><span class="flabel">Cross offs</span><div class="seg"><button type="button" class="btn sm ${f.own ? "" : "on"}" data-fown="">Whole app</button><button type="button" class="btn sm ${f.own ? "on" : ""}" data-fown="1">This folder only</button></div>
+        <p class="small" style="margin:4px 0 0">This folder only keeps its own cross offs, so you can learn the words again here without changing the rest of the app.</p></div>
+      <div class="feadd">
+        ${f.smart ? "" : `<button type="button" class="mrow" data-feopen="words"><span class="mic">+</span><span class="mt">Add words</span><span class="mch">›</span></button>
+        <div class="fefrm" data-fe="words" ${open === "words" ? "" : "hidden"}><textarea id="fWords" class="ftext" spellcheck="false" autocapitalize="characters" placeholder="Paste or type words: one a line, or with commas or spaces"></textarea>
+          <div class="row"><button class="btn primary sm" id="fSave">Add them</button><span class="small" id="fMsg"></span></div><p class="small" style="margin:0">To take words out, press Select on the list, pick them, then Remove.</p></div>
+        <button type="button" class="mrow" data-feopen="kid"><span class="mic">📁</span><span class="mt">A folder inside it</span><span class="mch">›</span></button>
+        <div class="fefrm row" data-fe="kid" ${open === "kid" ? "" : "hidden"}><input class="arack" id="fKidName" placeholder="Folder name" maxlength="40" style="text-transform:none;flex:1;min-width:0"><button class="btn primary sm" id="fKidGo">Make it</button></div>`}
+        <button type="button" class="mrow" data-feopen="grp"><span class="mic">▦</span><span class="mt">A group</span><span class="mch">›</span></button>
+        <div class="fefrm" data-fe="grp" ${open === "grp" ? "" : "hidden"}><p class="small" style="margin:0">A set you learn together, stamped Learnt once you can name every word in it in one go.</p>
+          <div class="row"><select id="fGrpKind"><option value="ana">A rack's anagrams</option><option value="hooks">A word and its hooks</option><option value="own">My own words</option></select>
+          <input class="arack" id="fGrpIn" placeholder="Letters" maxlength="200" autocapitalize="characters" spellcheck="false" style="flex:1;min-width:0"><button class="btn primary sm" id="fGrpGo">Add</button></div><span class="small bad" id="fGrpMsg"></span></div>
+      </div>
+      <div class="row"><button class="btn" id="fDel">Delete folder</button>${kids ? `<span class="small">The folders inside move up a level.</span>` : ""}</div>
+    </div>`));
+  const S = $("#fesheet");
+  S.classList.add("side");
+  sheet("fesheet", true);
+  const close = () => { sheet("fesheet", false); S.remove(); folderView(id); };
+  $("#feDone").onclick = S.querySelector(".scrim").onclick = close;
+  const again = (o = "") => { const top = S.querySelector(".sheet").scrollTop; S.remove(); folderEdit(id, o); $("#fesheet .sheet").scrollTop = top; };
+  S.querySelectorAll("[data-feopen]").forEach(b => b.onclick = () => { const p = S.querySelector(`[data-fe="${b.dataset.feopen}"]`); p.hidden = !p.hidden; p.querySelector("input, textarea")?.focus(); });
+  $("#fTitle").onchange = () => saveFolder(id, { name: $("#fTitle").value.trim() || "Folder" });
+  S.querySelectorAll("[data-fcol]").forEach(b => b.onclick = () => { saveFolder(id, { color: b.dataset.fcol }); again(); });
+  $("#fParent").onchange = () => saveFolder(id, { parent: $("#fParent").value || null });
+  S.querySelectorAll("[data-fown]").forEach(b => b.onclick = () => { saveFolder(id, { own: !!b.dataset.fown, crossed: f.crossed || [] }); again(); });
+  $("#fSave")?.addEventListener("click", () => {
+    const { good, bad } = wordsIn($("#fWords").value), x = folderById(id), before = x.words.length;
+    saveFolder(id, { words: [...new Set([...x.words, ...good])] });
+    $("#fWords").value = bad.join(" ");
+    $("#fMsg").textContent = `Added ${(folderById(id).words.length - before).toLocaleString()}.${bad.length ? ` Not in CSW24, so left out: ${bad.slice(0, 12).join(", ")}${bad.length > 12 ? "…" : ""}` : ""}`;
+  });
+  const kid = () => { const x = newFolder($("#fKidName").value.trim()); saveFolder(x.id, { parent: id }); sheet("fesheet", false); S.remove(); location.hash = "mine/f-" + x.id; };
+  $("#fKidGo")?.addEventListener("click", kid); $("#fKidName")?.addEventListener("keydown", ev => ev.key === "Enter" && kid());
+  $("#fGrpKind").onchange = () => { $("#fGrpIn").placeholder = { ana: "Letters", hooks: "Word", own: "Words, with spaces or commas" }[$("#fGrpKind").value]; };
+  const addGrp = () => {
+    const kind = $("#fGrpKind").value, v = $("#fGrpIn").value, L = v.toUpperCase().replace(/[^A-Z]/g, "");
+    const words = kind === "ana" ? anagrams(L) : kind === "hooks" ? (DICT.has(L) ? [L, ...hookWords(L)] : []) : wordsIn(v).good;
+    if (words.length < 2) return $("#fGrpMsg").textContent = kind === "ana" ? "Those letters make fewer than 2 words." : kind === "hooks" ? (DICT.has(L) ? `${L} has no hooks.` : "That isn't a word.") : "Type at least 2 words.";
+    const g = { id: Date.now().toString(36), name: kind === "ana" ? alpha(L) : kind === "hooks" ? L + " + hooks" : "", kind, words, done: false, best: 0 };
+    saveFolder(id, { groups: [...(folderById(id).groups || []), g] }); close();
+  };
+  $("#fGrpGo").onclick = addGrp; $("#fGrpIn").onkeydown = ev => ev.key === "Enter" && addGrp();
+  confirmBtn($("#fDel"), () => { sheet("fesheet", false); S.remove(); store.set("folders", getFolders().filter(x => x.id !== id).map(x => x.parent === id ? { ...x, parent: f.parent || null, at: Date.now() } : x)); location.hash = f.parent ? "mine/f-" + f.parent : "mine/folders"; });
+}
+function groupHTML(f, g) {
+  const naming = GRP?.g === g.id && GRP.f === f.id, peek = GRP?.peek === g.id;
+  const shown = w => g.done || peek || (naming && GRP.found.includes(w));
+  const head = g.kind === "ana" ? `<div class="tiles mini">${[...g.name].map(c => `<div class="tile">${c}</div>`).join("")}</div>` : `<b>${esc(g.name || g.words.slice(0, 3).join(", ") + (g.words.length > 3 ? "…" : ""))}</b>`;
+  return `<div class="fgrp ${g.done ? "done" : ""}" data-grp="${g.id}"><div class="fgh">${head}${g.done ? `<span class="stamp">Learnt</span>` : `<span class="small">${GMSG?.g === g.id ? `${GMSG.w} isn't one · ` : ""}${naming ? GRP.found.length : g.best ? "best " + g.best : 0} of ${g.words.length}</span>`}</div>
+    <div class="words">${g.words.map(w => shown(w) ? `<a class="w ${naming && GRP.found.includes(w) ? "got" : ""}" href="#w/${w}">${w}</a>` : `<span class="w blank">${"•".repeat(w.length)}</span>`).join("")}</div>
+    ${naming ? `<div class="row"><input class="qinput fgin" placeholder="Type a word" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done"><button type="button" class="btn sm" data-gstop>Give up</button></div><p class="small fgmsg"></p>`
+      : `<div class="row"><button type="button" class="btn sm ${g.done ? "" : "primary"}" data-gname>${g.done ? "Name them again" : `Name all ${g.words.length}`}</button>${g.done ? "" : `<button type="button" class="btn sm" data-gpeek>${peek ? "Hide" : "Peek"}</button>`}<button type="button" class="btn sm" data-gdel>Remove</button></div>`}</div>`;
+}
+function wireGroups(id) {
+  const redraw = () => { const f = folderById(id); document.querySelectorAll("[data-grp]").forEach(el => { const g = (f.groups || []).find(x => x.id === el.dataset.grp); if (g) el.outerHTML = groupHTML(f, g); }); wireGroups(id); };
+  const setG = (gid, patch) => { const f = folderById(id); saveFolder(id, { groups: f.groups.map(g => g.id === gid ? { ...g, ...patch } : g) }); };
+  document.querySelectorAll("[data-grp]").forEach(el => {
+    const gid = el.dataset.grp, g = () => folderById(id).groups.find(x => x.id === gid);
+    el.querySelector("[data-gname]")?.addEventListener("click", () => { GMSG = null; GRP = { f: id, g: gid, found: [] }; redraw(); });
+    el.querySelector("[data-gpeek]")?.addEventListener("click", () => { GRP = GRP?.peek === gid ? null : { peek: gid }; redraw(); });
+    el.querySelector("[data-gstop]")?.addEventListener("click", () => { setG(gid, { best: Math.max(g().best || 0, GRP.found.length) }); GRP = null; redraw(); });
+    const del = el.querySelector("[data-gdel]"); if (del) confirmBtn(del, () => { saveFolder(id, { groups: folderById(id).groups.filter(x => x.id !== gid) }); folderView(id); });
+    const inp = el.querySelector(".fgin"); if (!inp) return;
+    inp.focus();
+    // one go: every word, with no wrong ones in between; a word that isn't in the group ends the go
+    inp.onkeydown = ev => {
+      if (ev.key !== "Enter") return;
+      const w = inp.value.toUpperCase().replace(/[^A-Z]/g, ""); inp.value = ""; if (!w) return;
+      const G = g(), msg = el.querySelector(".fgmsg");
+      if (GRP.found.includes(w)) { msg.textContent = `${w}: you have it already.`; return; }
+      // (a stamped group named again loses its stamp on a miss, so it has to be learnt again)
+      if (!G.words.includes(w)) { setG(gid, { done: false, best: Math.max(G.done ? 0 : G.best || 0, GRP.found.length) }); GRP = null; GMSG = { g: gid, w }; redraw(); return; }
+      GRP.found.push(w);
+      if (GRP.found.length === G.words.length) { setG(gid, { done: true, best: G.words.length }); GRP = null; folderView(id); return; }
+      redraw();
+    };
+  });
+}
 // the folder picker: for one word, a tick for each folder it's in; for a list, a button per folder to add them all
 // (pick, when given, offers to choose some of the words instead)
 function folderSheet(words, pick) {
   words = [...new Set(words)];
   document.getElementById("fsheet")?.remove();
-  const one = words.length === 1, fs = getFolders();
+  // (smart folders fill themselves, so they aren't offered; a folder inside another shows its path)
+  const one = words.length === 1, all = getFolders(), fs = all.filter(f => !f.smart).map(f => ({ ...f, name: folderPath(f, all) })).sort((a, b) => a.name.localeCompare(b.name));
   document.body.insertAdjacentHTML("beforeend", sheetHTML("fsheet", `<h3>${one ? `Folders for ${esc(words[0])}` : `Add ${words.length.toLocaleString()} words to a folder`}<button type="button" id="fsDone">Done</button></h3>
     ${fs.length ? `<div class="fpick">${fs.map(f => one ? `<label class="check"><input type="checkbox" data-fs="${f.id}" ${f.words.includes(words[0]) ? "checked" : ""}> ${esc(f.name)} <span class="small">${f.words.length}</span></label>`
       : `<button type="button" class="btn" data-fsall="${f.id}">${esc(f.name)} <span class="small">${f.words.length}</span></button>`).join("")}</div>` : `<p class="small">No folders yet: make one here.</p>`}

@@ -16,7 +16,7 @@ let gmMemo = { key: null, words: [] };
 function gameWords() {
   const s = gmSetup(), g = s.src.startsWith("g:") ? groupOf(s.src.slice(2)) : null, f = s.src.startsWith("f:") ? folderById(s.src.slice(2)) : null;
   const mine = { stars: getStars, missed: () => store.get("missed", []), last: () => lastResults }[s.src]?.();
-  const base = f ? f.words : mine || (g ? groupWords(g) : ALL);
+  const base = f ? fWords(f) : mine || (g ? groupWords(g) : ALL);
   const key = JSON.stringify(s) + ":" + base.length + ":" + (s.skipKnown ? getKnown().length : "");
   if (gmMemo.key === key) return gmMemo.words;
   const known = s.skipKnown ? new Set(getKnown()) : null;
@@ -71,7 +71,7 @@ function gamesHome() {
   $("#view").innerHTML = `<nav class="studyseg">${[["lists", "Lists"], ["practice", "Practice"], ["quiz", "Quiz"], ["scoring", "Scoring"], ["games", "Games"]].map(([h, t]) => `<a href="#${h}" class="${h === "games" ? "on" : ""}">${t}</a>`).join("")}</nav>
     <div class="card"><div class="form">
       <div class="field wide"><label for="gmsrc">Words from</label><select id="gmsrc"><option value="">Any word</option>
-        <optgroup label="Mine"><option value="stars" ${s.src === "stars" ? "selected" : ""}>Starred words (${getStars().length})</option><option value="missed" ${s.src === "missed" ? "selected" : ""}>Missed words (${store.get("missed", []).length})</option><option value="last" ${s.src === "last" ? "selected" : ""}>Last search results (${lastResults.length})</option>${getFolders().map(f => `<option value="f:${f.id}" ${s.src === "f:" + f.id ? "selected" : ""}>📁 ${esc(f.name)} (${f.words.length})</option>`).join("")}</optgroup>
+        <optgroup label="Mine"><option value="stars" ${s.src === "stars" ? "selected" : ""}>Starred words (${getStars().length})</option><option value="missed" ${s.src === "missed" ? "selected" : ""}>Missed words (${store.get("missed", []).length})</option><option value="last" ${s.src === "last" ? "selected" : ""}>Last search results (${lastResults.length})</option>${getFolders().map(f => `<option value="f:${f.id}" ${s.src === "f:" + f.id ? "selected" : ""}>📁 ${esc(folderPath(f))} (${fWords(f).length})</option>`).join("")}</optgroup>
         ${groupOptions(s.src.startsWith("g:") ? s.src.slice(2) : "").replace(/value="/g, 'value="g:')}</select></div>
       <div class="field wide"><span class="flabel">Length</span>${lenPick("gmlens", s.lens)}</div>
       <div class="field wide"><label class="check"><input type="checkbox" id="gmknown" ${s.skipKnown ? "checked" : ""}> Leave out words I've crossed off</label></div>
