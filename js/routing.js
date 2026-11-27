@@ -72,20 +72,13 @@ $("#form").addEventListener("submit", ev => {
   const tab = location.hash.slice(1).split("/")[0], onSearch = tab === "search";
   // on the Word page (and Today) a plain word opens that word; everything else is a search
   if (/^[A-Z]+$/.test(q) && (!VIEWS[tab] || tab === "w" || tab === "today")) { freshWord(q); location.hash = "w/" + q; return; }
-  // on the Search page the bar replaces just the letters, keeping the group, length and other filters
-  const keep = onSearch ? Object.fromEntries(Object.entries(searchState).filter(([k]) => !LETTER_KEYS.includes(k))) : {};
+  // the bar always starts a new search, in its own tab, without the Search page's group and filters (the page's
+  // Letters box is the one that works with them)
   searchFromBar = true;
-  if (onSearch) { searchState = { ...SEARCH_DEFAULT, ...keep, ...barSearch(q) }; store.set("search", searchState); VIEWS.search(); }
-  else { searchInNewTab(barSearch(q)); location.hash = "search"; }
+  searchInNewTab(barSearch(q));
+  if (onSearch) VIEWS.search(); else location.hash = "search";
 });
-// on the Search page, emptying the bar drops the letters (URA?ITE, *ING) from the search but keeps the other filters
-function clearBarLetters() {
-  if (location.hash.slice(1).split("/")[0] !== "search" || $("#q").value || !barText(searchState)) return;
-  for (const k of LETTER_KEYS) searchState[k] = SEARCH_DEFAULT[k];
-  store.set("search", searchState); VIEWS.search();
-}
-$("#qClear").addEventListener("click", () => { $("#q").value = ""; $("#q").focus(); clearBarLetters(); });
-$("#q").addEventListener("input", clearBarLetters);
+$("#qClear").addEventListener("click", () => { $("#q").value = ""; $("#q").focus(); });
 // on the Word page the box holds the word being shown; tapping it starts a fresh word when that word was a random one
 // (see clearOnTap), and leaving it empty puts the word back
 const onWordPage = () => { const tab = location.hash.slice(1).split("/")[0]; return (tab && !VIEWS[tab]) || tab === "w"; };

@@ -339,6 +339,8 @@ VIEWS.search = () => {
   const acc = (key, title) => `<details class="fs acc" data-acc="${key}" ${!fold && (opened[key] || accSummary(key)) ? "open" : ""}><summary class="lbl">${title}<span class="accn" id="accn_${key}">${esc(accSummary(key))}</span></summary>`;
   $("#view").innerHTML = `${searchTabsHTML()}<div class="card">
     <form id="sform" autocomplete="off">
+      ${lettersField(s)}
+      ${typeBar()}
       ${acc("group", "Group and length")}${secs.group}</details>
       ${acc("narrow", "Filters")}${secs.narrow}</details>
       <div class="actions">
@@ -347,16 +349,17 @@ VIEWS.search = () => {
       </div>
     </form>
   </div>
-  ${typeBar()}
   <div class="card fitscroll" id="sres"><p class="empty">Pick a group or fill in any options, then press Search. Hooks show either side of each word; red lowercase letters are blanks.</p></div>`;
   const read = () => { for (const k of Object.keys(SEARCH_DEFAULT)) { const el = $("#s_" + k); if (el) searchState[k] = el.type === "checkbox" ? (el.checked ? "1" : "") : el.value; } store.set("search", searchState); };
   scrollAway();
   $("#sform").querySelectorAll("details.acc").forEach(d => d.addEventListener("toggle", () => { const o = store.get("searchOpen", { group: true }); o[d.dataset.acc] = d.open; store.set("searchOpen", o); }));
   $("#sform").addEventListener("input", () => { read(); nameSearchTab(); for (const k of ["group", "narrow"]) $("#accn_" + k).textContent = accSummary(k); });
   $("#s_group").onchange = e => { $("#groupHint").textContent = groupOf(e.target.value)?.blurb || ""; read(); nameSearchTab(); doSearch(); };
-  $("#sform").addEventListener("submit", ev => { ev.preventDefault(); read(); doSearch(); });
+  // new letters redraw the page, for the Anagram / Subanagram / Pattern row
+  const typed = barText(searchState);
+  $("#sform").addEventListener("submit", ev => { ev.preventDefault(); read(); readLetters(); if (barText(searchState) !== typed) VIEWS.search(); else doSearch(); });
   $("#sClear").onclick = () => { searchState = { ...SEARCH_DEFAULT }; store.set("search", searchState); VIEWS.search(); };
-  bindTypeBar(); bindSearchTabs();
+  bindTypeBar(fold); bindSearchTabs();
   if (Object.entries(searchState).some(([k, v]) => v && v !== SEARCH_DEFAULT[k])) doSearch();
 };
 // short "what's set" text shown beside each folded search section
@@ -445,7 +448,6 @@ function addRecentSearch(s, n) {
 }
 // the top bar guesses what kind of search it is: letters (blanks only at the end) are an anagram, ? or . anywhere
 // else is a fixed-position pattern, and * means starts with (QU*), ends with (*ING), contains (*QU*) or has any of (*[JX]*)
-const LETTER_KEYS = ["pattern", "rack", "mode", "starts", "ends", "contains", "from", "to"];
 function barSearch(q) {
   let m;
   if (/^[A-Z]+\?*$/.test(q)) return { rack: q, mode: "exact" };
@@ -458,6 +460,23 @@ function barText(s) {
   const t = s.rack || s.pattern || (s.contains ? `*${s.contains}*` : s.starts || s.ends ? `${s.starts}*${s.ends}` : "");
   return t.toUpperCase();
 }
+// the Search page's own Letters box: the letters part of this search, used with its group and filters (the bar at
+// the top starts a fresh search instead). An anagram or pattern stays in the box; QU*, *ING and *QU* fill in
+// Starts with, Ends with and Contains
+const lettersField = s => `<div class="field wide sletters"><label for="s_letters">Letters</label><input id="s_letters" class="arack" value="${esc((s.rack || s.pattern || "").toUpperCase())}" placeholder="e.g. AEINRST, RETAIN?, C?T, QU* or *ING" spellcheck="false" autocorrect="off" autocapitalize="characters" maxlength="20">
+  <span class="hint">Used with the group and filters here. The search bar at the top always starts a new search, without them.</span></div>`;
+function readLetters() {
+  const el = $("#s_letters"); if (!el) return;
+  const q = el.value.toUpperCase().replace(/[^A-Z?.*\[\]^]/g, ""), s = searchState, was = s.rack ? s.mode : "exact";
+  s.rack = ""; s.pattern = ""; s.mode = "exact";
+  if (q) {
+    const b = barSearch(q);
+    if (b.rack) { s.rack = b.rack; s.mode = was; } else if (b.pattern) s.pattern = b.pattern;
+    else for (const k of ["starts", "ends", "contains"]) if (b[k] != null) { s[k] = b[k]; const f = $("#s_" + k); if (f) f.value = b[k]; }
+  }
+  if (q !== barText(s)) { s.from = ""; s.to = ""; }
+  store.set("search", s); nameSearchTab();
+}
 const patLabel = p => { const m = p.toUpperCase().match(/^\*\[([A-Z]+)\]\*$/); return m ? `Has ${[...m[1]].join(" or ")}` : `Pattern ${p.toUpperCase()}`; };
 // Anagram / Build / Contains all / Pattern: the same letters run as another kind of search
 const STYPES = [["exact", "Anagram"], ["build", "Subanagram"], ["super", "Superanagram"], ["swap", "Swap one"], ["pattern", "Pattern"]];
@@ -467,8 +486,9 @@ function typeBar() {
   const cur = s.rack ? s.mode : "pattern";
   return `<div class="seg stype">${STYPES.map(([k, n]) => `<button type="button" class="btn sm ${k === cur ? "on" : ""}" data-stype="${k}">${n}</button>`).join("")}</div>`;
 }
-function bindTypeBar() {
-  $("#q").value = barText(searchState);
+function bindTypeBar(fromBar) {
+  // the top bar isn't this search's letters (they're in the Letters box), so it's left empty unless it just ran
+  if (!fromBar && document.activeElement !== $("#q")) $("#q").value = "";
   $("#view").querySelectorAll("[data-stype]").forEach(b => b.onclick = () => {
     const s = searchState, l = (s.rack || s.pattern).toUpperCase(), k = b.dataset.stype;
     Object.assign(s, k === "pattern" ? { rack: "", mode: "exact", pattern: l } : { pattern: "", rack: l.replace(/\./g, "?"), mode: k }, { from: "", to: "" });
@@ -504,7 +524,7 @@ function doSearch() {
 }
 // Save as folder: a smart folder holding this search's words, which keeps itself up to date
 function smartSave(box) {
-  if (!$("#smartRow")) box.insertAdjacentHTML("beforebegin", `<div class="smartrow" id="smartRow"><button type="button" class="btn sm" id="smartSave">📁 Save as folder</button><span class="small" id="smartMsg"></span></div>`);
+  if (!$("#smartRow")) box.insertAdjacentHTML("beforebegin", `<div class="smartrow" id="smartRow"><button type="button" class="btn sm" id="smartSave">${FOLDER_IC} Save as folder</button><span class="small" id="smartMsg"></span></div>`);
   $("#smartMsg").textContent = "";
   $("#smartSave").onclick = () => {
     const sm = Object.fromEntries(Object.entries(searchState).filter(([k, v]) => v && v !== SEARCH_DEFAULT[k] && !["from", "to"].includes(k)));
@@ -514,7 +534,7 @@ function smartSave(box) {
 }
 // phone search: each filter that's set is a chip (× removes it); tapping a chip or a "+" opens that section in a bottom sheet
 function searchPhone() {
-  searchFromBar = false;
+  const fromBar = searchFromBar; searchFromBar = false;
   const s = searchState, up = v => String(v || "").toUpperCase();
   const chips = [
     ["group", groupOf(s.group)?.name, ["group"]], ["narrow", s.def && `“${s.def}”`, ["def"]],
@@ -523,12 +543,14 @@ function searchPhone() {
     ["narrow", s.contains && `Has ${up(s.contains)}`, ["contains"]], ["narrow", s.incl && `Uses ${up(s.incl)}`, ["incl"]], ["narrow", s.excl && `No ${up(s.excl)}`, ["excl"]], ["narrow", anaText(s.anas), ["anas"]], ["narrow", vowText(s.vows), ["vows"]], ["narrow", dblText(s.dbls), ["dbls"]], ["narrow", likelyText(s.pfrom, s.pto, s.pby, s.plax), ["pfrom", "pto", "pby", "plax"]],
   ].filter(c => c[1]);
   const secs = searchSecs(s);
-  $("#view").innerHTML = `${searchTabsHTML()}<div class="filterbar"><div class="hscroll">
+  $("#view").innerHTML = `${searchTabsHTML()}
+<div class="filterbar"><div class="hscroll">
       ${chips.map((c, i) => `<span class="pill on" data-sheet="${c[0]}">${esc(c[1])}<button type="button" class="x" data-clear="${i}" aria-label="Remove">×</button></span>`).join("")}
       ${[["group", "Group"], ["narrow", "Filters"]].map(([k, n]) => `<button type="button" class="pill add" data-sheet="${k}">+ ${n}</button>`).join("")}
       ${chips.length > 1 ? `<button type="button" class="pill add" id="sClear">Clear all</button>` : ""}</div></div>
+    <form class="slettersph" id="sLetForm" autocomplete="off"><input id="s_letters" class="arack" value="${esc((s.rack || s.pattern || "").toUpperCase())}" placeholder="Letters, with the filters: AEINRST, C?T…" aria-label="Letters for this search" spellcheck="false" autocorrect="off" autocapitalize="characters" maxlength="20" enterkeyhint="search"></form>
     ${typeBar()}
-    <div class="card fitscroll" id="sres"><p class="empty">Type letters in the search bar, or tap + Group or + Filters. Hooks show either side of each word; red lowercase letters are blanks.</p></div>
+    <div class="card fitscroll" id="sres"><p class="empty">Type letters in the box above, or tap + Group or + Filters. Hooks show either side of each word; red lowercase letters are blanks.</p></div>
     ${sheetHTML("ssheet", `<form id="sform" autocomplete="off">${Object.entries(SEARCH_SECS).map(([k, [t]]) => `<div data-sec="${k}"><h3>${t}<button type="button" data-reset="${k}">Reset</button></h3>${secs[k]}</div>`).join("")}
       <button class="btn primary block" type="submit" id="sGo">Show results</button></form>`)}`;
   const read = () => { for (const k of Object.keys(SEARCH_DEFAULT)) { const el = $("#s_" + k); if (el) searchState[k] = el.type === "checkbox" ? (el.checked ? "1" : "") : el.value; } store.set("search", searchState); };
@@ -542,8 +564,8 @@ function searchPhone() {
   const v = $("#view");
   v.querySelectorAll("[data-sheet]").forEach(b => b.onclick = ev => {
     if (ev.target.closest("[data-clear]")) return;
-    // letters come from the top bar, so their chip just goes back to it
-    if (b.dataset.sheet === "bar") return $("#q").focus();
+    // the letters' chip goes to the Letters box
+    if (b.dataset.sheet === "bar") return $("#s_letters").focus();
     v.querySelectorAll("[data-sec]").forEach(d => d.hidden = d.dataset.sec !== b.dataset.sheet);
     sheet("ssheet", true); count();
   });
@@ -559,7 +581,8 @@ function searchPhone() {
   const apply = () => { read(); sheet("ssheet", false); searchPhone(); };
   $("#sform").addEventListener("submit", ev => { ev.preventDefault(); apply(); });
   $("#ssheet .scrim").onclick = apply;
-  bindTypeBar(); bindSearchTabs();
+  $("#sLetForm").onsubmit = ev => { ev.preventDefault(); readLetters(); $("#s_letters").blur(); searchPhone(); };
+  bindTypeBar(fromBar); bindSearchTabs();
   if (Object.entries(searchState).some(([k, v]) => !["mode", "from", "to"].includes(k) && v)) doSearch();
 }
 
@@ -611,14 +634,16 @@ function listView(g, o = {}) {
     confirmBtn($("#forgetList"), () => { store.set("plearnt", [...getLearnt()].filter(a => !racks.has(a))); VIEWS.lists(g.id); });
   }
   $("#toSearch")?.addEventListener("click", ev => { ev.preventDefault(); searchInNewTab({ group: g.id }); location.hash = "search"; });
-  $("#lPlay")?.addEventListener("click", () => playList(g));
-  $("#lQuiz")?.addEventListener("click", () => quizList(g));
+  // the lengths picked in the list below (kept per list, or across a family's lists)
+  const picked = () => { const m = o.lenMem ? resMem["len:" + o.lenMem] : resMem[location.hash + ":" + groupWords(g).length]; return m?.lens; };
+  $("#lPlay")?.addEventListener("click", () => playList(g, undefined, picked()));
+  $("#lQuiz")?.addEventListener("click", () => quizList(g, picked()));
   o.wire?.();
   setTimeout(() => {
     const box = $("#lres");
     if (!box) return;
     if (g.special === "stems") return drawStems(box, g);
-    results(box, groupWords(g), { len: g.len, grid: true, noPlay: true });
+    results(box, groupWords(g), { len: g.len, grid: true, noPlay: true, lenMem: o.lenMem });
   }, 10);
 }
 // a family opened as one list: a row of chips for each of its rows above the words. Where the rows mix each row has its
@@ -647,7 +672,7 @@ function famView(f, pick) {
     chips = rows.map(([n, items, ro], i) => `<div class="frow"><span class="lbl">${esc(n)}</span><div class="frow-c">${ro?.any === false ? "" : `<button type="button" class="chip-b ${picks[i] < 0 ? "on" : ""}" data-frow="${i}" data-fi="-1">Any</button>`}${items.map(([l], k) => `<button type="button" class="chip-b ${picks[i] === k ? "on" : ""}" data-frow="${i}" data-fi="${k}">${esc(l)}</button>`).join("")}</div></div>`).join("");
   }
   const sub = mix ? (g.name.split(" · ").slice(1).join(" · ") || "Every one") + " · pick from each row and they combine" : g.name;
-  listView(g, { title: f.name, sub, back: listBack(f), top: `<div class="fchips ${mix ? "mix" : ""}">${chips}</div>`, wire: () => {
+  listView(g, { title: f.name, sub, back: listBack(f), lenMem: f.id, top: `<div class="fchips ${mix ? "mix" : ""}">${chips}</div>`, wire: () => {
     $("#view").querySelectorAll("[data-fpick]").forEach(b => b.onclick = () => { store.set("fam:" + f.id, b.dataset.fpick); VIEWS.lists(f.id); });
     $("#view").querySelectorAll("[data-frow]").forEach(b => b.onclick = () => { const p = store.get("famb:" + f.id), i = +b.dataset.frow, k = +b.dataset.fi; p[i] = k; store.set("famb:" + f.id, p); VIEWS.lists(f.id); });
   } });
@@ -661,11 +686,20 @@ function listFolder(i) {
   fillCards(sec[1]);
 }
 // Practise (or Recall) a list, and Quiz it
-function playList(g, mode) {
-  saveSettings({ practice: { ...PO_DEFAULT, mode: mode || (SET.practice?.mode === "recall" ? "anagram" : SET.practice?.mode || "anagram"), order: SET.practice?.order || "rand", rev: !!SET.practice?.rev, src: "g:" + g.id, lens: g.len && !mode ? [g.len] : [] } });
+// lens: the lengths picked on the list's page (its main length if none were). Practise and Quiz both set up the
+// other one with the same list and lengths, so going from one tab to the other carries on with that list
+function playList(g, mode, lens) {
+  lens = mode ? [] : lens || (g.len ? [g.len] : []);
+  saveSettings({ practice: { ...PO_DEFAULT, mode: mode || (SET.practice?.mode === "recall" ? "anagram" : SET.practice?.mode || "anagram"), order: SET.practice?.order || "rand", rev: !!SET.practice?.rev, src: "g:" + g.id, lens } });
+  quizSetup = { ...quizSetup, source: "list:" + g.id, lens, starOnly: false }; store.set("quizSetup", quizSetup);
   location.hash = "practice";
 }
-function quizList(g) { quizSetup = { ...quizSetup, source: "list:" + g.id, lens: [], starOnly: false }; store.set("quizSetup", quizSetup); location.hash = "quiz"; }
+function quizList(g, lens) {
+  lens = lens || (g.len ? [g.len] : []);
+  quizSetup = { ...quizSetup, source: "list:" + g.id, lens, starOnly: false }; store.set("quizSetup", quizSetup);
+  saveSettings({ practice: { ...PO_DEFAULT, ...SET.practice, mode: SET.practice?.mode === "recall" ? "anagram" : SET.practice?.mode || "anagram", src: "g:" + g.id, lens } });
+  location.hash = "quiz";
+}
 // a list's words (a stems list counts the words its stems make), and whether a word is learnt: crossed off (getting
 // its rack right in Practice doesn't count, since that would mark every word with those letters)
 const listWords = x => x.special === "stems" ? stems(x.n).flatMap(s => s.words) : groupWords(x);
@@ -858,9 +892,9 @@ if (!Array.isArray(quizSetup.lens)) {
 let Q = store.get("quiz", null);
 const saveQ = () => store.set("quiz", Q);
 function quizSources() {
-  return [["stars", `Starred words (${getStars().length})`], ["missed", `Missed words (${store.get("missed", []).length})`], ["last", `Last search results (${lastResults.length})`],
-    ...getFolders().map(f => ["folder:" + f.id, `📁 ${folderPath(f)} (${fWords(f).length})`])];
+  return [["stars", `Starred words (${getStars().length})`], ["missed", `Missed words (${store.get("missed", []).length})`], ["last", `Last search results (${lastResults.length})`]];
 }
+const quizFolderSources = () => getFolders().map(f => ["folder:" + f.id, `${folderPath(f)} (${fWords(f).length})`]);
 // withKnown: crossed-off words stay in, for a rack's answers
 function sourceWords(src, withKnown = false) {
   const g = groupOf(src.replace("list:", ""));
@@ -933,6 +967,7 @@ VIEWS.quiz = () => {
   <div class="card"><div class="form">
     <div class="field wide"><label for="qsrc">Words from</label><select id="qsrc">
       <optgroup label="Mine">${quizSources().map(([v, t]) => `<option value="${v}" ${v === quizSetup.source ? "selected" : ""}>${esc(t)}</option>`).join("")}</optgroup>
+      ${getFolders().length ? `<optgroup label="Folders">${quizFolderSources().map(([v, t]) => `<option value="${v}" ${v === quizSetup.source ? "selected" : ""}>${esc(t)}</option>`).join("")}</optgroup>` : ""}
       ${groupOptions(quizSetup.source.replace("list:", ""), true).replace(/value="/g, 'value="list:')}</select></div>
     <div class="field wide"><span class="flabel">Length</span>${lenPick("qlens", quizSetup.lens)}</div>
     ${recallMode ? "" : `<div class="field wide"><label for="qcount">Questions</label><div class="numpick"><input id="qcount" value="${SET.qcount}" inputmode="numeric" aria-label="Number of questions">${[10, 20, 50, 100].map(n => `<button type="button" class="btn sm ${n === +SET.qcount ? "on" : ""}" data-qn="${n}">${n}</button>`).join("")}</div></div>
@@ -1144,12 +1179,12 @@ function drawQuestion() {
   // (green if right, orange if wrong) and the left one switches the mark.
   // ✓ means "knew it" for anagrams and hooks; for definitions it checks what was typed.
   // with the count hidden, ✓ becomes Done: it checks what was found, and a question never ends by itself
-  const key = k => `<kbd>${k}</kbd>`, tx = t => `<span class="tx">${t}</span>`, counted = hide && (mode === "anagram" || mode === "pattern");
+  const key = k => `<kbd>${k}</kbd>`, tx = t => `<span class="tx">${t}</span>`, sm = t => `<span class="tx sm">${t}</span>`, counted = hide && (mode === "anagram" || mode === "pattern");
   Q.marks = () => {
     const v = Q.answered ? Q.ok : null, a = $("#qAlt"), m = $("#qMain"), ph = mode === "phony" && v === null;
-    a.className = `btn mk ${v === false ? "yes" : "no"}`; a.innerHTML = ph ? `${tx("Phony")}${key("P")}` : `${v === false ? "✓" : "✗"}${key("1")}`;
+    a.className = `btn mk ${v === false ? "yes" : "no"}`; a.innerHTML = ph ? `${tx("Phony")}${key("P")}` : `${v === false ? "✓" : "✗"}${v === null ? sm("Didn't know") : ""}${key("1")}`;
     a.setAttribute("aria-label", ph ? "Phony" : v === null ? "Didn't know" : v ? "Switch to wrong" : "Switch to right");
-    m.className = `btn mk ${v === null ? "yes" : v ? "yes on" : "no on"}`; m.innerHTML = ph ? `${tx("Valid")}${key("V")}` : v === null ? (counted ? `${tx("Done")}${key("2")}` : `✓${key("2")}`) : `${tx(Q.i + 1 < Q.qs.length ? "Next" : "Finish")}${key("↵")}`;
+    m.className = `btn mk ${v === null ? "yes" : v ? "yes on" : "no on"}`; m.innerHTML = ph ? `${tx("Valid")}${key("V")}` : v === null ? (counted ? `${tx("Done")}${key("2")}` : `✓${sm(mode === "anagram" || mode === "pattern" || mode === "hooks" ? "Knew it" : "Check")}${key("2")}`) : `${tx(Q.i + 1 < Q.qs.length ? "Next" : "Finish")}${key("↵")}`;
     m.setAttribute("aria-label", ph ? "Valid" : v === null ? (mode === "anagram" && !hide ? "Knew it" : "Check") : "Next question");
   };
   Q.marks();
@@ -1519,7 +1554,7 @@ VIEWS.practice = () => {
         <div class="field wide"><span class="flabel">Type</span><div class="seg" id="po_mode">${PMODES.map(([k, n]) => `<button type="button" class="btn sm ${o.mode === k ? "on" : ""}" data-pmode="${k}">${n}</button>`).join("")}</div>
           <p class="small" style="margin:6px 0 0">${PHELP[o.mode] || PHELP.anagram}</p></div>
         <div class="field wide"><label for="po_src">Words from</label><select id="po_src"><option value="">Any word</option>
-          <optgroup label="Mine"><option value="my:stars" ${o.src === "my:stars" ? "selected" : ""}>Starred words (${getStars().length})</option><option value="my:missed" ${o.src === "my:missed" ? "selected" : ""}>Missed words (${store.get("missed", []).length})</option><option value="my:last" ${o.src === "my:last" ? "selected" : ""}>Last search results (${o.src === "my:last" ? practiceLast().length : lastResults.length})</option>${getFolders().map(f => `<option value="f:${f.id}" ${o.src === "f:" + f.id ? "selected" : ""}>📁 ${esc(folderPath(f))} (${fWords(f).length})</option>`).join("")}</optgroup>
+          <optgroup label="Mine"><option value="my:stars" ${o.src === "my:stars" ? "selected" : ""}>Starred words (${getStars().length})</option><option value="my:missed" ${o.src === "my:missed" ? "selected" : ""}>Missed words (${store.get("missed", []).length})</option><option value="my:last" ${o.src === "my:last" ? "selected" : ""}>Last search results (${o.src === "my:last" ? practiceLast().length : lastResults.length})</option></optgroup>${getFolders().length ? `<optgroup label="Folders">${getFolders().map(f => `<option value="f:${f.id}" ${o.src === "f:" + f.id ? "selected" : ""}>${esc(folderPath(f))} (${fWords(f).length})</option>`).join("")}</optgroup>` : ""}
           ${groupOptions(o.src.startsWith("g:") ? o.src.slice(2) : "").replace(/value="/g, 'value="g:')}</select></div>
         <div class="field wide"><span class="flabel">Length</span>${lenPick("po_lens", o.lens)}</div>
         ${o.mode === "recall" ? "" : `<div class="field wide"><span class="flabel">Order</span>${orderPick("po_order", o.order, o.rev)}</div>`}
@@ -1681,9 +1716,9 @@ function practicePlay(pool, o, opts, wire) {
   // before marking: ✗ | ✓. After ✓: ✗ | Next (green). After ✗: ✓ | Next (orange).
   const marks = () => {
     const v = P.done && P.verdict, a = $("#pAlt"), m = $("#pMain");
-    a.className = `btn mk ${v && !v.ok ? "yes" : "no"}`; a.innerHTML = `${v && !v.ok ? "✓" : "✗"}${key("1")}`;
+    a.className = `btn mk ${v && !v.ok ? "yes" : "no"}`; a.innerHTML = `${v && !v.ok ? "✓" : "✗"}${v ? "" : `<span class="tx sm">Didn't know</span>`}${key("1")}`;
     a.setAttribute("aria-label", v ? (v.ok ? "Switch to didn't know" : "Switch to knew it") : "Didn't know");
-    m.className = `btn mk ${v ? (v.ok ? "yes on" : "no on") : "yes"}`; m.innerHTML = v ? `<span class="tx">Next</span>${key("↵")}` : SET.hideCount ? `<span class="tx">Done</span>${key("2")}` : `✓${key("2")}`;
+    m.className = `btn mk ${v ? (v.ok ? "yes on" : "no on") : "yes"}`; m.innerHTML = v ? `<span class="tx">Next</span>${key("↵")}` : SET.hideCount ? `<span class="tx">Done</span>${key("2")}` : `✓<span class="tx sm">Knew it</span>${key("2")}`;
     m.setAttribute("aria-label", v ? "Next card" : SET.hideCount ? "Done, check my answers" : "Knew it");
   };
   // with the count hidden the card never ends by itself: that would give away that words are still left
@@ -2158,16 +2193,17 @@ function toggleStar(w) { const s = getStars(); const i = s.indexOf(w); i >= 0 ? 
 function addHistory(w) { const h = store.get("hist", []).filter(x => x !== w); h.unshift(w); store.set("hist", h.slice(0, 50)); }
 
 // My words opens on a home page with sections (Folders, Saved words, Writing, Progress); each row opens its own
-// page, and "‹ My words" comes back
+// page, with the same small back button at the left of its title (the Scratch pad's sits in its bar instead)
 const MINE_PAGES = { stars: "Starred", missed: "Missed", hist: "Recently viewed", notebook: "Notes", pad: "Scratch pad", notes: "Word notes", stats: "Stats", ach: "Achievements", folders: "Folders" };
+const mineHead = (href, back, title, right = "", under = "") => `<div class="mhd"><a class="bbk" href="${href}">‹ ${esc(back)}</a><div class="mhdt"><h3 class="title">${title}</h3>${under}</div>${right}</div>`;
 VIEWS.mine = (tab) => {
+  if (tab === "notebook" || tab?.startsWith("n-") || tab?.startsWith("nf-")) return notebook(tab);
   if (!tab || !MINE_PAGES[tab] && !tab.startsWith("f-")) return mineHome();
   if (tab.startsWith("f-")) return folderLook() === "old" ? folderViewOld(tab.slice(2)) : folderView(tab.slice(2));
   const notes = getNotes();
-  const lists = { stars: getStars(), missed: store.get("missed", []), hist: store.get("hist", []), notes: Object.keys(notes), notebook: getNotebook(), pad: getPad() };
+  const lists = { stars: getStars(), missed: store.get("missed", []), hist: store.get("hist", []), notes: Object.keys(notes), notebook: nbNotes(), pad: getPad() };
   const n = lists[tab]?.length;
-  $("#view").innerHTML = `<div class="mhd"><a class="bbk" href="#mine">‹ My words</a></div>
-    <h3 class="title">${MINE_PAGES[tab]}${n ? ` <span class="mcount">${n.toLocaleString()}</span>` : ""}</h3>
+  $("#view").innerHTML = `${tab === "pad" ? "" : mineHead("#mine", "My words", `${MINE_PAGES[tab]}${n ? ` <span class="mcount">${n.toLocaleString()}</span>` : ""}`)}
     ${tab === "stars" && n ? `<div class="row"><button class="btn sm" id="copyList">Copy list</button><button class="btn sm" id="clearStars">Clear starred</button><span class="small" id="msg"></span></div>` : ""}
     ${tab === "missed" && n ? `<div class="row"><button class="btn sm" id="clearMissed">Clear missed</button></div>` : ""}
     <div class="${tab === "pad" ? "" : "card "}${["stats", "ach", "notebook", "pad", "folders"].includes(tab) ? "" : "fitscroll"}" id="mres"></div>`;
@@ -2191,13 +2227,46 @@ function mineHome() {
   const row = (href, ic, t, c) => `<a class="mrow" href="#mine/${href}"><span class="mic" aria-hidden="true">${ic}</span><span class="mt">${t}</span><span class="mc">${c}</span><span class="mch" aria-hidden="true">›</span></a>`;
   const show = fs.slice(0, phone() ? 4 : 6);
   const folders = `<section class="msec"><h4 class="lbl">Folders<a href="#mine/folders">${fs.length > show.length ? `See all ${fs.length} ›` : fs.length ? "Open ›" : "+ New folder"}</a></h4>
-    ${show.length ? `<div class="fgrid">${show.map(f => folderCard(f, true)).join("")}</div>` : `<a class="mrow" href="#mine/folders"><span class="mic">📁</span><span class="mt">Make your first folder</span><span class="mch">›</span></a>`}</section>`;
+    ${show.length ? `<div class="fgrid">${show.map(f => folderCard(f, true)).join("")}</div>` : `<a class="mrow" href="#mine/folders"><span class="mic">${FOLDER_IC}</span><span class="mt">Make your first folder</span><span class="mch">›</span></a>`}</section>`;
   const saved = `<section class="msec"><h4 class="lbl">Saved words</h4><div class="mlist">${row("stars", "★", "Starred", getStars().length)}${row("missed", "✗", "Missed", store.get("missed", []).length)}${row("hist", "↺", "Recently viewed", store.get("hist", []).length)}</div></section>`;
   const pages = getPad().length;
-  const writing = `<section class="msec"><h4 class="lbl">Writing</h4><div class="mlist">${row("notebook", "✎", "Notes", getNotebook().length)}${row("pad", "✐", "Scratch pad", `${pages} page${pages === 1 ? "" : "s"}`)}${row("notes", "¶", "Word notes", Object.keys(getNotes()).length)}</div></section>`;
-  const progress = `<section class="msec"><h4 class="lbl">Progress</h4><div class="mlist">${row("stats", "▤", "Stats", `${wk.toLocaleString()} learnt this week`)}${row("ach", "◎", "Achievements", "")}</div></section>`;
+  const writing = `<section class="msec"><h4 class="lbl">Writing</h4><div class="mlist">${row("notebook", "✎", "Notes", nbNotes().length)}${row("pad", "✐", "Scratch pad", `${pages} page${pages === 1 ? "" : "s"}`)}${row("notes", "¶", "Word notes", Object.keys(getNotes()).length)}</div></section>`;
+  // a summary at the top, in colour: today against the goal, this week, the days in a row and everything learnt,
+  // then the badges got (or the next ones to get); each opens Stats or Achievements
+  let lwk = 0; for (let i = 7; i < 14; i++) { const d = new Date(today); d.setDate(d.getDate() - i); lwk += days[dayKey(d)]?.l || 0; }
+  const { total, streak, best, B } = statsCore(days), done = days[dayKey()]?.c || 0, goal = SET.dayGoal || 30;
+  const got = B.filter(b => b[3]), medals = got.length ? got.slice(-5).reverse() : B.slice(0, 4);
+  const tile = (cls, href, big, t, s, ic) => `<a class="msum ${cls}" href="#mine/${href}"><span class="msic" aria-hidden="true">${ic}</span><b>${big}</b><span>${t}</span>${s ? `<small>${s}</small>` : ""}</a>`;
+  const summary = `<section class="msec msumw"><h4 class="lbl">Progress<a href="#mine/stats">Stats ›</a></h4><div class="msums">
+      ${tile("today", "stats", `<span class="lring ${done >= goal ? "full" : ""}" style="--p:${Math.min(100, Math.round(done / goal * 100))}"><i>${done >= goal ? "✓" : done}</i></span>`, "answers today", done >= goal ? "goal done" : `goal ${goal}`, "")}
+      ${tile("week", "stats", wk.toLocaleString(), "learnt this week", lwk ? (wk >= lwk ? `${upIc} ${wk - lwk} on last week` : `${downIc} ${lwk - wk} under last week`) : "", trophyIc)}
+      ${tile("streak", "ach", streak, `day${streak === 1 ? "" : "s"} in a row`, `best ${best}`, streakIc)}
+      ${tile("total", "stats", total.toLocaleString(), "learnt in all", "", starIc)}</div>
+    <a class="mbadges" href="#mine/ach"><span class="stbadges">${medals.map(([g, t, m, on]) => `<span class="stb ${on ? m : "lock"}" title="${esc(t)}${on ? "" : " (not yet)"}"><i><span>${g}</span></i></span>`).join("")}</span>
+      <span class="mbt"><b>${got.length ? `${got.length} of ${B.length} badges` : "Badges to get"}</b><span class="small">${got.length ? "Your latest" : "The first ones"} · Achievements ›</span></span></a></section>`;
   $("#view").innerHTML = `<div><h3 class="title">My words</h3><p class="sub">${typeof SYNC !== "undefined" && SYNC.user ? "Synced to your account." : "Saved in this browser."}</p></div>
-    <div class="mhome"><div class="mcol">${folders}${phone() ? saved + writing : progress}</div><div class="mcol">${phone() ? progress : saved + writing}</div></div>`;
+    ${summary}
+    <div class="mhome"><div class="mcol">${folders}</div><div class="mcol">${saved + writing}</div></div>`;
+}
+// what Stats, Achievements and the My words home share: each length learnt, records, and the badges
+function statsCore(days = studyDays()) {
+  const ks = Object.keys(days).sort();
+  // every length: how much is learnt (crossed off)
+  const LENS = [["twos", 2], ["threes", 3], ["fours", 4], ["fives", 5], ["sixes", 6], ["sevens", 7], ["eights", 8]];
+  const lens = LENS.map(([id, n]) => { const g = groupOf(id), [k, all] = listPct(g || { id, test: w => w.length === n }); return { id, n, k, all, p: pctOf([k, all]), link: !!g }; });
+  const total = lens.reduce((a, x) => a + x.k, 0);
+  // best streak ever, from the log
+  let best = 0, run = 0, prev = null;
+  for (const k of ks) { if (!(days[k].c || days[k].l)) { run = 0; prev = k; continue; } const d = new Date(k + "T12:00"); if (prev) { const p = new Date(prev + "T12:00"); run = (d - p) / 864e5 <= 1.01 && run ? run + 1 : 1; } else run = 1; best = Math.max(best, run); prev = k; }
+  const streak = dayStreak(days), recs = getRecs(), bestDay = Math.max(0, ...Object.values(days).map(d => d.l || 0));
+  const lp = id => pctOf(listPct(groupOf(id)));
+  let week7 = 0; for (let i = 0; i < ks.length; i++) { let t = 0; const end = new Date(ks[i] + "T12:00"); for (let n = 0; n < 7; n++) { const d = new Date(end); d.setDate(d.getDate() - n); t += days[dayKey(d)]?.l || 0; } week7 = Math.max(week7, t); }
+  // badges: a medal for each, gold, silver or bronze; the ones still to get are outlines
+  const B = [["2s", "All the 2s", "gold", lp("twos") === 100], ["100", "100 words learnt", "bronze", total >= 100], ["1K", "1,000 words learnt", "silver", total >= 1000], ["5K", "5,000 words learnt", "gold", total >= 5000],
+    ["7", "7 days in a row", "bronze", best >= 7], ["30", "30 days in a row", "gold", best >= 30], ["Q", "All Q without U", "silver", lp("qnou") === 100], ["3s", "All the 3s", "gold", lp("threes") === 100],
+    ["JQXZ", "Every JQXZ 2s to 5s", "gold", lp("jqxzshort") === 100], ["25", "25 right in a row", "bronze", recs.run >= 25], ["100", "100 right in a row", "silver", recs.run >= 100], ["20", "A perfect quiz of 20+", "silver", recs.perfect >= 20],
+    ["1K", "1,000 learnt in a week", "gold", week7 >= 1000], ["4s", "All the 4s", "gold", lp("fours") === 100]];
+  return { lens, total, best, streak, recs, bestDay, B };
 }
 // ---------- Stats (My words): this week against last, every length's %, the next milestone and charts from the
 // day log. Achievements: records and badges ----------
@@ -2209,25 +2278,10 @@ function statsView(tab = "stats") {
   const hm = ms => { const m = Math.round(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; };
   const vs = (a, b, unit = "%") => !b ? (a ? `<em class="up">${upIc} new this week</em>` : `<em class="flat">nothing yet</em>`) : a === b ? `<em class="flat">same as last week</em>` : unit === "pts" ? `<em class="${a > b ? "up" : "down"}">${a > b ? upIc : downIc} ${Math.abs(a - b)} points on last week</em>` : `<em class="${a > b ? "up" : "down"}">${a > b ? upIc : downIc} ${Math.round(Math.abs(a - b) / b * 100)}% on last week</em>`;
   const big = [[wk.l.toLocaleString(), "learnt this week", vs(wk.l, lw.l)], [pctR(wk) == null ? "–" : pctR(wk) + "%", "right this week", pctR(wk) == null || pctR(lw) == null ? `<em class="flat">${wk.c ? "" : "no answers yet"}</em>` : vs(pctR(wk), pctR(lw), "pts")], [hm(wk.ms), "studied this week", vs(wk.ms, lw.ms)]];
-  // every length: how much is learnt (crossed off)
-  const LENS = [["twos", 2], ["threes", 3], ["fours", 4], ["fives", 5], ["sixes", 6], ["sevens", 7], ["eights", 8]];
-  const lens = LENS.map(([id, n]) => { const g = groupOf(id), [k, all] = listPct(g || { id, test: w => w.length === n }); return { id, n, k, all, p: pctOf([k, all]), link: !!g }; });
-  const total = lens.reduce((a, x) => a + x.k, 0);
-  // the next milestone: the quarter-mark (a quarter, half, three quarters, all) closest to done across the lengths
+  const { lens, total, best, streak, recs, bestDay, B } = statsCore(days);
   const marks = [[.25, "A quarter of"], [.5, "Half"], [.75, "Three quarters of"], [1, "All"]];
   const next = lens.filter(x => x.k < x.all).flatMap(x => marks.filter(([f]) => x.k < Math.ceil(x.all * f)).slice(0, 1).map(([f, t]) => ({ x, need: Math.ceil(x.all * f), t }))).sort((a, b) => (a.need - a.x.k) - (b.need - b.x.k))[0];
   const pace = wk.l / 7;
-  // best streak ever, from the log
-  let best = 0, run = 0; const ks = Object.keys(days).sort(); let prev = null;
-  for (const k of ks) { if (!(days[k].c || days[k].l)) { run = 0; prev = k; continue; } const d = new Date(k + "T12:00"); if (prev) { const p = new Date(prev + "T12:00"); run = (d - p) / 864e5 <= 1.01 && run ? run + 1 : 1; } else run = 1; best = Math.max(best, run); prev = k; }
-  const streak = dayStreak(days), recs = getRecs(), bestDay = Math.max(0, ...Object.values(days).map(d => d.l || 0));
-  const lp = id => pctOf(listPct(groupOf(id)));
-  let week7 = 0; for (let i = 0; i < ks.length; i++) { let t = 0; const end = new Date(ks[i] + "T12:00"); for (let n = 0; n < 7; n++) { const d = new Date(end); d.setDate(d.getDate() - n); t += days[dayKey(d)]?.l || 0; } week7 = Math.max(week7, t); }
-  // badges: a medal for each, gold, silver or bronze; the ones still to get are outlines
-  const B = [["2s", "All the 2s", "gold", lp("twos") === 100], ["100", "100 words learnt", "bronze", total >= 100], ["1K", "1,000 words learnt", "silver", total >= 1000], ["5K", "5,000 words learnt", "gold", total >= 5000],
-    ["7", "7 days in a row", "bronze", best >= 7], ["30", "30 days in a row", "gold", best >= 30], ["Q", "All Q without U", "silver", lp("qnou") === 100], ["3s", "All the 3s", "gold", lp("threes") === 100],
-    ["JQXZ", "Every JQXZ 2s to 5s", "gold", lp("jqxzshort") === 100], ["25", "25 right in a row", "bronze", recs.run >= 25], ["100", "100 right in a row", "silver", recs.run >= 100], ["20", "A perfect quiz of 20+", "silver", recs.perfect >= 20],
-    ["1K", "1,000 learnt in a week", "gold", week7 >= 1000], ["4s", "All the 4s", "gold", lp("fours") === 100]];
   const got = B.filter(b => b[3]).length;
   // the last two weeks, a bar a day (last week paler, today in the accent colour), and twelve weeks of study days
   const two = Array.from({ length: 14 }, (_, i) => { const n = 13 - i, d = new Date(today); d.setDate(d.getDate() - n); return { n, l: days[dayKey(d)]?.l || 0, day: "SMTWTFS"[d.getDay()] }; });
@@ -2262,6 +2316,8 @@ const svgIc = d => `<svg viewBox="0 0 24 24" class="sti">${d}</svg>`;
 const upIc = svgIc('<path d="M6 15l6-6 6 6"/>'), downIc = svgIc('<path d="M6 9l6 6 6-6"/>');
 const trophyIc = svgIc('<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M10 17h4"/>'), boltIc = svgIc('<path d="M13 3 5 14h6l-1 7 8-11h-6z"/>');
 const targetIc = svgIc('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/>'), starIc = svgIc('<path d="M12 4l2.4 5 5.4.6-4 3.7 1.1 5.4L12 16l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z"/>');
+// a folder, drawn like the other icons (the 📁 emoji looked out of place)
+const FOLDER_IC = '<svg viewBox="0 0 24 24" class="sti fic"><path d="M3 7.5a2 2 0 0 1 2-2h4.2l2 2.2H19a2 2 0 0 1 2 2v7.8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 10h18"/></svg>';
 const streakIc = svgIc('<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>');
 // ---------- folders: your own lists of words, opened like a word list and usable in Quiz and Practice. Crossing a
 // word off (✓, beside the star) marks it as one you know, wherever it shows; it stays in its folders ----------
@@ -2376,6 +2432,8 @@ function folderList() {
 // try-out: the new folders (inside folders, groups) or the old flat ones; both use the same folders
 const folderLookSwitch = () => `<div class="flook"><span class="small">Folders look</span><div class="seg"><button type="button" class="btn sm ${folderLook() === "new" ? "on" : ""}" data-flook="new">New</button><button type="button" class="btn sm ${folderLook() === "old" ? "on" : ""}" data-flook="old">Old</button></div></div>`;
 const wireLookSwitch = () => document.querySelectorAll("[data-flook]").forEach(b => b.onclick = () => { store.set("foldLook", b.dataset.flook); VIEWS.mine("folders"); });
+// the folder page's one list shows all its words, the ones to learn, or the crossed off (remembered)
+const FSHOW = [["all", "All", x => x.own.length], ["left", "To learn", x => x.left.length], ["done", "Crossed off", x => x.done.length]];
 let GRP = null, GMSG = null;   // the group being named ({ f, g, found }) or peeked at ({ peek }), and a word that ended a go
 function folderView(id) {
   const fs = getFolders(), f = fs.find(x => x.id === id);
@@ -2383,18 +2441,22 @@ function folderView(id) {
   const all = fWords(f, fs), own = f.smart ? smartWords(f) : f.words.filter(w => DICT.has(w)), K = fKnown(f), appK = new Set(getKnown());
   const kids = folderKids(id, fs), groups = f.groups || [], k = all.filter(w => K.has(w)).length, left = own.filter(w => !K.has(w)), done = own.filter(w => K.has(w));
   const path = []; for (let x = f.parent && fs.find(p => p.id === f.parent), n = 0; x && n < 20; x = x.parent && fs.find(p => p.id === x.parent), n++) path.unshift(x);
-  const toGo = all.filter(w => !K.has(w)).length;
+  const toGo = all.filter(w => !K.has(w)).length, show = store.get("fShow", "left");
   // the page shows only what the folder has; making, moving and adding are all under Edit
-  $("#view").innerHTML = `<div class="fhead2"><nav class="fpath"><a href="#mine/folders">Folders</a>${path.map(p => ` › <a href="#mine/f-${p.id}">${esc(p.name)}</a>`).join("")} › <b>${esc(f.name)}</b></nav><button class="btn sm" id="fEdit">Edit</button></div>
-    <h3 class="title ftitle2" style="--fc:${folderCol(f)}"><span class="fdot" aria-hidden="true"></span>${esc(f.name)}${f.smart ? ` <em class="ftag">Smart</em>` : ""}</h3>
+  // the same back button as the rest of My words: up to the folder it's in, or Folders; a deeper folder shows its path
+  const up = path.length ? path[path.length - 1] : null;
+  $("#view").innerHTML = `${mineHead(up ? "#mine/f-" + up.id : "#mine/folders", up ? up.name : "Folders",
+      `<span class="ftitle2" style="--fc:${folderCol(f)}"><span class="fdot" aria-hidden="true"></span>${esc(f.name)}${f.smart ? ` <em class="ftag">Smart</em>` : ""}</span>`,
+      `<button class="btn sm" id="fEdit">Edit</button>`,
+      path.length > 1 ? `<nav class="fpath small"><a href="#mine/folders">Folders</a>${path.map(p => ` › <a href="#mine/f-${p.id}">${esc(p.name)}</a>`).join("")}</nav>` : "")}
     ${all.length ? `<div class="fprog" style="--fc:${folderCol(f)}"><span class="fbar big"><i style="width:${k / all.length * 100}%"></i></span>
       <p class="small">${k.toLocaleString()} of ${all.length.toLocaleString()} learnt${kids.length ? `, in ${kids.length} folder${kids.length === 1 ? "" : "s"}${own.length ? ` and ${own.length} word${own.length === 1 ? "" : "s"} here` : ""}` : ""}${f.own ? ` · crossed off in this folder only (whole app: ${all.filter(w => appK.has(w)).length.toLocaleString()})` : ""}</p></div>` : ""}
     ${f.smart ? `<p class="small fsmart">Smart folder: the words of the search <b>${esc(searchName({ ...SEARCH_DEFAULT, ...f.smart }))}</b>. It updates itself. <button class="btn sm" id="fSearch">Open the search</button></p>` : ""}
     ${all.length ? `<button class="btn primary fgo" id="fPlay">${toGo ? `Practise the ${toGo.toLocaleString()} to go` : "Practise them all"}</button>` : ""}
     ${kids.length ? `<section class="fsec"><h4 class="lbl">Folders inside<em>${kids.length}</em></h4><div class="flist2">${kids.map(x => folderCard(x)).join("")}</div></section>` : ""}
     ${groups.length ? `<section class="fsec"><h4 class="lbl">Groups<em>${groups.filter(g => g.done).length} of ${groups.length} learnt</em></h4><div class="fgroups">${groups.map(g => groupHTML(f, g)).join("")}</div></section>` : ""}
-    ${own.length ? `<section class="fsec"><h4 class="lbl">To learn<em>${left.length.toLocaleString()}</em></h4><div class="card" id="mres"></div></section>
-      ${done.length ? `<details class="fsec fdone"${left.length ? "" : " open"}><summary class="lbl">Crossed off<em>${done.length.toLocaleString()}</em></summary><div class="card" id="mdone"></div></details>` : ""}`
+    ${own.length ? `<section class="fsec"><div class="fshow"><h4 class="lbl">Words<em>${own.length.toLocaleString()}</em></h4><div class="seg" role="group" aria-label="Show">${FSHOW.map(([k, t, n]) => `<button type="button" class="btn sm ${show === k ? "on" : ""}" data-fshow="${k}">${t} <em>${n({ own, left, done }).toLocaleString()}</em></button>`).join("")}</div></div>
+      <div class="card" id="mres"></div></section>`
       : kids.length || groups.length || f.smart ? "" : `<p class="empty">This folder is empty. Press Edit to add words, a folder inside it, or a group.</p>`}
     ${folderLookSwitch()}`;
   wireLookSwitch();
@@ -2405,10 +2467,12 @@ function folderView(id) {
       else words.filter(w => c.has(w) === allOn).forEach(toggleKnown);
       folderView(id); },
     remove: f.smart ? null : words => { const out = new Set(words); saveFolder(id, { words: folderById(id).words.filter(w => !out.has(w)) }); folderView(id); } };
-  if (own.length) { if (left.length) results($("#mres"), left, opts); else $("#mres").innerHTML = `<p class="empty">All crossed off.</p>`; }
-  if (done.length) results($("#mdone"), done, opts);
+  // one list: all the words (crossed-off ones struck through where they are), the ones to learn, or the crossed off
+  if (own.length) { const ws = show === "all" ? own : show === "done" ? done : left;
+    if (ws.length) results($("#mres"), ws, opts); else $("#mres").innerHTML = `<p class="empty">${show === "done" ? "Nothing crossed off yet." : "All crossed off."}</p>`; }
+  document.querySelectorAll("[data-fshow]").forEach(b => b.onclick = () => { store.set("fShow", b.dataset.fshow); folderView(id); });
   // with This folder only, the ✓ on a row crosses it off here, not in the whole app
-  if (f.own) [$("#mres"), $("#mdone")].filter(Boolean).forEach(box => box.addEventListener("click", ev => {
+  if (f.own) [$("#mres")].filter(Boolean).forEach(box => box.addEventListener("click", ev => {
     const b = ev.target.closest("[data-known]"); if (!b) return;
     ev.preventDefault(); ev.stopPropagation();
     const w = b.dataset.known, x = folderById(id), c = new Set(x.crossed || []), on = !c.has(w);
@@ -2439,7 +2503,7 @@ function folderEdit(id, open = "") {
         ${f.smart ? "" : `<button type="button" class="mrow" data-feopen="words"><span class="mic">+</span><span class="mt">Add words</span><span class="mch">›</span></button>
         <div class="fefrm" data-fe="words" ${open === "words" ? "" : "hidden"}><textarea id="fWords" class="ftext" spellcheck="false" autocapitalize="characters" placeholder="Paste or type words: one a line, or with commas or spaces"></textarea>
           <div class="row"><button class="btn primary sm" id="fSave">Add them</button><span class="small" id="fMsg"></span></div><p class="small" style="margin:0">To take words out, press Select on the list, pick them, then Remove.</p></div>
-        <button type="button" class="mrow" data-feopen="kid"><span class="mic">📁</span><span class="mt">A folder inside it</span><span class="mch">›</span></button>
+        <button type="button" class="mrow" data-feopen="kid"><span class="mic">${FOLDER_IC}</span><span class="mt">A folder inside it</span><span class="mch">›</span></button>
         <div class="fefrm row" data-fe="kid" ${open === "kid" ? "" : "hidden"}><input class="arack" id="fKidName" placeholder="Folder name" maxlength="40" style="text-transform:none;flex:1;min-width:0"><button class="btn primary sm" id="fKidGo">Make it</button></div>`}
         <button type="button" class="mrow" data-feopen="grp"><span class="mic">▦</span><span class="mt">A group</span><span class="mch">›</span></button>
         <div class="fefrm" data-fe="grp" ${open === "grp" ? "" : "hidden"}><p class="small" style="margin:0">A set you learn together, stamped Learnt once you can name every word in it in one go.</p>
@@ -2540,33 +2604,63 @@ function folderSheet(words, pick) {
   });
   $("#fsNew").onclick = () => { const f = newFolder($("#fsName").value.trim(), words); $("#fsMsg").textContent = `Made ${f.name} with ${f.words.length.toLocaleString()} word${f.words.length === 1 ? "" : "s"}.`; setTimeout(() => { folderSheet(words, pick); $("#fsMsg").textContent = `Made ${f.name}.`; }, 0); };
 }
-// your own notes: as many as you like, each a title and some text, saved as you type (and synced when signed in)
+// your own notes: as many as you like, each a title and some text, saved as you type (and synced when signed in).
+// The Notes page shows them as cards in folders, and each opens on its own page. Folders live in the same list as
+// the notes (kind "folder"), so they sync the same way; a note or folder's fold is the folder it's in
 const getNotebook = () => store.get("notebook", []);
+const nbNotes = () => getNotebook().filter(n => n.kind !== "folder");
+const nbFolders = () => getNotebook().filter(n => n.kind === "folder");
+const nbNew = extra => ({ id: Date.now().toString(36) + rnd(1e6).toString(36), at: Date.now(), ...extra });
+const nbSave = (id, patch) => store.set("notebook", getNotebook().map(n => n.id === id ? { ...n, ...patch, at: Date.now() } : n));
 const edited = t => { const s = (Date.now() - t) / 1000; return s < 60 ? "just now" : s < 3600 ? Math.round(s / 60) + " min ago" : s < 86400 ? Math.round(s / 3600) + " h ago" : new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short" }); };
-function notebook() {
-  const list = getNotebook();
-  $("#mres").innerHTML = `<div class="row" style="margin-bottom:12px"><button class="btn primary" id="nbNew">+ New note</button></div>
-    ${list.length ? `<div class="nbook">${list.map(n => `<div class="nbnote" data-nb="${n.id}">
-      <input class="nbtitle" value="${esc(n.title)}" placeholder="Title" aria-label="Note title">
-      <textarea class="nbbody" placeholder="Write anything…" aria-label="Note">${esc(n.body)}</textarea>
-      <div class="nbfoot"><span class="small">Edited ${edited(n.at)}</span><button class="btn sm" data-nbdel="${n.id}">Delete</button></div></div>`).join("")}</div>`
-    : `<p class="empty">No notes yet. Press + New note to start one.</p>`}`;
-  const grow = t => { t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; };
+// where a note or folder's back button goes: the folder it's in (if that's still there), or Notes
+function nbBack(x) { const p = x.fold && nbFolders().find(f => f.id === x.fold); return p ? ["#mine/nf-" + p.id, p.name || "Folder"] : ["#mine/notebook", "Notes"]; }
+// everything in a folder and the folders inside it, for its count
+const nbCount = (id, all = getNotebook(), seen = new Set()) => seen.has(id) ? 0 : (seen.add(id), all.filter(n => n.fold === id).reduce((t, n) => t + (n.kind === "folder" ? nbCount(n.id, all, seen) : 1), 0));
+function notebook(tab = "notebook") {
+  if (tab.startsWith("n-")) return noteView(tab.slice(2));
+  const all = getNotebook(), here = tab.startsWith("nf-") ? all.find(n => n.id === tab.slice(3) && n.kind === "folder") : null;
+  if (tab.startsWith("nf-") && !here) { location.replace("#mine/notebook"); return; }
+  const id = here?.id || "", has = new Set(all.filter(n => n.kind === "folder").map(f => f.id));
+  // (a note whose folder has gone shows at the top)
+  const inHere = all.filter(n => id ? n.fold === id : !n.fold || !has.has(n.fold));
+  const fs = inHere.filter(n => n.kind === "folder").sort((a, b) => (a.name || "").localeCompare(b.name || "")), ns = inHere.filter(n => n.kind !== "folder");
+  const back = here ? nbBack(here) : ["#mine", "My words"];
+  const first = t => esc((t || "").trim().split("\n").find(Boolean) || "");
+  $("#view").innerHTML = `${mineHead(back[0], back[1], here ? `<span class="nbfic" aria-hidden="true">${FOLDER_IC}</span>${esc(here.name || "Folder")}` : "Notes",
+      `<div class="mhdr"><button class="btn sm" id="nbNewF">+ Folder</button><button class="btn sm primary" id="nbNew">+ Note</button></div>`)}
+    ${fs.length ? `<div class="nbfolds">${fs.map(f => { const c = nbCount(f.id, all); return `<a class="nbfold" href="#mine/nf-${f.id}"><span class="nbfic" aria-hidden="true">${FOLDER_IC}</span><b>${esc(f.name || "Folder")}</b><span class="small">${c} note${c === 1 ? "" : "s"}</span></a>`; }).join("")}</div>` : ""}
+    ${ns.length ? `<div class="nbcards">${ns.map(n => `<a class="nbcard" href="#mine/n-${n.id}"><b>${esc(n.title || "") || first(n.body) || "Untitled"}</b>
+      <span class="nbprev">${esc((n.title ? n.body || "" : (n.body || "").trim().split("\n").slice(1).join("\n")).slice(0, 220))}</span><span class="small">${edited(n.at)}</span></a>`).join("")}</div>`
+      : fs.length ? "" : `<p class="empty">${here ? "Nothing in this folder yet. Press + Note to write one here." : "No notes yet. Press + Note to start one, or + Folder to sort them."}</p>`}
+    ${here ? `<div class="nbfedit"><input class="arack" id="nbFName" value="${esc(here.name || "")}" maxlength="40" aria-label="Folder name" style="text-transform:none"><button class="btn sm" id="nbFDel">Delete folder</button><span class="small">Its notes move up a level.</span></div>` : ""}`;
+  $("#nbNew").onclick = () => { const n = nbNew({ title: "", body: "", fold: id || undefined }); store.set("notebook", [n, ...getNotebook()]); location.hash = "mine/n-" + n.id; };
+  $("#nbNewF").onclick = () => { const f = nbNew({ kind: "folder", name: "New folder", fold: id || undefined }); store.set("notebook", [f, ...getNotebook()]); location.hash = "mine/nf-" + f.id; setTimeout(() => $("#nbFName")?.select(), 0); };
+  if (here) {
+    $("#nbFName").onchange = () => { nbSave(id, { name: $("#nbFName").value.trim() || "Folder" }); notebook(tab); };
+    confirmBtn($("#nbFDel"), () => { store.set("notebook", getNotebook().filter(n => n.id !== id).map(n => n.fold === id ? { ...n, fold: here.fold, at: Date.now() } : n)); location.hash = back[0].slice(1); });
+  }
+}
+// one note on its own page: its title, its text (which grows as you write), which folder it's in, and Delete
+function noteView(id) {
+  const n = getNotebook().find(x => x.id === id && x.kind !== "folder");
+  if (!n) { location.replace("#mine/notebook"); return; }
+  const back = nbBack(n), fs = nbFolders();
+  $("#view").innerHTML = `${mineHead(back[0], back[1], `<input class="nbtitle" id="nbTitle" value="${esc(n.title || "")}" placeholder="Title" aria-label="Note title">`, `<button class="btn sm" id="nbDel">Delete</button>`)}
+    <div class="nbnote nbone"><textarea class="nbbody" id="nbBody" placeholder="Write anything…" aria-label="Note">${esc(n.body || "")}</textarea></div>
+    <div class="nbfoot"><span class="small" id="nbAt">Edited ${edited(n.at)}</span>
+      ${fs.length ? `<label class="small nbmove">In <select id="nbFold"><option value="">Notes (top)</option>${fs.map(f => `<option value="${f.id}" ${n.fold === f.id ? "selected" : ""}>${esc(f.name || "Folder")}</option>`).join("")}</select></label>` : ""}</div>`;
+  const t = $("#nbBody"), grow = () => { t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; };
+  grow();
   let timer = 0;
-  const saveNote = el => { clearTimeout(timer); timer = setTimeout(() => {
-    const id = el.dataset.nb, all = getNotebook(), n = all.find(x => x.id === id); if (!n) return;
-    n.title = el.querySelector(".nbtitle").value; n.body = el.querySelector(".nbbody").value; n.at = Date.now();
-    store.set("notebook", all); el.querySelector(".nbfoot .small").textContent = "Edited just now";
-  }, 400); };
-  $("#mres").querySelectorAll(".nbnote").forEach(el => {
-    const t = el.querySelector(".nbbody"); grow(t);
-    el.addEventListener("input", ev => { if (ev.target === t) grow(t); saveNote(el); });
-  });
-  $("#nbNew").onclick = () => {
-    const n = { id: Date.now().toString(36) + rnd(1e6).toString(36), title: "", body: "", at: Date.now() };
-    store.set("notebook", [n, ...getNotebook()]); VIEWS.mine("notebook"); $(".nbnote .nbtitle")?.focus();
-  };
-  $("#mres").querySelectorAll("[data-nbdel]").forEach(b => confirmBtn(b, () => { store.set("notebook", getNotebook().filter(x => x.id !== b.dataset.nbdel)); VIEWS.mine("notebook"); }));
+  const save = () => { clearTimeout(timer); timer = setTimeout(() => { nbSave(id, { title: $("#nbTitle").value, body: t.value }); $("#nbAt").textContent = "Edited just now"; }, 400); };
+  t.oninput = () => { grow(); save(); }; $("#nbTitle").oninput = save;
+  // leaving straight after typing still keeps it
+  t.onblur = $("#nbTitle").onblur = () => { clearTimeout(timer); nbSave(id, { title: $("#nbTitle").value, body: t.value }); };
+  $("#nbTitle").onkeydown = ev => { if (ev.key === "Enter") { ev.preventDefault(); t.focus(); } };
+  if (!n.title && !n.body) $("#nbTitle").focus();
+  $("#nbFold")?.addEventListener("change", ev => { nbSave(id, { fold: ev.target.value || undefined }); noteView(id); });
+  confirmBtn($("#nbDel"), () => { clearTimeout(timer); store.set("notebook", getNotebook().filter(x => x.id !== id)); location.hash = back[0].slice(1); });
 }
 // two-press confirmation for destructive buttons
 function confirmBtn(el, fn) {

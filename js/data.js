@@ -494,7 +494,9 @@ function results(el, words, opts = {}) {
   // range = which ranks to show, counted in the current sort order (e.g. 1–100 or 30–50); the rows shown are numbered from 1
   const mem = resMem[location.hash + ":" + words.length] ||= {};
   const lens = [...new Set(words.map(w => w.length))].sort((a, b) => a - b);
-  const st = { sel: null, lens: new Set((mem.lens || (opts.len ? [opts.len] : [])).filter(n => lens.includes(n) && lens.length > 1)), page: mem.page || 0, from: +(opts.range?.from ?? mem.from) || 0, to: +(opts.range?.to ?? mem.to) || 0 };
+  // lenMem: the lists of one family share their length chips, so switching J to Q keeps 4 letters picked
+  const lm = opts.lenMem ? (resMem["len:" + opts.lenMem] ||= {}) : mem;
+  const st = { sel: null, lens: new Set((lm.lens || (opts.len ? [opts.len] : [])).filter(n => lens.includes(n) && lens.length > 1)), page: mem.page || 0, from: +(opts.range?.from ?? mem.from) || 0, to: +(opts.range?.to ?? mem.to) || 0 };
   let first = true, shownList = [];
   function draw() {
     // "? letter" sorts by what the ? stands for (A to Z, then by probability); it's offered only when results have one
@@ -547,7 +549,7 @@ function results(el, words, opts = {}) {
     // length chips: tap several to see them together; All lengths clears them
     el.querySelectorAll("[data-len]").forEach(b => b.onclick = () => {
       const n = +b.dataset.len; if (!n) st.lens.clear(); else st.lens.has(n) ? st.lens.delete(n) : st.lens.add(n);
-      st.page = mem.page = 0; mem.lens = [...st.lens]; draw();
+      st.page = mem.page = 0; lm.lens = [...st.lens]; draw();
     });
     const setRange = (from, to) => {
       from = Math.max(0, parseInt(from) || 0); to = Math.max(0, parseInt(to) || 0);
