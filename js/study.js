@@ -518,7 +518,7 @@ function doSearch() {
     const swap = s.rack && s.mode === "swap" ? s.rack.toUpperCase().replace(/[^A-Z]/g, "") : "";
     const sa = new Set(swap ? soundAlikes(swap) : []);
     const groups = swap ? { by: w => r.masks.get(w).indexOf("up"), name: (i, ws) => `${swap.slice(0, i)}?${swap.slice(i + 1)}${ws.some(w => sa.has(w)) ? ` <span class="badge">sounds alike</span>` : ""}` } : null;
-    results(box, r.words, { masks: r.masks, groups, len: onlyGroup ? g.len : 0, range: { from: s.from, to: s.to, save: (from, to) => { searchState.from = from; searchState.to = to; store.set("search", searchState); } } });
+    results(box, r.words, { masks: r.masks, groups, len: onlyGroup ? g.len : 0, lenMem: "search:" + searchTabOn, range: { from: s.from, to: s.to, save: (from, to) => { searchState.from = from; searchState.to = to; store.set("search", searchState); } } });
     smartSave(box);
   }, 10);
 }
@@ -635,7 +635,7 @@ function listView(g, o = {}) {
   }
   $("#toSearch")?.addEventListener("click", ev => { ev.preventDefault(); searchInNewTab({ group: g.id }); location.hash = "search"; });
   // the lengths picked in the list below (kept per list, or across a family's lists)
-  const picked = () => { const m = o.lenMem ? resMem["len:" + o.lenMem] : resMem[location.hash + ":" + groupWords(g).length]; return m?.lens; };
+  const picked = () => resMem["len:" + (o.lenMem || location.hash)]?.lens;
   $("#lPlay")?.addEventListener("click", () => playList(g, undefined, picked()));
   $("#lQuiz")?.addEventListener("click", () => quizList(g, picked()));
   o.wire?.();
@@ -891,6 +891,12 @@ if (!Array.isArray(quizSetup.lens)) {
 // the quiz in progress is kept in storage, so leaving the tab or reloading carries on where it was
 let Q = store.get("quiz", null);
 const saveQ = () => store.set("quiz", Q);
+// the lengths for another list in Practice or Quiz: lengths you picked yourself stay; if they were just the old
+// list's usual length (or none), the new list's usual length comes in
+function nextLens(cur, was, to) {
+  const c = String(cur || ""), def = was?.len ? String(was.len) : "";
+  return c === def || (!c && !was) ? (to?.len ? String(to.len) : "") : c;
+}
 function quizSources() {
   return [["stars", `Starred words (${getStars().length})`], ["missed", `Missed words (${store.get("missed", []).length})`], ["last", `Last search results (${lastResults.length})`]];
 }
@@ -980,7 +986,8 @@ VIEWS.quiz = () => {
   // live count of the words the chosen options give
   const count = () => { const n = new Set(sourceWords(quizSetup.source).filter(w => DICT.has(w))).size; $("#qmsg").textContent = `${n.toLocaleString()} word${n === 1 ? "" : "s"} to draw from`; };
   // picking a list picks its usual length too
-  $("#qsrc").onchange = e => { quizSetup.source = e.target.value; const g = groupOf(e.target.value.replace("list:", "")); quizSetup.lens = g?.len ? [g.len] : []; store.set("quizSetup", quizSetup); VIEWS.quiz(); };
+  $("#qsrc").onchange = e => { const was = groupOf(quizSetup.source.replace("list:", "")), g = groupOf(e.target.value.replace("list:", ""));
+    quizSetup.source = e.target.value; quizSetup.lens = lensOf(nextLens(quizSetup.lens.join(","), was, g)); store.set("quizSetup", quizSetup); VIEWS.quiz(); };
   // type any number of questions, or pick one of the usual ones
   const setCount = n => { n = Math.min(500, Math.max(1, parseInt(n) || 20)); saveSettings({ qcount: n }); $("#qcount").value = n; $("#view").querySelectorAll("[data-qn]").forEach(b => b.classList.toggle("on", +b.dataset.qn === n)); };
   $("#qcount")?.addEventListener("change", e => setCount(e.target.value));
@@ -1599,8 +1606,8 @@ VIEWS.practice = () => {
     // while typing, save and refresh the counts without redrawing, so the box and a phone's keyboard stay put
     const soft = () => { clearTimeout(timer); poSoft = null; if (!$("#pOpts")) return; saveSettings({ practice: gather() }); poDirty = true; const po = practiceOpts(), p = practicePool(po); $("#pOpts summary").textContent = `More options · ${p.length.toLocaleString()} words in play`; paintGo(p, po); };
     $("#pOpts").querySelectorAll("input:not([type=checkbox])").forEach(i => { if (!i.closest(".likely")) i.addEventListener("input", () => { clearTimeout(timer); poSoft = soft; timer = setTimeout(soft, 350); }); });
-    // picking a list picks its usual length too
-    $("#po_src").onchange = () => { const v = $("#po_src").value; if (v === "my:last") keepLast(); if (v) $("#po_lens").value = v.startsWith("g:") ? groupOf(v.slice(2))?.len || "" : ""; read(); }; $("#po_lens").onchange = read;
+    // picking a list picks its usual length too, unless you picked lengths yourself (see nextLens)
+    $("#po_src").onchange = () => { const v = $("#po_src").value; if (v === "my:last") keepLast(); if (v) $("#po_lens").value = nextLens($("#po_lens").value, o.src.startsWith("g:") ? groupOf(o.src.slice(2)) : null, v.startsWith("g:") ? groupOf(v.slice(2)) : null); read(); }; $("#po_lens").onchange = read;
     $("#pOpts").querySelectorAll("input").forEach(i => i.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); read(); } });
     $("#pOpts .likely").addEventListener("likely", read); paintLikely($("#pOpts .likely"));
     $("#po_by").onchange = $("#po_lax").onchange = read;
@@ -2215,7 +2222,7 @@ VIEWS.mine = (tab) => {
   if (tab === "notes") {
     if (!words.length) $("#mres").innerHTML = `<p class="empty">Write notes on any word page and it shows up here.</p>`;
     else pagedList($("#mres"), words, w => `<div class="r nrow" data-go="${w}"><span class="wl">${w}</span><span class="d">${esc(notes[w])}</span></div>`, `<div class="toolbar"><span class="count">${words.length.toLocaleString()} word${words.length === 1 ? "" : "s"} with notes</span></div>`);
-  } else if (words.length) results($("#mres"), words);
+  } else if (words.length) results($("#mres"), words, { memKey: location.hash });
   else $("#mres").innerHTML = `<p class="empty">${tab === "stars" ? "Press ☆ Star on a word, or Star all on any list." : "Nothing here yet."}</p>`;
   $("#copyList")?.addEventListener("click", () => navigator.clipboard?.writeText(getStars().join("\n")).then(() => $("#msg").textContent = "Copied").catch(() => $("#msg").textContent = "Copy blocked by the browser"));
   confirmBtn($("#clearStars"), () => { store.set("stars", []); VIEWS.mine("stars"); });
@@ -2371,7 +2378,7 @@ function folderViewOld(id) {
       <textarea id="fWords" class="ftext" spellcheck="false" autocapitalize="characters">${f.words.join("\n")}</textarea>
       <div class="row" style="margin-top:8px"><button class="btn primary" id="fSave">Save</button><button class="btn" id="fCancel">Cancel</button><span class="small bad" id="fMsg"></span></div></div>
     <div class="card fitscroll" id="mres"></div>`;
-  if (f.words.length) results($("#mres"), f.words.filter(w => DICT.has(w)));
+  if (f.words.length) results($("#mres"), f.words.filter(w => DICT.has(w)), { memKey: location.hash });
   else $("#mres").innerHTML = `<p class="empty">No words yet. Press Add or remove words, or use Add to folder on a word page or any list.</p>`;
   $("#fTitle").onchange = () => saveFolder(id, { name: $("#fTitle").value.trim() || "Folder" });
   // the edit box and what's typed in it stay until Save or Cancel, even if you leave the page
@@ -2469,7 +2476,7 @@ function folderView(id) {
     remove: f.smart ? null : words => { const out = new Set(words); saveFolder(id, { words: folderById(id).words.filter(w => !out.has(w)) }); folderView(id); } };
   // one list: all the words (crossed-off ones struck through where they are), the ones to learn, or the crossed off
   if (own.length) { const ws = show === "all" ? own : show === "done" ? done : left;
-    if (ws.length) results($("#mres"), ws, opts); else $("#mres").innerHTML = `<p class="empty">${show === "done" ? "Nothing crossed off yet." : "All crossed off."}</p>`; }
+    if (ws.length) results($("#mres"), ws, { ...opts, memKey: location.hash + ":" + show }); else $("#mres").innerHTML = `<p class="empty">${show === "done" ? "Nothing crossed off yet." : "All crossed off."}</p>`; }
   document.querySelectorAll("[data-fshow]").forEach(b => b.onclick = () => { store.set("fShow", b.dataset.fshow); folderView(id); });
   // with This folder only, the ✓ on a row crosses it off here, not in the whole app
   if (f.own) [$("#mres")].filter(Boolean).forEach(box => box.addEventListener("click", ev => {

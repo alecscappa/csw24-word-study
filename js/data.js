@@ -492,10 +492,13 @@ function pagedList(el, items, draw, head = "", wrap = "") {
 // Results component: toolbar (count, length chips, sort, toggles, actions) + rows + pages
 function results(el, words, opts = {}) {
   // range = which ranks to show, counted in the current sort order (e.g. 1–100 or 30–50); the rows shown are numbered from 1
-  const mem = resMem[location.hash + ":" + words.length] ||= {};
+  // the page is kept per list (memKey, or this page and how many words), so a new list starts on page 1; a list that
+  // changes as you use it (unstarring, crossing off) passes a memKey to stay on its page
+  const mem = resMem[opts.memKey || location.hash + ":" + words.length] ||= {};
   const lens = [...new Set(words.map(w => w.length))].sort((a, b) => a - b);
-  // lenMem: the lists of one family share their length chips, so switching J to Q keeps 4 letters picked
-  const lm = opts.lenMem ? (resMem["len:" + opts.lenMem] ||= {}) : mem;
+  // the lengths picked are kept for the page (or lenMem: a family's lists share them, as does a search tab), so they
+  // stay when the words change: J to Q keeps 4 letters, and so do a folder's To learn and Crossed off
+  const lm = resMem["len:" + (opts.lenMem || location.hash)] ||= {};
   const st = { sel: null, lens: new Set((lm.lens || (opts.len ? [opts.len] : [])).filter(n => lens.includes(n) && lens.length > 1)), page: mem.page || 0, from: +(opts.range?.from ?? mem.from) || 0, to: +(opts.range?.to ?? mem.to) || 0 };
   let first = true, shownList = [];
   function draw() {
