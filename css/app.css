@@ -1162,7 +1162,8 @@ main.wrap:has(> .foc) { max-width: 1400px; }
 .nbfic .fic { width: 20px; height: 20px; color: var(--accent); vertical-align: -3px; }
 .nbfolds { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; margin: 10px 0 12px; }
 .nbfold { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); text-decoration: none; min-width: 0; }
-.nbfold:hover { border-color: var(--accent); } .nbfold b { flex: 1; font: 700 .95rem var(--display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nbfold:hover { border-color: var(--accent); } .nbfold b { flex: 1; font: 700 .95rem var(--display); min-width: 0; overflow-wrap: anywhere; }
+.nbfold .small { white-space: nowrap; margin: 0; }
 .nbcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-top: 10px; }
 .nbcard { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); text-decoration: none; min-height: 110px; min-width: 0; }
 .nbcard:hover { border-color: var(--accent); }
@@ -1171,6 +1172,16 @@ main.wrap:has(> .foc) { max-width: 1400px; }
 .nbcard .small { margin: 0; }
 .nbone { margin: 10px 0 8px; padding: 14px 16px; } .nbone .nbbody { min-height: 40vh; }
 .nbmove { display: flex; align-items: center; gap: 6px; margin: 0; }
+.nbhint { margin: 6px 0 0; }
+.nbfold, .nbcard { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+.nbhold { outline: 2px solid var(--accent); outline-offset: 2px; }
+.nbdragging { opacity: .35; }
+.nbghost { position: fixed; z-index: 50; pointer-events: none; margin: 0; box-shadow: 0 14px 30px -10px rgb(0 0 0 / .45); opacity: .95; }
+.nbover { border-color: var(--accent) !important; background: color-mix(in srgb, var(--accent) 14%, var(--panel)) !important; outline: 2px solid var(--accent); }
+.nbpick { display: flex; flex-direction: column; max-height: 50vh; overflow: auto; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; }
+.nbprow { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-top: 1px solid var(--line); cursor: pointer; }
+.nbprow:first-child { border-top: 0; } .nbprow input { margin-top: 4px; }
+.nbprow > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; } .nbprow b { font: 700 .95rem var(--display); } .nbprow .small { margin: 0; }
 .nbfedit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line); }
 .nbfedit .arack { flex: 0 1 240px; min-width: 0; }
 /* Scratch pad */

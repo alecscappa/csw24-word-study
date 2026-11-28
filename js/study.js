@@ -2633,21 +2633,88 @@ function notebook(tab = "notebook") {
   const inHere = all.filter(n => id ? n.fold === id : !n.fold || !has.has(n.fold));
   const fs = inHere.filter(n => n.kind === "folder").sort((a, b) => (a.name || "").localeCompare(b.name || "")), ns = inHere.filter(n => n.kind !== "folder");
   const back = here ? nbBack(here) : ["#mine", "My words"];
+  // notes kept anywhere else, for + Add notes
+  const others = here ? all.filter(n => n.kind !== "folder" && n.fold !== id) : [];
   const first = t => esc((t || "").trim().split("\n").find(Boolean) || "");
   $("#view").innerHTML = `${mineHead(back[0], back[1], here ? `<span class="nbfic" aria-hidden="true">${FOLDER_IC}</span>${esc(here.name || "Folder")}` : "Notes",
-      `<div class="mhdr"><button class="btn sm" id="nbNewF">+ Folder</button><button class="btn sm primary" id="nbNew">+ Note</button></div>`)}
-    ${fs.length ? `<div class="nbfolds">${fs.map(f => { const c = nbCount(f.id, all); return `<a class="nbfold" href="#mine/nf-${f.id}"><span class="nbfic" aria-hidden="true">${FOLDER_IC}</span><b>${esc(f.name || "Folder")}</b><span class="small">${c} note${c === 1 ? "" : "s"}</span></a>`; }).join("")}</div>` : ""}
-    ${ns.length ? `<div class="nbcards">${ns.map(n => `<a class="nbcard" href="#mine/n-${n.id}"><b>${esc(n.title || "") || first(n.body) || "Untitled"}</b>
+      `<div class="mhdr">${here && others.length ? `<button class="btn sm" id="nbAdd">+ Add notes</button>` : ""}<button class="btn sm" id="nbNewF">+ Folder</button><button class="btn sm primary" id="nbNew">+ Note</button></div>`)}
+    ${fs.length && (ns.length || here) ? `<p class="small nbhint">${phone() ? "Hold a note, then drag it" : "Drag a note"} onto a folder to move it${here ? ", or onto ‹ " + esc(back[1]) + " to move it up" : ""}.</p>` : here && ns.length ? `<p class="small nbhint">${phone() ? "Hold a note, then drag it" : "Drag a note"} onto ‹ ${esc(back[1])} to move it up.</p>` : ""}
+    ${fs.length ? `<div class="nbfolds">${fs.map(f => { const c = nbCount(f.id, all); return `<a class="nbfold" href="#mine/nf-${f.id}" draggable="false" data-nbid="${f.id}" data-nbdrop="${f.id}"><span class="nbfic" aria-hidden="true">${FOLDER_IC}</span><b>${esc(f.name || "Folder")}</b><span class="small">${c} note${c === 1 ? "" : "s"}</span></a>`; }).join("")}</div>` : ""}
+    ${ns.length ? `<div class="nbcards">${ns.map(n => `<a class="nbcard" href="#mine/n-${n.id}" draggable="false" data-nbid="${n.id}"><b>${esc(n.title || "") || first(n.body) || "Untitled"}</b>
       <span class="nbprev">${esc((n.title ? n.body || "" : (n.body || "").trim().split("\n").slice(1).join("\n")).slice(0, 220))}</span><span class="small">${edited(n.at)}</span></a>`).join("")}</div>`
       : fs.length ? "" : `<p class="empty">${here ? "Nothing in this folder yet. Press + Note to write one here." : "No notes yet. Press + Note to start one, or + Folder to sort them."}</p>`}
+    ${here && others.length ? sheetHTML("nbAddSheet", `<h3>Add notes to ${esc(here.name || "this folder")}</h3><p class="small" style="margin:0 0 10px">Pick the notes to move here.</p>
+      <div class="nbpick">${others.map(n => { const f = n.fold && all.find(x => x.id === n.fold && x.kind === "folder");
+        return `<label class="nbprow"><input type="checkbox" value="${n.id}"><span><b>${esc(n.title || "") || first(n.body) || "Untitled"}</b><span class="small">${f ? "In " + esc(f.name || "Folder") : "In Notes"} · ${edited(n.at)}</span></span></label>`; }).join("")}</div>
+      <button class="btn primary block" id="nbAddGo" disabled>Move here</button>`) : ""}
     ${here ? `<div class="nbfedit"><input class="arack" id="nbFName" value="${esc(here.name || "")}" maxlength="40" aria-label="Folder name" style="text-transform:none"><button class="btn sm" id="nbFDel">Delete folder</button><span class="small">Its notes move up a level.</span></div>` : ""}`;
   $("#nbNew").onclick = () => { const n = nbNew({ title: "", body: "", fold: id || undefined }); store.set("notebook", [n, ...getNotebook()]); location.hash = "mine/n-" + n.id; };
   $("#nbNewF").onclick = () => { const f = nbNew({ kind: "folder", name: "New folder", fold: id || undefined }); store.set("notebook", [f, ...getNotebook()]); location.hash = "mine/nf-" + f.id; setTimeout(() => $("#nbFName")?.select(), 0); };
   if (here) {
+    // the back button takes a dropped note up a level
+    $(".mhd .bbk").dataset.nbdrop = here.fold && has.has(here.fold) ? here.fold : "top";
+    $("#nbAdd")?.addEventListener("click", () => sheet("nbAddSheet", true));
+    $("#nbAddSheet")?.querySelector(".scrim").addEventListener("click", () => sheet("nbAddSheet", false));
+    $("#nbAddSheet")?.addEventListener("change", () => { const n = $("#nbAddSheet").querySelectorAll("input:checked").length; $("#nbAddGo").disabled = !n; $("#nbAddGo").textContent = n ? `Move ${n} note${n === 1 ? "" : "s"} here` : "Move here"; });
+    $("#nbAddGo")?.addEventListener("click", () => {
+      const pick = new Set([...$("#nbAddSheet").querySelectorAll("input:checked")].map(i => i.value));
+      store.set("notebook", getNotebook().map(n => pick.has(n.id) ? { ...n, fold: id, at: Date.now() } : n));
+      sheet("nbAddSheet", false); notebook(tab);
+    });
     $("#nbFName").onchange = () => { nbSave(id, { name: $("#nbFName").value.trim() || "Folder" }); notebook(tab); };
     confirmBtn($("#nbFDel"), () => { store.set("notebook", getNotebook().filter(n => n.id !== id).map(n => n.fold === id ? { ...n, fold: here.fold, at: Date.now() } : n)); location.hash = back[0].slice(1); });
   }
+  nbDrag(tab);
 }
+// dragging a note (or a folder) onto a folder, or onto the back button to go up a level. A mouse drags straight
+// away; a finger holds for a moment first, so a swipe still scrolls the page
+function nbDrag(tab) {
+  const v = $("#view");
+  v.querySelectorAll("[data-nbid]").forEach(card => {
+    card.addEventListener("dragstart", ev => ev.preventDefault());
+    card.addEventListener("pointerdown", ev => {
+      if (ev.button > 0) return;
+      const x0 = ev.clientX, y0 = ev.clientY, touch = ev.pointerType !== "mouse", r = card.getBoundingClientRect();
+      let ghost = null, over = null, armed = !touch, done = false;
+      const hold = touch ? setTimeout(() => { armed = true; card.classList.add("nbhold"); navigator.vibrate?.(10); }, 350) : 0;
+      // once held, a finger moving drags instead of scrolling
+      const noScroll = e => { if (armed) e.preventDefault(); };
+      const move = e => {
+        if (!ghost) {
+          if (Math.hypot(e.clientX - x0, e.clientY - y0) < 8) return;
+          if (!armed) return stop();
+          ghost = card.cloneNode(true); ghost.className += " nbghost"; ghost.style.width = r.width + "px"; ghost.style.left = r.left + "px"; ghost.style.top = r.top + "px";
+          document.body.append(ghost); card.classList.add("nbdragging");
+        }
+        ghost.style.transform = `translate(${e.clientX - x0}px, ${e.clientY - y0}px) rotate(-2deg)`;
+        const t = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-nbdrop]");
+        const ok = t && t !== card && !nbInside(t.dataset.nbdrop, card.dataset.nbid) ? t : null;
+        if (ok !== over) { over?.classList.remove("nbover"); ok?.classList.add("nbover"); over = ok; }
+      };
+      const stop = () => {
+        if (done) return; done = true; clearTimeout(hold);
+        document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); document.removeEventListener("pointercancel", stop);
+        card.removeEventListener("touchmove", noScroll);
+        card.classList.remove("nbhold", "nbdragging"); over?.classList.remove("nbover"); ghost?.remove();
+      };
+      const up = () => {
+        const was = ghost, to = over; stop();
+        if (!was) return;
+        // the drag isn't a tap: don't open the note
+        card.addEventListener("click", e => e.preventDefault(), { once: true, capture: true });
+        if (!to) return;
+        const dest = to.dataset.nbdrop === "top" ? undefined : to.dataset.nbdrop;
+        nbSave(card.dataset.nbid, { fold: dest }); notebook(tab);
+      };
+      document.addEventListener("pointermove", move); document.addEventListener("pointerup", up); document.addEventListener("pointercancel", stop);
+      card.addEventListener("touchmove", noScroll, { passive: false });
+    });
+    // a held finger shouldn't bring up the phone's menu for the link
+    card.addEventListener("contextmenu", ev => { if (card.classList.contains("nbhold")) ev.preventDefault(); });
+  });
+}
+// whether folder a is folder b or inside it (a folder can't go into itself)
+function nbInside(a, b) { const fs = nbFolders(); for (let x = a, n = 0; x && x !== "top" && n < 30; x = fs.find(f => f.id === x)?.fold, n++) if (x === b) return true; return false; }
 // one note on its own page: its title, its text (which grows as you write), which folder it's in, and Delete
 function noteView(id) {
   const n = getNotebook().find(x => x.id === id && x.kind !== "folder");
